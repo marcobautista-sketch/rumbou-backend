@@ -1,4 +1,4 @@
-package com.rumboU.backend;
+package com.rumbou.backend;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

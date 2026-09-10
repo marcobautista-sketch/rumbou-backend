@@ -53,6 +53,12 @@ Si en tu computadora ya tienes PostgreSQL instalado directamente en Windows (no 
 
 Por eso este proyecto usa el puerto **5433** en el host (`"5433:5432"` en `docker-compose.yml`) en vez del 5432 estándar. Si igual te aparece ese error, revisa si tienes un servicio de PostgreSQL nativo corriendo (`services.msc` en Windows, busca algo como `postgresql-x64-...`) y confirma que `application.properties` apunte al puerto 5433, no al 5432.
 
+### ⚠️ Nota sobre TestContainers en Windows
+
+Los tests que heredan de `AbstractContainerBaseTest` (los que usan `@Testcontainers`) pueden fallar en Windows con versiones muy nuevas de Docker Desktop, con un error como `BadRequestException (Status 400: ...)` al intentar conectarse por el "named pipe". Es una incompatibilidad conocida entre la librería `docker-java` (que usa TestContainers por dentro) y el pipe interno de Docker Desktop — no es un error en el código del proyecto.
+
+Si te pasa esto localmente: no es bloqueante. El pipeline de **GitHub Actions corre en Linux**, donde Docker funciona de forma nativa sin este problema, así que el CI es la fuente de verdad para estos tests (ver sección "Condiciones de escape" del documento de decisiones del equipo). Mientras tanto, puedes seguir desarrollando y dejar que el CI confirme que los tests con base de datos real pasan.
+
 ### Variables de entorno
 
 [PENDIENTE: documentar aquí las variables de entorno reales una vez que existan — JWT secret, credenciales de Mercado Pago, API key de Gemini, credenciales del servicio de correo — ninguna debe ir commiteada.]
