@@ -12,6 +12,24 @@ Es el proyecto del curso CS2031 Desarrollo Basado en Plataformas (UTEC). Somos 4
 
 **ESCENARIO ACTIVO: [UNI Y UNMSM]**
 
+---
+
+## Entrega y rúbrica (Semana 7 — fecha límite 2026-09-25, 11:59 p.m.)
+
+Esta es la entrega del backend completo: funcionalidades, seguridad, pruebas, deployment, informe y colección de Postman. Se califica sobre 20 puntos. Lo que sigue es lo que la rúbrica exige **además** de lo ya descrito en este documento — hay que tenerlo presente en cada módulo:
+
+- **Roles y autorización (1 punto).** `Usuario` necesita un rol (mínimo `USER` y `ADMIN`), verificado con `@PreAuthorize`/`@Secured` en endpoints sensibles, y el rol debe viajar también dentro del JWT, no solo en la base de datos.
+- **Refresh tokens (parte de los 1.5 puntos de JWT).** El sistema de login no solo genera el access token: también debe emitir y validar un refresh token.
+- **Servicio de correo electrónico (0.5 puntos).** Con plantillas HTML (Thymeleaf u otro), enviado de forma asíncrona, para: confirmación de registro, **recuperación de contraseña** (endpoint de "olvidé mi contraseña" que hoy no existe en el diseño) y confirmación de pago aprobado.
+- **Deployment (2 puntos).** Mínimo en una plataforma de "instant deployment" (Railway, Render, Heroku) con base de datos en la nube, para el punto completo de esa categoría. Sin desplegar, son 0 puntos en este rubro.
+- **Más de 7 excepciones personalizadas** organizadas por categoría (no solo `ResourceNotFoundException`), y el `GlobalExceptionHandler` debe manejar también las excepciones propias de Spring (`MethodArgumentNotValidException`, `HttpMessageNotReadableException`).
+- **Más de 10 DTOs especializados** (Request/Response/Create/Update/Detail) en total — no un DTO genérico por entidad.
+- **Convenciones REST con versionado:** rutas tipo `/api/v1/recurso`, recursos en plural.
+- **`postman_collection.json`** debe vivir literalmente con ese nombre en la raíz del repo, con endpoints documentados, ejemplos, variables y autorización configurada.
+- **GitHub Projects/Issues** para gestionar tareas, con milestones y labels — no solo código, también proceso.
+- **El `README.md` debe incluir además un informe narrativo de 1000-2000 palabras** con esta estructura fija: Portada, Índice, Introducción (contexto + objetivos), Identificación del Problema (descripción + justificación), Descripción de la Solución (funcionalidades + tecnologías), Modelo de Entidades (diagrama + descripción), Manejo de Errores, Medidas de Seguridad (seguridad de datos + prevención de SQLi/XSS/CSRF), Eventos y Asincronía, GitHub & Management, Conclusión (logros + aprendizajes + trabajo futuro), Apéndices (licencia + referencias). Esto convive con las instrucciones técnicas de instalación que ya tiene el README (la rúbrica también las pide, en la sección 9.1).
+
+Lo que ya estaba en el diseño original **cumple sin cambios**: más de 6 entidades (tenemos ~16), más de 2 casos de uso con eventos (tenemos 3), y la dirección del `GlobalExceptionHandler` ya construido — solo falta ampliarlo con más tipos de excepción.
 
 ---
 
