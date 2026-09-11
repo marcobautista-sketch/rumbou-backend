@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -50,6 +51,15 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleUnauthorized(UnauthorizedException ex,
                                                                HttpServletRequest request) {
         return buildResponse(HttpStatus.FORBIDDEN, ex.getMessage(), request);
+    }
+
+    // AccessDeniedException (y su subclase AuthorizationDeniedException, que lanza
+    // @PreAuthorize cuando el rol no alcanza) hay que capturarla explicitamente aqui:
+    // si no, cae en el handler generico de abajo y responde 500 en vez de 403.
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex,
+                                                               HttpServletRequest request) {
+        return buildResponse(HttpStatus.FORBIDDEN, "No tienes permisos para realizar esta accion", request);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
