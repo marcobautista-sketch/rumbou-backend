@@ -1,0 +1,119 @@
+package com.rumbou.backend.contenido;
+
+import com.rumbou.backend.academico.Tema;
+import com.rumbou.backend.contenido.dto.CreatePreguntaRequest;
+import com.rumbou.backend.contenido.dto.PreguntaAdminResponse;
+import com.rumbou.backend.contenido.dto.PreguntaResponse;
+import com.rumbou.backend.contenido.dto.UpdatePreguntaRequest;
+import com.rumbou.backend.shared.exception.ResourceNotFoundException;
+import jakarta.persistence.EntityManager;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class PreguntaService {
+
+    private final PreguntaRepository preguntaRepository;
+    private final EntityManager entityManager;
+
+    // No existe todavia un TemaRepository (le toca a Juan Carlos, paquete academico/,
+    // ver reparto de trabajo). Para no crear un archivo en un paquete ajeno sin avisar,
+    // buscamos el Tema directamente por EntityManager: es la unica pieza que este
+    // servicio necesita de ese modulo.
+    public PreguntaService(PreguntaRepository preguntaRepository, EntityManager entityManager) {
+        this.preguntaRepository = preguntaRepository;
+        this.entityManager = entityManager;
+    }
+
+    public Page<PreguntaResponse> buscar(Long temaId, Dificultad dificultad, OrigenPregunta origen,
+                                          Boolean aprobada, Pageable pageable) {
+        return preguntaRepository.buscar(temaId, dificultad, origen, aprobada, pageable)
+                .map(this::aResponse);
+    }
+
+    public PreguntaResponse obtener(Long id) {
+        return aResponse(obtenerEntidad(id));
+    }
+
+    @Transactional
+    public PreguntaAdminResponse crear(CreatePreguntaRequest request) {
+        Tema tema = obtenerTema(request.temaId());
+
+        Pregunta pregunta = new Pregunta(
+                tema,
+                request.enunciado(),
+                request.alternativas(),
+                request.claveCorrecta(),
+                request.explicacion(),
+                request.dificultad(),
+                request.origen(),
+                request.aprobada()
+        );
+
+        return aAdminResponse(preguntaRepository.save(pregunta));
+    }
+
+    @Transactional
+    public PreguntaAdminResponse actualizar(Long id, UpdatePreguntaRequest request) {
+        Pregunta pregunta = obtenerEntidad(id);
+        Tema tema = obtenerTema(request.temaId());
+
+        pregunta.setTema(tema);
+        pregunta.setEnunciado(request.enunciado());
+        pregunta.setAlternativas(request.alternativas());
+        pregunta.setClaveCorrecta(request.claveCorrecta());
+        pregunta.setExplicacion(request.explicacion());
+        pregunta.setDificultad(request.dificultad());
+        pregunta.setOrigen(request.origen());
+        pregunta.setAprobada(request.aprobada());
+
+        return aAdminResponse(pregunta);
+    }
+
+    @Transactional
+    public void eliminar(Long id) {
+        Pregunta pregunta = obtenerEntidad(id);
+        preguntaRepository.delete(pregunta);
+    }
+
+    private Pregunta obtenerEntidad(Long id) {
+        return preguntaRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("No existe una pregunta con id " + id));
+    }
+
+    private Tema obtenerTema(Long temaId) {
+        Tema tema = entityManager.find(Tema.class, temaId);
+        if (tema == null) {
+            throw new ResourceNotFoundException("No existe un tema con id " + temaId);
+        }
+        return tema;
+    }
+
+    private PreguntaResponse aResponse(Pregunta pregunta) {
+        return new PreguntaResponse(
+                pregunta.getId(),
+                pregunta.getTema().getId(),
+                pregunta.getTema().getNombre(),
+                pregunta.getEnunciado(),
+                pregunta.getAlternativas(),
+                pregunta.getDificultad()
+        );
+    }
+
+    private PreguntaAdminResponse aAdminResponse(Pregunta pregunta) {
+        return new PreguntaAdminResponse(
+                pregunta.getId(),
+                pregunta.getTema().getId(),
+                pregunta.getTema().getNombre(),
+                pregunta.getEnunciado(),
+                pregunta.getAlternativas(),
+                pregunta.getClaveCorrecta(),
+                pregunta.getExplicacion(),
+                pregunta.getDificultad(),
+                pregunta.getOrigen(),
+                pregunta.isAprobada()
+        );
+    }
+}
