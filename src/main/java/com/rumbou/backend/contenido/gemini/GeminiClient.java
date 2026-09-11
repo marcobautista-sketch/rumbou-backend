@@ -92,6 +92,29 @@ public class GeminiClient {
         return respuesta.path("claveElegida").asInt(-1);
     }
 
+    // Usado por el tutor de IA (TutorIaExplicacionListener) para generar y cachear
+    // la explicacion de una pregunta cuando un usuario la responde mal y todavia
+    // no tiene una explicacion guardada. Aqui SI le decimos cual es la clave correcta,
+    // a diferencia de resolver(): el objetivo no es validar, sino explicar.
+    public String explicar(String enunciado, java.util.List<String> alternativas, int claveCorrecta) {
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("Explica en un parrafo breve, para un postulante que respondio mal esta pregunta ");
+        prompt.append("de un examen de admision, por que la alternativa correcta es la correcta.\n\n");
+        prompt.append(enunciado).append("\n");
+        for (int i = 0; i < alternativas.size(); i++) {
+            prompt.append(i).append(") ").append(alternativas.get(i)).append("\n");
+        }
+        prompt.append("\nLa alternativa correcta es la numero ").append(claveCorrecta).append(".");
+
+        ObjectNode schema = objectMapper.createObjectNode();
+        schema.put("type", "OBJECT");
+        schema.putObject("properties").putObject("explicacion").put("type", "STRING");
+        schema.putArray("required").add("explicacion");
+
+        JsonNode respuesta = llamar(prompt.toString(), schema);
+        return respuesta.path("explicacion").asText();
+    }
+
     private JsonNode llamar(String prompt, ObjectNode responseSchema) {
         ObjectNode body = objectMapper.createObjectNode();
         ObjectNode content = body.putArray("contents").addObject();
