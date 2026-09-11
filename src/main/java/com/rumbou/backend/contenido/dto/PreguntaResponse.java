@@ -4,9 +4,7 @@ import com.rumbou.backend.contenido.Dificultad;
 
 import java.util.List;
 
-// Para el postulante: deliberadamente SIN claveCorrecta ni explicacion,
-// igual que examen/dto/PreguntaSimulacroResponse, para no filtrar la
-// respuesta correcta antes de que conteste.
+// Sin claveCorrecta ni explicacion, igual que PreguntaSimulacroResponse en examen/.
 public record PreguntaResponse(
         Long id,
         Long temaId,
