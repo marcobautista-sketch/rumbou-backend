@@ -1,17 +1,22 @@
 package com.rumbou.backend.contenido;
 
+import com.rumbou.backend.auth.Role;
+import com.rumbou.backend.auth.Usuario;
 import com.rumbou.backend.contenido.dto.CreatePreguntaRequest;
 import com.rumbou.backend.contenido.dto.PreguntaAdminResponse;
 import com.rumbou.backend.contenido.dto.PreguntaResponse;
 import com.rumbou.backend.contenido.dto.UpdatePreguntaRequest;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -24,6 +29,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/preguntas")
 public class PreguntaController {
 
+    private static final int TAMANO_PAGINA_MAXIMO = 50;
+
     private final PreguntaService preguntaService;
 
     public PreguntaController(PreguntaService preguntaService) {
@@ -31,17 +38,20 @@ public class PreguntaController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<PreguntaResponse>> listar(@RequestParam(required = false) Long temaId,
+    public ResponseEntity<Page<PreguntaResponse>> listar(@AuthenticationPrincipal Usuario usuario,
+                                                            @RequestParam(required = false) Long temaId,
                                                             @RequestParam(required = false) Dificultad dificultad,
                                                             @RequestParam(required = false) OrigenPregunta origen,
                                                             @RequestParam(required = false) Boolean aprobada,
                                                             Pageable pageable) {
-        return ResponseEntity.ok(preguntaService.buscar(temaId, dificultad, origen, aprobada, pageable));
+        Pageable pageableLimitado = limitarTamano(pageable);
+        return ResponseEntity.ok(preguntaService.buscar(
+                temaId, dificultad, origen, aprobada, pageableLimitado, esAdmin(usuario)));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<PreguntaResponse> obtener(@PathVariable Long id) {
-        return ResponseEntity.ok(preguntaService.obtener(id));
+    public ResponseEntity<PreguntaResponse> obtener(@AuthenticationPrincipal Usuario usuario, @PathVariable Long id) {
+        return ResponseEntity.ok(preguntaService.obtener(id, esAdmin(usuario)));
     }
 
     @PostMapping
@@ -57,10 +67,29 @@ public class PreguntaController {
         return ResponseEntity.ok(preguntaService.actualizar(id, request));
     }
 
+    // Aprobar es una operacion mas chica y frecuente que un PUT completo: la usa
+    // sobre todo el panel de revision de preguntas generadas con Gemini.
+    @PatchMapping("/{id}/aprobar")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<PreguntaAdminResponse> aprobar(@PathVariable Long id) {
+        return ResponseEntity.ok(preguntaService.aprobar(id));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         preguntaService.eliminar(id);
         return ResponseEntity.noContent().build();
+    }
+
+    private boolean esAdmin(Usuario usuario) {
+        return usuario.getRole() == Role.ADMIN;
+    }
+
+    private Pageable limitarTamano(Pageable pageable) {
+        if (pageable.getPageSize() <= TAMANO_PAGINA_MAXIMO) {
+            return pageable;
+        }
+        return PageRequest.of(pageable.getPageNumber(), TAMANO_PAGINA_MAXIMO, pageable.getSort());
     }
 }

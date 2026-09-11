@@ -25,14 +25,29 @@ public class PreguntaService {
         this.entityManager = entityManager;
     }
 
+    // esAdmin fuerza aprobada=true para cualquiera que no sea administrador: un
+    // postulante no debe poder ver preguntas generadas por IA que todavia no
+    // pasaron revision humana.
     public Page<PreguntaResponse> buscar(Long temaId, Dificultad dificultad, OrigenPregunta origen,
-                                          Boolean aprobada, Pageable pageable) {
-        return preguntaRepository.buscar(temaId, dificultad, origen, aprobada, pageable)
+                                          Boolean aprobada, Pageable pageable, boolean esAdmin) {
+        Boolean aprobadaEfectiva = esAdmin ? aprobada : Boolean.TRUE;
+        return preguntaRepository.buscar(temaId, dificultad, origen, aprobadaEfectiva, pageable)
                 .map(this::aResponse);
     }
 
-    public PreguntaResponse obtener(Long id) {
-        return aResponse(obtenerEntidad(id));
+    public PreguntaResponse obtener(Long id, boolean esAdmin) {
+        Pregunta pregunta = obtenerEntidad(id);
+        if (!esAdmin && !pregunta.isAprobada()) {
+            throw new ResourceNotFoundException("No existe una pregunta con id " + id);
+        }
+        return aResponse(pregunta);
+    }
+
+    @Transactional
+    public PreguntaAdminResponse aprobar(Long id) {
+        Pregunta pregunta = obtenerEntidad(id);
+        pregunta.setAprobada(true);
+        return aAdminResponse(pregunta);
     }
 
     @Transactional
