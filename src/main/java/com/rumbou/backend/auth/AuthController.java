@@ -1,9 +1,11 @@
 package com.rumbou.backend.auth;
 
 import com.rumbou.backend.auth.dto.AuthResponse;
+import com.rumbou.backend.auth.dto.ForgotPasswordRequest;
 import com.rumbou.backend.auth.dto.LoginRequest;
 import com.rumbou.backend.auth.dto.RefreshRequest;
 import com.rumbou.backend.auth.dto.RegisterRequest;
+import com.rumbou.backend.auth.dto.ResetPasswordRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -35,5 +37,17 @@ public class AuthController {
     @PostMapping("/refresh")
     public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshRequest request) {
         return ResponseEntity.ok(authService.refresh(request.refreshToken()));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        authService.forgotPassword(request.email());
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request.token(), request.newPassword());
+        return ResponseEntity.ok().build();
     }
 }
