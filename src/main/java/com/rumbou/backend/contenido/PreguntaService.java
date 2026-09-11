@@ -18,10 +18,8 @@ public class PreguntaService {
     private final PreguntaRepository preguntaRepository;
     private final EntityManager entityManager;
 
-    // No existe todavia un TemaRepository (le toca a Juan Carlos, paquete academico/,
-    // ver reparto de trabajo). Para no crear un archivo en un paquete ajeno sin avisar,
-    // buscamos el Tema directamente por EntityManager: es la unica pieza que este
-    // servicio necesita de ese modulo.
+    // Todavia no existe TemaRepository (le toca a academico/), asi que buscamos
+    // el Tema directamente por EntityManager en vez de crear un repo en otro paquete.
     public PreguntaService(PreguntaRepository preguntaRepository, EntityManager entityManager) {
         this.preguntaRepository = preguntaRepository;
         this.entityManager = entityManager;

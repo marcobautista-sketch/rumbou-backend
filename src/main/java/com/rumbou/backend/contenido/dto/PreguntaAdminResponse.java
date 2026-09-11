@@ -5,9 +5,7 @@ import com.rumbou.backend.contenido.OrigenPregunta;
 
 import java.util.List;
 
-// Para el panel de administracion: incluye clave y explicacion, a diferencia
-// de PreguntaResponse. Solo la debe devolver un endpoint protegido con
-// @PreAuthorize("hasRole('ADMIN')").
+// Incluye clave y explicacion, a diferencia de PreguntaResponse.
 public record PreguntaAdminResponse(
         Long id,
         Long temaId,

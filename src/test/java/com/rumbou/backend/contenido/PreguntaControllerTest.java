@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -25,12 +26,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// @PreAuthorize solo se activa si hay @EnableMethodSecurity en el contexto de Spring.
-// Como @WebMvcTest no carga SecurityConfig (esta fuera del paquete de controllers),
-// lo agregamos aqui con una @TestConfiguration minima, sin arrastrar el filtro JWT
-// completo: para este test solo nos interesa la autorizacion por rol, no el token.
+// @WebMvcTest no carga SecurityConfig, asi que @EnableMethodSecurity se agrega
+// aqui aparte para que @PreAuthorize funcione en el test.
 @WebMvcTest(PreguntaController.class)
-@org.springframework.context.annotation.Import(PreguntaControllerTest.MethodSecurityTestConfig.class)
+@Import(PreguntaControllerTest.MethodSecurityTestConfig.class)
 class PreguntaControllerTest {
 
     @Autowired
@@ -42,9 +41,8 @@ class PreguntaControllerTest {
     @MockBean
     private PreguntaService preguntaService;
 
-    // @WebMvcTest incluye automaticamente cualquier bean que sea un Filter de Servlet,
-    // y JwtAuthenticationFilter lo es. Estos dos mocks son solo para que se pueda
-    // construir; no participan en la autenticacion de este test (esa la da @WithMockUser).
+    // JwtAuthenticationFilter es un Filter de Servlet, asi que @WebMvcTest lo carga
+    // automaticamente y hay que darle sus dependencias para que pueda construirse.
     @MockBean
     private JwtService jwtService;
 

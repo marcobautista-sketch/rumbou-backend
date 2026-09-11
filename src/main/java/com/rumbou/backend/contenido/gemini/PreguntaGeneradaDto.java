@@ -2,9 +2,7 @@ package com.rumbou.backend.contenido.gemini;
 
 import java.util.List;
 
-// Forma del JSON que le pedimos a Gemini que devuelva para cada pregunta generada.
-// No es un DTO de la API REST del proyecto (por eso vive en el subpaquete gemini,
-// separado de contenido/dto): es solo el contrato con el modelo de IA.
+// Contrato con Gemini, no con la API REST del proyecto (por eso no vive en contenido/dto).
 public record PreguntaGeneradaDto(
         String enunciado,
         List<String> alternativas,

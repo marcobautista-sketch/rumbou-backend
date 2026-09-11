@@ -10,9 +10,7 @@ import jakarta.validation.constraints.Size;
 
 import java.util.List;
 
-// La actualizacion es siempre completa (reemplaza todos los campos editables),
-// igual que CreatePreguntaRequest, para no tener que resolver semantica de
-// "patch parcial" que este modulo no necesita todavia.
+// Actualizacion completa, no parcial: reemplaza todos los campos editables.
 public record UpdatePreguntaRequest(
         @NotNull Long temaId,
 
