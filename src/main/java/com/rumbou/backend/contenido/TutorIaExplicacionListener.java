@@ -9,11 +9,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
-// Tutor de IA: cuando examen/SimulacroService publica RespuestaIncorrectaEvent,
-// generamos y cacheamos una explicacion en Pregunta.explicacion si todavia no tiene una.
-// @Async porque llama a un servicio externo (Gemini), AFTER_COMMIT porque necesita que
-// la respuesta incorrecta ya este confirmada en base de datos (ver tabla de eventos
-// del CLAUDE.md).
+// @Async porque llama a un servicio externo, AFTER_COMMIT porque necesita que la
+// respuesta incorrecta ya este confirmada en base de datos.
 @Component
 public class TutorIaExplicacionListener {
 
@@ -40,8 +37,6 @@ public class TutorIaExplicacionListener {
                 pregunta.setExplicacion(explicacion);
                 preguntaRepository.save(pregunta);
             } catch (GeminiException ex) {
-                // Es un enriquecimiento opcional: si Gemini falla, la pregunta se queda
-                // sin explicacion cacheada por ahora, pero no debe tumbar nada mas.
                 System.out.println("No se pudo generar explicacion para la pregunta "
                         + pregunta.getId() + ": " + ex.getMessage());
             }

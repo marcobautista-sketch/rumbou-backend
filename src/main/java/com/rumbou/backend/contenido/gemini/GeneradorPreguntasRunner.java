@@ -12,17 +12,10 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-// Script de generacion de preguntas con IA, fuera del runtime normal de la app:
-// solo corre si se activa el profile "generar-preguntas", nunca en produccion ni en dev.
-//
-// Uso (con Docker/Postgres local levantado):
-//   ./mvnw spring-boot:run -Dspring-boot.run.profiles=generar-preguntas \
-//       -Dspring-boot.run.arguments="--temaId=1 --dificultad=MEDIA --cantidad=10"
-//
-// Requiere la variable de entorno GEMINI_API_KEY (ver GeminiClient). Cada pregunta
-// se guarda con aprobada=false: la meta de 450 preguntas se completa con revision
-// humana en el panel de administracion antes de marcarlas aprobadas (regla del
-// CLAUDE.md: no hardcodear, y no publicar contenido de IA sin revisar).
+// Script fuera del runtime normal: solo corre con el profile "generar-preguntas".
+// Uso: ./mvnw spring-boot:run -Dspring-boot.run.profiles=generar-preguntas
+//      -Dspring-boot.run.arguments="--temaId=1 --dificultad=MEDIA --cantidad=10"
+// Guarda todo con aprobada=false, pendiente de revision humana.
 @Component
 @Profile("generar-preguntas")
 public class GeneradorPreguntasRunner implements ApplicationRunner {

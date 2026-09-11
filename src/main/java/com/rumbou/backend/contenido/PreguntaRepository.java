@@ -13,9 +13,7 @@ public interface PreguntaRepository extends JpaRepository<Pregunta, Long> {
     // Usado por examen/SimulacroGeneratorService: no tocar la firma sin avisar a Marco.
     List<Pregunta> findByTemaIdAndAprobadaTrue(Long temaId);
 
-    // Filtro combinado para el CRUD del panel de administracion. Cada parametro
-    // es opcional (null = no filtrar por ese campo), asi evitamos escribir un
-    // metodo derivado distinto por cada combinacion de filtros.
+    // Cada parametro es opcional (null = no filtrar por ese campo).
     @Query("""
             SELECT p FROM Pregunta p
             WHERE (:temaId IS NULL OR p.tema.id = :temaId)

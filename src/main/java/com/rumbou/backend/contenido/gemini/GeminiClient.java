@@ -14,13 +14,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 
-// Cliente minimo para la API de Gemini (Google AI Studio), usado solo por el script
-// de generacion de preguntas (ver GeneradorPreguntasRunner). No usa ningun SDK nuevo:
-// java.net.http.HttpClient y Jackson ya vienen con Spring Boot, asi que no hizo falta
-// agregar una dependencia al pom.xml para esto.
-//
-// La API key SIEMPRE viene de una variable de entorno (GEMINI_API_KEY), nunca del
-// repositorio (ver application.properties: gemini.api-key=${GEMINI_API_KEY:}).
+// Cliente para la API de Gemini (Google AI Studio). No agrega dependencia nueva:
+// usa java.net.http.HttpClient y Jackson, que ya vienen con Spring Boot.
 @Component
 public class GeminiClient {
 
@@ -40,9 +35,6 @@ public class GeminiClient {
         this.objectMapper = new ObjectMapper();
     }
 
-    // Le pide a Gemini una pregunta nueva de opcion multiple sobre un tema y dificultad
-    // dados. Explicitamente le decimos que NO copie preguntas textuales de examenes
-    // oficiales, solo que las use como referencia de estilo (regla del CLAUDE.md).
     public PreguntaGeneradaDto generarPregunta(String temaNombre, Dificultad dificultad) {
         String prompt = """
                 Genera una pregunta de opcion multiple, estilo examen de admision universitaria \
@@ -71,10 +63,8 @@ public class GeminiClient {
         return objectMapper.convertValue(respuesta, PreguntaGeneradaDto.class);
     }
 
-    // Segunda llamada de validacion: le mostramos el enunciado y las alternativas
-    // (SIN decirle cual es la clave) y le pedimos que resuelva la pregunta por su
-    // cuenta. Si el indice que elige no coincide con claveCorrecta, la pregunta
-    // se descarta (ver GeminiPreguntaValidator) en vez de guardarse a ciegas.
+    // Segunda llamada de validacion: no le decimos cual es la clave, y comparamos
+    // su respuesta contra claveCorrecta en GeminiPreguntaValidator.
     public int resolver(String enunciado, java.util.List<String> alternativas) {
         StringBuilder prompt = new StringBuilder("Resuelve la siguiente pregunta de opcion multiple ");
         prompt.append("y responde unicamente con el indice (0 a 4) de la alternativa correcta.\n\n");
@@ -92,10 +82,7 @@ public class GeminiClient {
         return respuesta.path("claveElegida").asInt(-1);
     }
 
-    // Usado por el tutor de IA (TutorIaExplicacionListener) para generar y cachear
-    // la explicacion de una pregunta cuando un usuario la responde mal y todavia
-    // no tiene una explicacion guardada. Aqui SI le decimos cual es la clave correcta,
-    // a diferencia de resolver(): el objetivo no es validar, sino explicar.
+    // A diferencia de resolver(), aqui si le damos la clave: el objetivo es explicar, no validar.
     public String explicar(String enunciado, java.util.List<String> alternativas, int claveCorrecta) {
         StringBuilder prompt = new StringBuilder();
         prompt.append("Explica en un parrafo breve, para un postulante que respondio mal esta pregunta ");
