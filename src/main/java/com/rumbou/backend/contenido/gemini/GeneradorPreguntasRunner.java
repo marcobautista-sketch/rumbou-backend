@@ -6,6 +6,8 @@ import com.rumbou.backend.contenido.OrigenPregunta;
 import com.rumbou.backend.contenido.Pregunta;
 import com.rumbou.backend.contenido.PreguntaRepository;
 import jakarta.persistence.EntityManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Profile;
@@ -19,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @Profile("generar-preguntas")
 public class GeneradorPreguntasRunner implements ApplicationRunner {
+
+    private static final Logger log = LoggerFactory.getLogger(GeneradorPreguntasRunner.class);
 
     private final GeminiClient geminiClient;
     private final GeminiPreguntaValidator validator;
@@ -56,7 +60,7 @@ public class GeneradorPreguntasRunner implements ApplicationRunner {
                 var rechazo = validator.validar(generada);
                 if (rechazo.isPresent()) {
                     rechazadas++;
-                    System.out.println("Pregunta rechazada (" + rechazo.get() + "): " + generada.enunciado());
+                    log.info("Pregunta rechazada ({}): {}", rechazo.get(), generada.enunciado());
                     continue;
                 }
 
@@ -64,12 +68,12 @@ public class GeneradorPreguntasRunner implements ApplicationRunner {
                 generadas++;
             } catch (GeminiException ex) {
                 rechazadas++;
-                System.out.println("Error llamando a Gemini, se omite esta pregunta: " + ex.getMessage());
+                log.warn("Error llamando a Gemini, se omite esta pregunta: {}", ex.getMessage());
             }
         }
 
-        System.out.println("Generacion terminada. Guardadas (pendientes de revision): " + generadas
-                + ". Rechazadas: " + rechazadas);
+        log.info("Generacion terminada. Guardadas (pendientes de revision): {}. Rechazadas: {}",
+                generadas, rechazadas);
     }
 
     @Transactional
