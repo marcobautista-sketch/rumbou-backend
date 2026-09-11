@@ -1,17 +1,18 @@
 package com.rumbou.backend.contenido;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.rumbou.backend.auth.JwtService;
 import com.rumbou.backend.contenido.dto.CreatePreguntaRequest;
 import com.rumbou.backend.contenido.dto.PreguntaAdminResponse;
 import com.rumbou.backend.contenido.dto.PreguntaResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.annotation.Bean;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.TestConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
@@ -40,6 +41,15 @@ class PreguntaControllerTest {
 
     @MockBean
     private PreguntaService preguntaService;
+
+    // @WebMvcTest incluye automaticamente cualquier bean que sea un Filter de Servlet,
+    // y JwtAuthenticationFilter lo es. Estos dos mocks son solo para que se pueda
+    // construir; no participan en la autenticacion de este test (esa la da @WithMockUser).
+    @MockBean
+    private JwtService jwtService;
+
+    @MockBean
+    private UserDetailsService userDetailsService;
 
     @TestConfiguration
     @EnableMethodSecurity
