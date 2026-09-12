@@ -4,6 +4,12 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+### Secretos y config local (regla del CLAUDE.md: nunca commitear) ###
+.env
+.env.*
+application-local.properties
+application-local.yml
+
 ### STS ###
 .apt_generated
 .classpath
