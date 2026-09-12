@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -26,9 +27,12 @@ public class TutorIaExplicacionListener {
         this.geminiClient = geminiClient;
     }
 
+    // REQUIRES_NEW es obligatorio aqui: en AFTER_COMMIT la transaccion original
+    // ya se cerro, asi que para guardar la explicacion hay que abrir una nueva.
+    // Con @Transactional normal, Spring ni siquiera arranca la aplicacion.
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void alRecibirRespuestaIncorrecta(RespuestaIncorrectaEvent event) {
         preguntaRepository.findById(event.preguntaId()).ifPresent(pregunta -> {
             if (pregunta.getExplicacion() != null && !pregunta.getExplicacion().isBlank()) {
