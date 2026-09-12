@@ -8,6 +8,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -55,6 +56,20 @@ class AuthServiceTest {
 
         verify(passwordResetTokenRepository).save(any(PasswordResetToken.class));
         verify(eventPublisher).publishEvent(any(PasswordResetRequestedEvent.class));
+    }
+
+    @Test
+    void forgotPasswordInvalidaLosTokensAnterioresDelUsuario() {
+        Usuario usuario = new Usuario("postulante@rumbou.com", "hash", "Ana", Role.USER);
+        usuario.setId(7L);
+        PasswordResetToken anterior = new PasswordResetToken(usuario, "token-anterior", LocalDateTime.now().plusMinutes(10));
+        when(usuarioRepository.findByEmail("postulante@rumbou.com")).thenReturn(Optional.of(usuario));
+        when(passwordResetTokenRepository.findByUsuarioIdAndUsadoFalse(7L)).thenReturn(List.of(anterior));
+
+        authService.forgotPassword("postulante@rumbou.com");
+
+        assertThat(anterior.isUsado()).isTrue();
+        assertThat(anterior.estaVigente()).isFalse();
     }
 
     @Test

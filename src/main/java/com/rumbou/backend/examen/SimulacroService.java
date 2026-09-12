@@ -6,6 +6,7 @@ import com.rumbou.backend.academico.EstructuraExamen;
 import com.rumbou.backend.academico.EstructuraExamenRepository;
 import com.rumbou.backend.academico.EsquemaCalificacion;
 import com.rumbou.backend.auth.Usuario;
+import com.rumbou.backend.contenido.Pregunta;
 import com.rumbou.backend.examen.dto.IniciarSimulacroRequest;
 import com.rumbou.backend.examen.dto.PreguntaSimulacroResponse;
 import com.rumbou.backend.examen.dto.ResponderPreguntaRequest;
@@ -70,6 +71,8 @@ public class SimulacroService {
                 .findBySimulacroIdAndPreguntaId(simulacroId, request.preguntaId())
                 .orElseThrow(() -> new InvalidOperationException("Esa pregunta no pertenece a este simulacro"));
 
+        verificarAlternativaValida(request.alternativaMarcada(), respuesta.getPregunta());
+
         respuesta.setAlternativaMarcada(request.alternativaMarcada());
         respuestaUsuarioRepository.save(respuesta);
     }
@@ -83,8 +86,8 @@ public class SimulacroService {
         List<EstructuraExamen> estructura = estructuraExamenRepository
                 .findByAreaIdOrderByOrden(simulacro.getArea().getId());
 
-        Map<Long, EsquemaCalificacion> esquemaPorTemaId = estructura.stream()
-                .collect(Collectors.toMap(fila -> fila.getTema().getId(), EstructuraExamen::getEsquema));
+        Map<Long, EsquemaCalificacion> esquemaPorTemaId = mapearEsquemaPorTema(estructura);
+        verificarQueTodoTemaTengaEsquema(respuestas, esquemaPorTemaId);
 
         double puntajeTotal = calificadorService.calificarSimulacro(respuestas, esquemaPorTemaId);
         respuestaUsuarioRepository.saveAll(respuestas);
@@ -111,6 +114,35 @@ public class SimulacroService {
         return new ResultadoSimulacroResponse(simulacro.getId(), puntajeTotal, psp, simulacro.getEstado());
     }
 
+    // El mismo tema no puede estar en dos bloques de calificacion del area:
+    // no sabriamos con que esquema calificar sus preguntas. Si el seed del
+    // catalogo lo define asi, avisamos con un error claro en vez de reventar.
+    private Map<Long, EsquemaCalificacion> mapearEsquemaPorTema(List<EstructuraExamen> estructura) {
+        Map<Long, EsquemaCalificacion> esquemaPorTemaId = new HashMap<>();
+
+        for (EstructuraExamen fila : estructura) {
+            EsquemaCalificacion anterior = esquemaPorTemaId.put(fila.getTema().getId(), fila.getEsquema());
+            if (anterior != null) {
+                throw new InvalidOperationException(
+                        "El area tiene el mismo tema en dos bloques de calificacion distintos: "
+                                + fila.getTema().getNombre());
+            }
+        }
+        return esquemaPorTemaId;
+    }
+
+    // La estructura del area pudo cambiar despues de generarse el simulacro.
+    private void verificarQueTodoTemaTengaEsquema(List<RespuestaUsuario> respuestas,
+                                                     Map<Long, EsquemaCalificacion> esquemaPorTemaId) {
+        for (RespuestaUsuario respuesta : respuestas) {
+            if (!esquemaPorTemaId.containsKey(respuesta.getPregunta().getTema().getId())) {
+                throw new InvalidOperationException(
+                        "El tema '" + respuesta.getPregunta().getTema().getNombre()
+                                + "' ya no tiene esquema de calificacion en la estructura del area");
+            }
+        }
+    }
+
     private double calcularPuntajeMaximoDelSimulacro(List<RespuestaUsuario> respuestas,
                                                         Map<Long, EsquemaCalificacion> esquemaPorTemaId) {
         Map<Long, Long> conteoPorTema = respuestas.stream()
@@ -132,6 +164,18 @@ public class SimulacroService {
             throw new UnauthorizedException("Este simulacro no te pertenece");
         }
         return simulacro;
+    }
+
+    // null es valido: significa que el postulante dejo la pregunta en blanco.
+    // El rango valido sale de las alternativas de la propia pregunta, no de
+    // un numero fijo en el codigo.
+    private void verificarAlternativaValida(Integer alternativaMarcada, Pregunta pregunta) {
+        if (alternativaMarcada == null) {
+            return;
+        }
+        if (alternativaMarcada < 0 || alternativaMarcada >= pregunta.getAlternativas().size()) {
+            throw new InvalidOperationException("La alternativa marcada no existe en esta pregunta");
+        }
     }
 
     private void verificarEnCurso(Simulacro simulacro) {
