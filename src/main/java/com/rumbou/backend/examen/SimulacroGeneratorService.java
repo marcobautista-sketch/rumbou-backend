@@ -6,6 +6,7 @@ import com.rumbou.backend.academico.EstructuraExamenRepository;
 import com.rumbou.backend.auth.Usuario;
 import com.rumbou.backend.contenido.Pregunta;
 import com.rumbou.backend.contenido.PreguntaRepository;
+import com.rumbou.backend.shared.exception.InvalidOperationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +42,7 @@ public class SimulacroGeneratorService {
         simulacroRepository.save(simulacro);
 
         List<EstructuraExamen> estructura = estructuraExamenRepository.findByAreaIdOrderByOrden(area.getId());
+        int preguntasAgregadas = 0;
 
         for (EstructuraExamen fila : estructura) {
             List<Pregunta> disponibles = preguntaRepository.findByTemaIdAndAprobadaTrue(fila.getTema().getId());
@@ -51,7 +53,15 @@ public class SimulacroGeneratorService {
             for (int i = 0; i < cantidad; i++) {
                 RespuestaUsuario respuesta = new RespuestaUsuario(simulacro, disponibles.get(i), null, LocalDateTime.now());
                 respuestaUsuarioRepository.save(respuesta);
+                preguntasAgregadas++;
             }
+        }
+
+        // Sin banco de preguntas aprobadas el simulacro saldria vacio y el
+        // postulante no entenderia por que. Mejor un error explicito.
+        if (preguntasAgregadas == 0) {
+            throw new InvalidOperationException(
+                    "No hay preguntas aprobadas para armar un simulacro de esta area todavia");
         }
 
         return simulacro;

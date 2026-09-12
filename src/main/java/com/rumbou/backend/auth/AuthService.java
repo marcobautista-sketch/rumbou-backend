@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -100,6 +101,10 @@ public class AuthService {
     @Transactional
     public void forgotPassword(String email) {
         usuarioRepository.findByEmail(email).ifPresent(usuario -> {
+            // Pedir un reseteo nuevo invalida los anteriores: si no, cada
+            // solicitud dejaria otro token vivo hasta que expire por su cuenta.
+            invalidarTokensVigentesDe(usuario);
+
             String token = UUID.randomUUID().toString();
             LocalDateTime expiracion = LocalDateTime.now().plusMinutes(RESET_TOKEN_EXPIRATION_MINUTES);
 
@@ -112,6 +117,12 @@ public class AuthService {
                     token
             ));
         });
+    }
+
+    private void invalidarTokensVigentesDe(Usuario usuario) {
+        List<PasswordResetToken> vigentes = passwordResetTokenRepository.findByUsuarioIdAndUsadoFalse(usuario.getId());
+        vigentes.forEach(PasswordResetToken::marcarComoUsado);
+        passwordResetTokenRepository.saveAll(vigentes);
     }
 
     @Transactional
