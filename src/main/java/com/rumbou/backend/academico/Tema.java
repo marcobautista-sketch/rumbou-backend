@@ -20,12 +20,28 @@ public class Tema extends BaseEntity {
     @Column(nullable = false)
     private AreaConocimiento areaConocimiento;
 
+    // Lista oficial de subtemas del prospecto de admision. La usa el generador
+    // de preguntas con Gemini (modulo contenido) para acotar el nivel y el
+    // contenido de lo que genera. Es opcional a proposito: el campo existe
+    // desde ya para desbloquear ese generador, y el texto se va completando
+    // despues sin volver a tocar codigo.
+    //
+    // TEXT y no @Lob: en PostgreSQL, @Lob sobre un String mapea al tipo oid
+    // (pensado para binarios) y falla al insertar texto normal.
+    @Column(columnDefinition = "TEXT")
+    private String temario;
+
     public Tema() {
     }
 
     public Tema(String nombre, AreaConocimiento areaConocimiento) {
         this.nombre = nombre;
         this.areaConocimiento = areaConocimiento;
+    }
+
+    public Tema(String nombre, AreaConocimiento areaConocimiento, String temario) {
+        this(nombre, areaConocimiento);
+        this.temario = temario;
     }
 
     public String getNombre() {
@@ -42,5 +58,13 @@ public class Tema extends BaseEntity {
 
     public void setAreaConocimiento(AreaConocimiento areaConocimiento) {
         this.areaConocimiento = areaConocimiento;
+    }
+
+    public String getTemario() {
+        return temario;
+    }
+
+    public void setTemario(String temario) {
+        this.temario = temario;
     }
 }
