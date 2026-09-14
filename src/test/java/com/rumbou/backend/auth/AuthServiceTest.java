@@ -1,5 +1,7 @@
 package com.rumbou.backend.auth;
 
+import com.rumbou.backend.auth.dto.RegisterRequest;
+import com.rumbou.backend.shared.exception.DuplicateResourceException;
 import com.rumbou.backend.shared.exception.InvalidTokenException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,6 +47,26 @@ class AuthServiceTest {
                 mock(AuthenticationManager.class),
                 eventPublisher
         );
+    }
+
+    @Test
+    void registerPublicaUsuarioRegistradoEventAlCrearLaCuenta() {
+        when(usuarioRepository.existsByEmail("nueva@rumbou.com")).thenReturn(false);
+        when(passwordEncoder.encode("password123")).thenReturn("hash");
+
+        authService.register(new RegisterRequest("nueva@rumbou.com", "password123", "Ana"));
+
+        verify(eventPublisher).publishEvent(any(UsuarioRegistradoEvent.class));
+    }
+
+    @Test
+    void registerNoPublicaEventoSiElEmailYaExiste() {
+        when(usuarioRepository.existsByEmail("existente@rumbou.com")).thenReturn(true);
+
+        assertThatThrownBy(() -> authService.register(new RegisterRequest("existente@rumbou.com", "password123", "Ana")))
+                .isInstanceOf(DuplicateResourceException.class);
+
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
