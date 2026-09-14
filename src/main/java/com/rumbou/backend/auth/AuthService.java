@@ -42,6 +42,7 @@ public class AuthService {
         this.eventPublisher = eventPublisher;
     }
 
+    @Transactional
     public AuthResponse register(RegisterRequest request) {
         if (usuarioRepository.existsByEmail(request.email())) {
             throw new DuplicateResourceException("Ya existe una cuenta con ese email");
@@ -54,6 +55,12 @@ public class AuthService {
                 Role.USER
         );
         usuarioRepository.save(usuario);
+
+        eventPublisher.publishEvent(new UsuarioRegistradoEvent(
+                usuario.getId(),
+                usuario.getEmail(),
+                usuario.getNombre()
+        ));
 
         return new AuthResponse(
                 jwtService.generateAccessToken(usuario),
