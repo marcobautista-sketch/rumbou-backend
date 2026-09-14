@@ -14,6 +14,9 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 // @Async porque llama a un servicio externo, AFTER_COMMIT porque necesita que la
 // respuesta incorrecta ya este confirmada en base de datos.
+//
+// No confundir con el tutor PRO (PreguntaService.pedirExplicacionTutorIa): esto
+// es la explicacion estatica, se genera una vez por pregunta y queda gratis para todos.
 @Component
 public class TutorIaExplicacionListener {
 

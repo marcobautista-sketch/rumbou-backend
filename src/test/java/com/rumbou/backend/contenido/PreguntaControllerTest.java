@@ -7,6 +7,7 @@ import com.rumbou.backend.auth.Usuario;
 import com.rumbou.backend.contenido.dto.CreatePreguntaRequest;
 import com.rumbou.backend.contenido.dto.PreguntaAdminResponse;
 import com.rumbou.backend.contenido.dto.PreguntaResponse;
+import com.rumbou.backend.contenido.dto.TutorIaResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -21,6 +22,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -106,6 +108,17 @@ class PreguntaControllerTest {
                 .andExpect(status().isOk());
 
         verify(preguntaService).buscar(any(), any(), any(), any(), any(), org.mockito.ArgumentMatchers.eq(false));
+    }
+
+    @Test
+    void unUsuarioAutenticadoPuedePedirleAlTutorIaUnaExplicacion() throws Exception {
+        given(preguntaService.pedirExplicacionTutorIa(any(), any(), anyBoolean()))
+                .willReturn(new TutorIaResponse(1L, "Porque 2 + 2 = 4"));
+
+        mockMvc.perform(post("/api/v1/preguntas/1/tutor-ia")
+                        .with(user(usuarioConRol(Role.USER)))
+                        .with(csrf()))
+                .andExpect(status().isOk());
     }
 
     @Test

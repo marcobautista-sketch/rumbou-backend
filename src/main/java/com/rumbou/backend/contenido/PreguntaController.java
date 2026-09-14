@@ -5,6 +5,7 @@ import com.rumbou.backend.auth.Usuario;
 import com.rumbou.backend.contenido.dto.CreatePreguntaRequest;
 import com.rumbou.backend.contenido.dto.PreguntaAdminResponse;
 import com.rumbou.backend.contenido.dto.PreguntaResponse;
+import com.rumbou.backend.contenido.dto.TutorIaResponse;
 import com.rumbou.backend.contenido.dto.UpdatePreguntaRequest;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -80,6 +81,13 @@ public class PreguntaController {
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         preguntaService.eliminar(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // Sin @PreAuthorize: no es un tema de rol sino de plan, y eso lo decide
+    // PlanService adentro del servicio, no el controller.
+    @PostMapping("/{id}/tutor-ia")
+    public ResponseEntity<TutorIaResponse> tutorIa(@AuthenticationPrincipal Usuario usuario, @PathVariable Long id) {
+        return ResponseEntity.ok(preguntaService.pedirExplicacionTutorIa(id, usuario, esAdmin(usuario)));
     }
 
     private boolean esAdmin(Usuario usuario) {

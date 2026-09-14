@@ -99,7 +99,13 @@ public class GeminiClient {
         schema.putArray("required").add("explicacion");
 
         JsonNode respuesta = llamar(prompt.toString(), schema);
-        return respuesta.path("explicacion").asText();
+        String explicacion = respuesta.path("explicacion").asText();
+        if (explicacion.isBlank()) {
+            // Si dejamos pasar esto, PreguntaService le cobraria la consulta diaria
+            // al usuario PRO a cambio de una explicacion vacia.
+            throw new GeminiException("Gemini devolvio una explicacion vacia");
+        }
+        return explicacion;
     }
 
     private JsonNode llamar(String prompt, ObjectNode responseSchema) {

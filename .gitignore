@@ -10,6 +10,8 @@ target/
 application-local.properties
 application-local.yml
 
+### Config local del editor (personal, no se comparte con el equipo) ###
+
 ### STS ###
 .apt_generated
 .classpath

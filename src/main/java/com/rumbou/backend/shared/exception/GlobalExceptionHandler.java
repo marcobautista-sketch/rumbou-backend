@@ -77,6 +77,14 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.BAD_REQUEST, "El cuerpo de la solicitud no es un JSON valido", request);
     }
 
+    // 502, no 500: el error viene de un tercero (Gemini, etc), no de un bug nuestro.
+    // No se expone ex.getMessage() porque puede traer el cuerpo crudo de la respuesta del proveedor.
+    @ExceptionHandler(ExternalServiceException.class)
+    public ResponseEntity<ErrorResponse> handleExternalService(ExternalServiceException ex,
+                                                                  HttpServletRequest request) {
+        return buildResponse(HttpStatus.BAD_GATEWAY, "El servicio externo no respondio correctamente", request);
+    }
+
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ErrorResponse> handleNoResourceFound(NoResourceFoundException ex,
                                                                   HttpServletRequest request) {
