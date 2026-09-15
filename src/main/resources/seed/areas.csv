@@ -1,0 +1,7 @@
+# Areas academicas por universidad.
+# UNI tiene una unica area GENERAL: asi el codigo nunca pregunta por la universidad, siempre trabaja con area.
+# De UNMSM solo entran las areas B y C (alcance definido del proyecto).
+universidad|codigo|nombre
+UNI|GENERAL|General
+UNMSM|B|Ciencias Básicas
+UNMSM|C|Ingenierías

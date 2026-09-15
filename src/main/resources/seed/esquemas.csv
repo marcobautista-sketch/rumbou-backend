@@ -1,0 +1,11 @@
+# Esquemas de calificacion: las reglas de puntaje como dato, nunca como constantes en el codigo.
+# valor_penalidad va en positivo: CalificadorService lo resta al calificar una respuesta incorrecta.
+# Las preguntas en blanco no suman ni restan en ningun esquema.
+# Fuentes: Prospecto de Admision UNI (examen ordinario) y Prospecto de Admision UNMSM 2026-I (Art. 28).
+universidad|bloque|valor_acierto|valor_penalidad|puntaje_maximo_bloque|orden
+UNI|Aptitud Académica y Humanidades|6|1.20|600|1
+UNI|Matemática|15|3|600|2
+UNI|Física y Química|15|3|600|3
+UNMSM|Actitudinal|20|0|200|1
+UNMSM|Habilidades|20|1.125|400|2
+UNMSM|Conocimientos|20|1.125|1400|3
