@@ -55,9 +55,13 @@ Por eso este proyecto usa el puerto **5433** en el host (`"5433:5432"` en `docke
 
 ### ⚠️ Nota sobre TestContainers en Windows
 
-Los tests que heredan de `AbstractContainerBaseTest` (los que usan `@Testcontainers`) pueden fallar en Windows con versiones muy nuevas de Docker Desktop, con un error como `BadRequestException (Status 400: ...)` al intentar conectarse por el "named pipe". Es una incompatibilidad conocida entre la librería `docker-java` (que usa TestContainers por dentro) y el pipe interno de Docker Desktop — no es un error en el código del proyecto.
+Los tests que usan `@Testcontainers` pueden fallar en local con Docker Desktop 29 o superior, con un error como `BadRequestException (Status 400: ...)` al conectarse por el "named pipe". La causa: el BOM de Spring Boot 3.3 fija el núcleo de TestContainers en 1.19.8, cuya librería interna `docker-java` es anterior a la API de Docker 29. No es un error en el código del proyecto, y el CI (GitHub Actions, en Linux con un Docker más antiguo) sigue siendo la fuente de verdad para estos tests.
 
-Si te pasa esto localmente: no es bloqueante. El pipeline de **GitHub Actions corre en Linux**, donde Docker funciona de forma nativa sin este problema, así que el CI es la fuente de verdad para estos tests. Mientras tanto, puedes seguir desarrollando y dejar que el CI confirme que los tests con base de datos real pasan.
+Solución local mientras no se alinee la versión en el `pom.xml`: pasarla por línea de comandos al correr los tests:
+
+```bash
+./mvnw test -Dtestcontainers.version=1.21.4
+```
 
 ### Variables de entorno
 
@@ -66,9 +70,24 @@ Ninguna credencial real vive en el repositorio. Las que ya usa el código:
 | Variable | La usa | Obligatoria en |
 |---|---|---|
 | `JWT_SECRET` | `auth/JwtService`, para firmar los tokens | Producción (en local tiene un valor de desarrollo por defecto en `application.properties`) |
-| `GEMINI_API_KEY` | `contenido/gemini/GeneradorPreguntasRunner`, solo con el profile `generar-preguntas` | Solo al generar preguntas con IA |
+| `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` | Conexión a PostgreSQL | Producción (en local apuntan por defecto al Postgres del `docker-compose`) |
+| `PORT` | Puerto HTTP; lo inyecta la plataforma de despliegue | Producción (en local, 8080) |
+| `SHOW_SQL` | Imprime el SQL de Hibernate en el log | Opcional (`true` por defecto; en producción se pone `false`) |
+| `GEMINI_API_KEY` | `contenido/gemini/GeneradorPreguntasRunner` y el tutor de IA del plan PRO | Al generar preguntas con IA y al usar el tutor |
+| `MP_ACCESS_TOKEN` | `suscripcion/MercadoPagoService`, para crear la preaprobación de pago | Al crear suscripciones PRO |
+| `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD` | `correo/EmailService` (SMTP) | Al enviar correos reales (en local apunta a `localhost:1025`, por ejemplo Mailpit o Mailtrap) |
 
-Pendientes de definir cuando se agregue el SDK correspondiente (aprobado en el issue #8, implementación en curso en el módulo `suscripcion/`): credenciales de Mercado Pago y del proveedor de correo transaccional. Seguirán el mismo patrón que las anteriores: variable de entorno con valor por defecto vacío o inválido, nunca commiteadas.
+Todas siguen el mismo patrón: variable de entorno con valor por defecto vacío o de desarrollo, nunca commiteadas. La aplicación arranca aunque falten las de Gemini, Mercado Pago y correo; esas funcionalidades fallan de forma controlada (`ExternalServiceException` → 502) hasta que se configuran.
+
+### Ejecutar el seed del catálogo
+
+Los datos oficiales del catálogo académico (universidades, áreas, esquemas de calificación, temas con su temario y estructura del examen) viven en archivos CSV en `src/main/resources/seed/` y se cargan con el profile `seed`:
+
+```bash
+./mvnw spring-boot:run -Dspring-boot.run.profiles=seed
+```
+
+Es idempotente: se puede correr varias veces sin duplicar filas. Los valores de puntaje y penalidad **no** están en el código, cumpliendo la regla de arquitectura del proyecto.
 
 ### Ejecutar la aplicación
 
@@ -76,7 +95,17 @@ Desde el IDE: correr la clase `BackendApplication`. Desde terminal: `./mvnw spri
 
 ### Link a producción
 
-Aún no existe: el deployment está planificado en AWS (ECS/EC2 + RDS), a la espera de que el curso entregue el acceso a la cuenta. El desarrollo no está bloqueado por esto — se ha trabajado en paralelo con PostgreSQL local en Docker, un entorno deliberadamente desacoplado del destino final de producción. Esta sección se actualizará con el enlace en cuanto el despliegue esté publicado.
+**https://rumbou-backend-production.up.railway.app**
+
+La API está desplegada en **Railway** con una base de datos **PostgreSQL gestionada en la nube**, dentro del mismo proyecto y conectada por red privada. Cómo está armado:
+
+- **Contenedor propio:** el `Dockerfile` de la raíz compila el jar en una etapa de build con Maven y deja una imagen final liviana solo con el runtime de Java 21. Railway lo detecta y lo construye automáticamente.
+- **Despliegue continuo:** cada merge a `main` dispara un nuevo build y despliegue. El CI de GitHub Actions corre antes, sobre el pull request, así que a producción solo llega código con la suite de tests en verde.
+- **Configuración por variables de entorno:** las mismas de la tabla anterior, cargadas en el panel de Railway; ninguna credencial está en el repositorio.
+- **Datos oficiales cargados:** el seed del catálogo se ejecutó una vez contra la base de producción con el profile `seed`.
+- **Portabilidad:** al estar containerizada, la misma imagen puede moverse a AWS (App Runner, ECS o Elastic Beanstalk + RDS) sin cambios en el código; solo cambian las variables de entorno. Esa migración queda como paso opcional si el curso entrega el acceso a la cuenta.
+
+Al abrir la URL raíz en el navegador se recibe un `401` en JSON: es la respuesta esperada de la API, porque casi todos los recursos exigen un token. Los endpoints públicos (`/api/v1/auth/register`, `/api/v1/auth/login`, etc.) se prueban desde la colección de Postman, cuya variable `baseUrl` ya apunta a esta URL.
 
 ---
 
@@ -119,14 +148,17 @@ El acceso a una preparación de calidad y personalizada suele estar limitado a q
 - ✅ Motor de simulacros: generación de la prueba según la estructura real del área, calificación con penalidad configurable por esquema, cierre y cálculo de PSP — probado contra los 4 esquemas reales de UNI y UNMSM.
 - ✅ Banco de preguntas: CRUD protegido por rol, filtros paginados, generación asistida por Gemini con validación automática y aprobación humana obligatoria antes de usarse en un simulacro.
 - ✅ Gamificación: racha diaria y XP actualizados al finalizar un simulacro, catálogo de logros.
-- ✅ Catálogo académico: modelo completo de universidades, áreas, carreras, ofertas académicas, esquemas de calificación y estructura de examen.
+- ✅ Tutor de IA del plan PRO: explicación personalizada con Gemini, con tope diario controlado por `PlanService`.
+- ✅ Catálogo académico: modelo completo y **seed reproducible** desde CSV con los datos oficiales de UNI y UNMSM (esquemas de calificación, 22 temas con temario y estructura del examen).
+- ✅ Suscripción PRO: `PlanService` como puerta única de límites, creación de la preaprobación en Mercado Pago, webhook con idempotencia (tabla `pagos_webhook`) y activación del plan por evento.
+- ✅ Correo transaccional asíncrono con plantillas Thymeleaf: confirmación de registro, recuperación de contraseña y pago aprobado, disparados por eventos.
+- ✅ Deployment en Railway con PostgreSQL en la nube, contenedor Docker y despliegue continuo desde `main`.
 
 **En desarrollo activo:**
-- 🔧 Carga de datos reales del catálogo (universidades, esquemas de calificación, ofertas académicas con el puntaje del último ingresante) — sin esto, el banco de preguntas y los simulacros no pueden probarse con información real, solo con datos de prueba.
-- 🔧 Cálculo de progreso: Índice de Progreso (IP) respecto al puntaje de corte y dominio por tema.
-- 🔧 Suscripción PRO: la lógica de límites de plan (`PlanService`) ya está construida y probada; falta el endpoint de creación de suscripción, el webhook de Mercado Pago con manejo de idempotencia, y conectar el chequeo de límites al flujo de simulacros.
-- 🔧 Servicio de correo transaccional (confirmación de registro, recuperación de contraseña, confirmación de pago) — los eventos que lo activarán ya se publican desde `auth/`, a la espera del listener.
-- 🔧 Deployment en AWS, a la espera de que el curso entregue el acceso a la cuenta.
+- 🔧 Segunda parte del seed: carreras y ofertas académicas (puntaje del último ingresante) y las áreas A, D y E de UNMSM.
+- 🔧 Banco de preguntas real, generado por tema a partir del temario cargado y aprobado por un humano.
+- 🔧 Cálculo de progreso (`progreso/`): Índice de Progreso (IP) respecto al puntaje de corte y dominio por tema.
+- 🔧 Conectar el chequeo de límites de `PlanService` al inicio de simulacros (hoy solo protege al tutor de IA).
 
 ### Tecnologías utilizadas
 
@@ -234,9 +266,9 @@ Los módulos no se llaman directamente entre sí: se comunican publicando evento
 |---|---|---|---|
 | `SimulacroFinalizadoEvent` | `examen/` al finalizar un simulacro | `gamificacion/` (racha y XP) | Síncrono, misma transacción |
 | `RespuestaIncorrectaEvent` | `examen/` por cada respuesta incorrecta | `contenido/` (tutor de IA, cachea una explicación) | `@Async` + `@TransactionalEventListener(AFTER_COMMIT)` |
-| `PagoAprobadoEvent` | `suscripcion/` (webhook de Mercado Pago) | `suscripcion/` (activa el plan) | `@TransactionalEventListener(AFTER_COMMIT)` |
-| `PasswordResetRequestedEvent` | `auth/` al pedir recuperar contraseña | Pendiente: módulo de correo | `@TransactionalEventListener(AFTER_COMMIT)` |
-| `UsuarioRegistradoEvent` | `auth/` al registrarse | Pendiente: módulo de correo (email de bienvenida) | `@TransactionalEventListener(AFTER_COMMIT)` |
+| `PagoAprobadoEvent` | `suscripcion/` (webhook de Mercado Pago) | `suscripcion/` (activa el plan) y `correo/` (correo de pago aprobado) | `@TransactionalEventListener(AFTER_COMMIT)` |
+| `PasswordResetRequestedEvent` | `auth/` al pedir recuperar contraseña | `correo/` (correo con el enlace de recuperación) | `@TransactionalEventListener(AFTER_COMMIT)` |
+| `UsuarioRegistradoEvent` | `auth/` al registrarse | `correo/` (correo de bienvenida) | `@TransactionalEventListener(AFTER_COMMIT)` |
 
 Los dos últimos ya se publican correctamente; solo falta que el servicio de correo los escuche para completar el flujo de punta a punta.
 
@@ -244,7 +276,7 @@ Los dos últimos ya se publican correctamente; solo falta que el servicio de cor
 
 ## GitHub y gestión del proyecto
 
-- **Flujo de trabajo:** una rama por funcionalidad (`feat/<módulo>`, `fix/<algo>`), nunca push directo a `main`. 11 Pull Requests mergeados a la fecha, todos con el CI de GitHub Actions en verde antes de mergear.
+- **Flujo de trabajo:** una rama por funcionalidad (`feat/<módulo>`, `fix/<algo>`), nunca push directo a `main`. 16 Pull Requests mergeados a la fecha, todos con el CI de GitHub Actions en verde antes de mergear.
 - **CI:** `.github/workflows/ci.yml` corre `mvnw verify` en cada push y PR contra `main`, incluyendo una prueba de humo (`ApplicationContextSmokeTest`) que levanta la aplicación completa — se agregó después de detectar que los tests por rebanada podían dejar pasar una aplicación que no arrancaba de verdad.
 - **Issues:** usados activamente para coordinar al equipo, no solo como lista de tareas — por ejemplo, para pedir permiso antes de tocar un archivo compartido (label `Permiso común`) o para levantar una decisión de arquitectura que necesitaba el visto bueno de otro integrante (label `Coordinar con Marco`).
 - **Milestone:** "Entrega Semana 7", con fecha de vencimiento 25 de septiembre de 2026.
@@ -255,7 +287,7 @@ Los dos últimos ya se publican correctamente; solo falta que el servicio de cor
 
 ### Logros del proyecto
 
-El núcleo compartido, la autenticación completa (incluida recuperación de contraseña) y el motor de examen están terminados y probados de punta a punta contra los esquemas reales de calificación. El banco de preguntas tiene generación asistida por IA con revisión humana obligatoria, y la gamificación básica ya reacciona a los simulacros terminados. La arquitectura basada en eventos permitió que el equipo de 4 personas trabajara en paralelo sobre módulos independientes sin bloquearse, y hoy el proyecto tiene 65 tests automatizados en verde y una colección de Postman documentada.
+El núcleo compartido, la autenticación completa (incluida recuperación de contraseña) y el motor de examen están terminados y probados de punta a punta contra los esquemas reales de calificación. El banco de preguntas tiene generación asistida por IA con revisión humana obligatoria, y la gamificación básica ya reacciona a los simulacros terminados. La arquitectura basada en eventos permitió que el equipo de 4 personas trabajara en paralelo sobre módulos independientes sin bloquearse, y hoy el proyecto tiene más de 100 tests automatizados en verde, está desplegado en Railway con base de datos en la nube, y una colección de Postman documentada.
 
 ### Aprendizajes clave
 
@@ -266,10 +298,9 @@ El núcleo compartido, la autenticación completa (incluida recuperación de con
 
 ### Trabajo futuro
 
-- Cargar los datos reales del catálogo académico (universidades, esquemas, ofertas con puntaje de corte real) y generar el banco de preguntas a su meta de cobertura.
-- Completar el paquete `progreso/` (IP, dominio por tema).
-- Terminar la integración de Mercado Pago (webhook con idempotencia) y el servicio de correo transaccional.
-- Desplegar en AWS en cuanto el curso entregue el acceso a la cuenta.
+- Completar el seed con carreras y ofertas académicas (puntaje del último ingresante) y llevar el banco de preguntas a su meta de cobertura por tema.
+- Completar el paquete `progreso/` (IP, dominio por tema) y conectar los límites del plan al inicio de simulacros.
+- Migrar el despliegue de Railway a AWS (misma imagen Docker, base RDS) si el curso entrega el acceso a la cuenta; restringir CORS al dominio del futuro frontend.
 - Ampliar la gamificación con ligas semanales, marcada como opcional desde el diseño original.
 
 ---
