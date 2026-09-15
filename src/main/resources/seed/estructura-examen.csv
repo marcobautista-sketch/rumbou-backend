@@ -1,0 +1,53 @@
+# Estructura del examen: cuantas preguntas de cada tema entran por area, y en que bloque (esquema) se califican.
+# Un mismo tema no puede repetirse dentro de la misma area (restriccion uk_estructura_area_tema):
+# el esquema de puntaje se resuelve por tema al finalizar un simulacro.
+# Totales esperados: UNI/GENERAL 180 preguntas y 1800 puntos; UNMSM/B y UNMSM/C 100 preguntas y 2000 puntos cada una.
+# Fuentes: Prospecto de Admision UNI (examen ordinario) y Prospecto de Admision UNMSM 2026-I.
+universidad|area|bloque|tema|cantidad_preguntas|orden
+UNI|GENERAL|Aptitud Académica y Humanidades|Razonamiento Matemático|32|1
+UNI|GENERAL|Aptitud Académica y Humanidades|Razonamiento Verbal|32|2
+UNI|GENERAL|Aptitud Académica y Humanidades|Humanidades|36|3
+UNI|GENERAL|Matemática|Aritmética|10|4
+UNI|GENERAL|Matemática|Álgebra|10|5
+UNI|GENERAL|Matemática|Geometría|10|6
+UNI|GENERAL|Matemática|Trigonometría|10|7
+UNI|GENERAL|Física y Química|Física|20|8
+UNI|GENERAL|Física y Química|Química|20|9
+UNMSM|B|Actitudinal|Actitud|10|1
+UNMSM|B|Habilidades|Habilidad Verbal|10|2
+UNMSM|B|Habilidades|Habilidad Lógico-Matemática|10|3
+UNMSM|B|Conocimientos|Aritmética|4|4
+UNMSM|B|Conocimientos|Geometría|4|5
+UNMSM|B|Conocimientos|Álgebra|4|6
+UNMSM|B|Conocimientos|Trigonometría|3|7
+UNMSM|B|Conocimientos|Lenguaje|6|8
+UNMSM|B|Conocimientos|Literatura|4|9
+UNMSM|B|Conocimientos|Psicología|4|10
+UNMSM|B|Conocimientos|Educación Cívica|4|11
+UNMSM|B|Conocimientos|Historia del Perú|2|12
+UNMSM|B|Conocimientos|Historia Universal|2|13
+UNMSM|B|Conocimientos|Geografía|4|14
+UNMSM|B|Conocimientos|Economía|4|15
+UNMSM|B|Conocimientos|Filosofía|4|16
+UNMSM|B|Conocimientos|Física|7|17
+UNMSM|B|Conocimientos|Química|7|18
+UNMSM|B|Conocimientos|Biología|7|19
+UNMSM|C|Actitudinal|Actitud|10|1
+UNMSM|C|Habilidades|Habilidad Verbal|10|2
+UNMSM|C|Habilidades|Habilidad Lógico-Matemática|10|3
+UNMSM|C|Conocimientos|Aritmética|4|4
+UNMSM|C|Conocimientos|Geometría|4|5
+UNMSM|C|Conocimientos|Álgebra|4|6
+UNMSM|C|Conocimientos|Trigonometría|3|7
+UNMSM|C|Conocimientos|Lenguaje|7|8
+UNMSM|C|Conocimientos|Literatura|4|9
+UNMSM|C|Conocimientos|Psicología|4|10
+UNMSM|C|Conocimientos|Educación Cívica|4|11
+UNMSM|C|Conocimientos|Historia del Perú|3|12
+UNMSM|C|Conocimientos|Historia Universal|2|13
+UNMSM|C|Conocimientos|Geografía|4|14
+UNMSM|C|Conocimientos|Economía|4|15
+UNMSM|C|Conocimientos|Filosofía|4|16
+UNMSM|C|Conocimientos|Física|7|17
+UNMSM|C|Conocimientos|Química|6|18
+UNMSM|C|Conocimientos|Biología|6|19
