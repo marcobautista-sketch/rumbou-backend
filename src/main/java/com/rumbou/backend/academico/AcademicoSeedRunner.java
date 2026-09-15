@@ -42,19 +42,23 @@ public class AcademicoSeedRunner implements CommandLineRunner {
     private final AreaRepository areaRepository;
     private final EsquemaCalificacionRepository esquemaCalificacionRepository;
     private final TemaRepository temaRepository;
+    private final EstructuraExamenRepository estructuraExamenRepository;
 
     public AcademicoSeedRunner(UniversidadRepository universidadRepository,
                                 AreaRepository areaRepository,
                                 EsquemaCalificacionRepository esquemaCalificacionRepository,
-                                TemaRepository temaRepository) {
+                                TemaRepository temaRepository,
+                                EstructuraExamenRepository estructuraExamenRepository) {
         this.universidadRepository = universidadRepository;
         this.areaRepository = areaRepository;
         this.esquemaCalificacionRepository = esquemaCalificacionRepository;
         this.temaRepository = temaRepository;
+        this.estructuraExamenRepository = estructuraExamenRepository;
     }
 
     // Todo el seed va en una sola transaccion: si un archivo trae un dato invalido,
     // se revierte completo y no queda un catalogo cargado a medias.
+    // El orden importa: cada archivo referencia filas que ya cargaron los anteriores.
     @Override
     @Transactional
     public void run(String... args) {
@@ -62,6 +66,7 @@ public class AcademicoSeedRunner implements CommandLineRunner {
         sembrarAreas();
         sembrarEsquemas();
         sembrarTemas();
+        sembrarEstructuraExamen();
         log.info("Seed del catalogo academico terminado");
     }
 
@@ -118,10 +123,53 @@ public class AcademicoSeedRunner implements CommandLineRunner {
         }
     }
 
+    // La clave de cada fila es (area, tema), la misma pareja que protege la
+    // restriccion unica uk_estructura_area_tema. El area y el bloque se buscan
+    // dentro de la misma universidad de la fila, asi no se puede mezclar por
+    // error un area de UNI con un bloque de calificacion de UNMSM.
+    private void sembrarEstructuraExamen() {
+        for (Fila fila : leer("estructura-examen.csv", 6)) {
+            Universidad universidad = buscarUniversidad(fila, 0);
+            Area area = buscarArea(fila, universidad, 1);
+            EsquemaCalificacion esquema = buscarEsquema(fila, universidad, 2);
+            Tema tema = buscarTema(fila, 3);
+
+            EstructuraExamen estructura = estructuraExamenRepository
+                    .findByAreaIdAndTemaId(area.getId(), tema.getId())
+                    .orElseGet(EstructuraExamen::new);
+            estructura.setArea(area);
+            estructura.setEsquema(esquema);
+            estructura.setTema(tema);
+            estructura.setCantidadPreguntas(fila.entero(4));
+            estructura.setOrden(fila.entero(5));
+            estructuraExamenRepository.save(estructura);
+        }
+    }
+
     private Universidad buscarUniversidad(Fila fila, int columna) {
         String siglas = fila.texto(columna);
         return universidadRepository.findBySiglas(siglas)
                 .orElseThrow(() -> fila.error("no existe la universidad '" + siglas + "' en universidades.csv"));
+    }
+
+    private Area buscarArea(Fila fila, Universidad universidad, int columna) {
+        String codigo = fila.texto(columna);
+        return areaRepository.findByUniversidadIdAndCodigo(universidad.getId(), codigo)
+                .orElseThrow(() -> fila.error("no existe el area '" + codigo + "' de "
+                        + universidad.getSiglas() + " en areas.csv"));
+    }
+
+    private EsquemaCalificacion buscarEsquema(Fila fila, Universidad universidad, int columna) {
+        String bloque = fila.texto(columna);
+        return esquemaCalificacionRepository.findByUniversidadIdAndNombreBloque(universidad.getId(), bloque)
+                .orElseThrow(() -> fila.error("no existe el bloque '" + bloque + "' de "
+                        + universidad.getSiglas() + " en esquemas.csv"));
+    }
+
+    private Tema buscarTema(Fila fila, int columna) {
+        String nombre = fila.texto(columna);
+        return temaRepository.findByNombre(nombre)
+                .orElseThrow(() -> fila.error("no existe el tema '" + nombre + "' en temas.csv"));
     }
 
     private AreaConocimiento areaConocimiento(Fila fila, int columna) {
