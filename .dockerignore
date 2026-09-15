@@ -1,0 +1,7 @@
+target/
+.git/
+.idea/
+.github/
+*.md
+postman_collection.json
+docker-compose.yml
