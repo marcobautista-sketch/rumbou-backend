@@ -1,19 +1,13 @@
 package com.rumbou.backend.academico;
 
+import com.rumbou.backend.academico.ArchivoSeed.Fila;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
 
 // Carga el catalogo academico desde los archivos de src/main/resources/seed/.
@@ -21,8 +15,9 @@ import java.util.List;
 // cada uno dueno de sembrar solo sus propias tablas, y nada de data.sql):
 //   ./mvnw spring-boot:run -Dspring-boot.run.profiles=seed
 //
-// Ningun valor del examen esta escrito aqui: este runner solo lee archivos y los
-// guarda. Corregir un puntaje o agregar un tema es editar un archivo, no el codigo.
+// Ningun valor del examen esta escrito aqui: este runner solo lee archivos (con
+// ArchivoSeed) y los guarda. Corregir un puntaje o agregar un tema es editar un
+// archivo, no el codigo.
 //
 // Es idempotente: cada fila se busca por su clave natural (siglas, codigo, nombre)
 // y se crea si no existe o se actualiza si ya existe. Correrlo dos veces no duplica
@@ -32,11 +27,6 @@ import java.util.List;
 public class AcademicoSeedRunner implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(AcademicoSeedRunner.class);
-
-    private static final String CARPETA_SEED = "seed/";
-    private static final String SEPARADOR = "\\|";
-    // Excel y algunos editores de Windows agregan esta marca invisible al inicio del archivo.
-    private static final String MARCA_BOM = "﻿";
 
     private final UniversidadRepository universidadRepository;
     private final AreaRepository areaRepository;
@@ -146,6 +136,12 @@ public class AcademicoSeedRunner implements CommandLineRunner {
         }
     }
 
+    private List<Fila> leer(String archivo, int columnasEsperadas) {
+        List<Fila> filas = ArchivoSeed.leer(archivo, columnasEsperadas);
+        log.info("{}: {} filas sincronizadas", archivo, filas.size());
+        return filas;
+    }
+
     private Universidad buscarUniversidad(Fila fila, int columna) {
         String siglas = fila.texto(columna);
         return universidadRepository.findBySiglas(siglas)
@@ -178,86 +174,6 @@ public class AcademicoSeedRunner implements CommandLineRunner {
             return AreaConocimiento.valueOf(valor);
         } catch (IllegalArgumentException ex) {
             throw fila.error("area de conocimiento desconocida: '" + valor + "'");
-        }
-    }
-
-    // Lee un archivo de seed: ignora lineas vacias y comentarios (#), salta el
-    // encabezado y valida que cada fila tenga la cantidad de columnas esperada.
-    private List<Fila> leer(String archivo, int columnasEsperadas) {
-        ClassPathResource recurso = new ClassPathResource(CARPETA_SEED + archivo);
-        List<Fila> filas = new ArrayList<>();
-
-        try (BufferedReader lector = new BufferedReader(
-                new InputStreamReader(recurso.getInputStream(), StandardCharsets.UTF_8))) {
-            String linea;
-            int numeroLinea = 0;
-            boolean encabezadoLeido = false;
-
-            while ((linea = lector.readLine()) != null) {
-                numeroLinea++;
-                if (numeroLinea == 1 && linea.startsWith(MARCA_BOM)) {
-                    linea = linea.substring(1);
-                }
-                if (linea.isBlank() || linea.startsWith("#")) {
-                    continue;
-                }
-                if (!encabezadoLeido) {
-                    encabezadoLeido = true;
-                    continue;
-                }
-
-                Fila fila = new Fila(archivo, numeroLinea, linea.split(SEPARADOR, -1));
-                if (fila.columnas().length != columnasEsperadas) {
-                    throw fila.error("se esperaban " + columnasEsperadas + " columnas y hay "
-                            + fila.columnas().length);
-                }
-                filas.add(fila);
-            }
-        } catch (IOException ex) {
-            throw new UncheckedIOException("No se pudo leer el archivo de seed " + archivo, ex);
-        }
-
-        log.info("{}: {} filas sincronizadas", archivo, filas.size());
-        return filas;
-    }
-
-    // Una fila de un archivo de seed. Guarda de donde salio para que los errores
-    // digan exactamente que archivo y que linea corregir.
-    private record Fila(String archivo, int numeroLinea, String[] columnas) {
-
-        String texto(int indice) {
-            String valor = columnas[indice].trim();
-            if (valor.isEmpty()) {
-                throw error("la columna " + (indice + 1) + " no puede estar vacia");
-            }
-            return valor;
-        }
-
-        String textoOpcional(int indice) {
-            String valor = columnas[indice].trim();
-            return valor.isEmpty() ? null : valor;
-        }
-
-        int entero(int indice) {
-            String valor = texto(indice);
-            try {
-                return Integer.parseInt(valor);
-            } catch (NumberFormatException ex) {
-                throw error("'" + valor + "' no es un numero entero");
-            }
-        }
-
-        double decimal(int indice) {
-            String valor = texto(indice);
-            try {
-                return Double.parseDouble(valor);
-            } catch (NumberFormatException ex) {
-                throw error("'" + valor + "' no es un numero valido (usa punto decimal, no coma)");
-            }
-        }
-
-        IllegalStateException error(String mensaje) {
-            return new IllegalStateException(archivo + ", linea " + numeroLinea + ": " + mensaje);
         }
     }
 }
