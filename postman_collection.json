@@ -1,25 +1,81 @@
 {
   "info": {
     "name": "RumboU API",
-    "description": "Coleccion de endpoints de RumboU (CS2031 UTEC). Cubre auth/, examen/ y contenido/, que son los modulos con endpoints REST ya mergeados en main.\n\nComo usarla:\n1. Corre la app local (docker-compose up -d && ./mvnw spring-boot:run).\n2. Ejecuta 'Registrar usuario' o 'Login' primero: guardan el token automaticamente en las variables de la coleccion, no hay que copiarlo a mano.\n3. Para los endpoints de ADMIN (crear/editar/aprobar/borrar preguntas), el usuario logueado necesita role=ADMIN en la base de datos (hoy el registro siempre crea USER; cambiarlo a mano en la tabla usuarios mientras no exista un endpoint de gestion de roles).",
+    "description": "Coleccion de endpoints de RumboU (CS2031 UTEC). Cubre auth/, examen/, contenido/ y suscripcion/.\n\nComo usarla:\n1. La variable baseUrl apunta por defecto a la API desplegada en Railway. Para probar en local, cambia baseUrl por el valor de baseUrlLocal (o corre docker compose up -d && ./mvnw spring-boot:run).\n2. Ejecuta 'Registrar usuario' o 'Login' primero: guardan el token automaticamente en las variables de la coleccion, no hay que copiarlo a mano.\n3. Para los endpoints de ADMIN (crear/editar/aprobar/borrar preguntas), el usuario logueado necesita role=ADMIN en la base de datos (el registro siempre crea USER; cambiarlo a mano en la tabla usuarios).\n4. El flujo de simulacro necesita preguntas aprobadas en el area elegida; si no las hay, responde 400 con un mensaje explicito.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
     "type": "bearer",
     "bearer": [
-      { "key": "token", "value": "{{accessToken}}", "type": "string" }
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
     ]
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:8080", "type": "string" },
-    { "key": "accessToken", "value": "", "type": "string" },
-    { "key": "refreshToken", "value": "", "type": "string" },
-    { "key": "resetToken", "value": "", "type": "string", "description": "En local, copiar del log de la app (el correo aun no esta implementado)" },
-    { "key": "simulacroId", "value": "", "type": "string" },
-    { "key": "respuestaUsuarioId", "value": "", "type": "string" },
-    { "key": "preguntaId", "value": "", "type": "string" },
-    { "key": "areaId", "value": "1", "type": "string", "description": "Ajustar segun los datos cargados en tu base local" },
-    { "key": "temaId", "value": "1", "type": "string", "description": "Ajustar segun los datos cargados en tu base local" }
+    {
+      "key": "baseUrl",
+      "value": "https://rumbou-backend-production.up.railway.app",
+      "type": "string",
+      "description": "API desplegada en Railway. Para local, usar el valor de baseUrlLocal."
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "resetToken",
+      "value": "",
+      "type": "string",
+      "description": "Llega por correo al pedir Olvide mi contrasena (servicio de correo con plantillas). En local, si no hay SMTP, se puede leer de la tabla password_reset_tokens."
+    },
+    {
+      "key": "simulacroId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "respuestaUsuarioId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "preguntaId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "areaId",
+      "value": "1",
+      "type": "string",
+      "description": "Ajustar segun los datos cargados en tu base local"
+    },
+    {
+      "key": "temaId",
+      "value": "1",
+      "type": "string",
+      "description": "Ajustar segun los datos cargados en tu base local"
+    },
+    {
+      "key": "baseUrlLocal",
+      "value": "http://localhost:8080",
+      "type": "string",
+      "description": "Valor de baseUrl para correr contra la app local."
+    },
+    {
+      "key": "suscripcionId",
+      "value": "",
+      "type": "string",
+      "description": "Se guarda al crear la suscripcion."
+    }
   ],
   "item": [
     {
@@ -29,85 +85,155 @@
           "name": "Registrar usuario",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{baseUrl}}/api/v1/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "register"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"postulante@rumbou.com\",\n  \"password\": \"password123\",\n  \"nombre\": \"Ana\"\n}"
             },
             "description": "Crea una cuenta con role=USER. Devuelve access token (15 min) y refresh token (7 dias). Publica UsuarioRegistradoEvent."
           },
-          "event": [{
-            "listen": "test",
-            "script": {
-              "exec": [
-                "if (pm.response.code === 201) {",
-                "    const body = pm.response.json();",
-                "    pm.collectionVariables.set('accessToken', body.accessToken);",
-                "    pm.collectionVariables.set('refreshToken', body.refreshToken);",
-                "}",
-                "pm.test('Status es 201', () => pm.response.to.have.status(201));"
-              ]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const body = pm.response.json();",
+                  "    pm.collectionVariables.set('accessToken', body.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', body.refreshToken);",
+                  "}",
+                  "pm.test('Status es 201', () => pm.response.to.have.status(201));"
+                ]
+              }
             }
-          }]
+          ]
         },
         {
           "name": "Login",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{baseUrl}}/api/v1/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "login"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"postulante@rumbou.com\",\n  \"password\": \"password123\"\n}"
             },
             "description": "Autentica y devuelve access + refresh token."
           },
-          "event": [{
-            "listen": "test",
-            "script": {
-              "exec": [
-                "if (pm.response.code === 200) {",
-                "    const body = pm.response.json();",
-                "    pm.collectionVariables.set('accessToken', body.accessToken);",
-                "    pm.collectionVariables.set('refreshToken', body.refreshToken);",
-                "}",
-                "pm.test('Status es 200', () => pm.response.to.have.status(200));"
-              ]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const body = pm.response.json();",
+                  "    pm.collectionVariables.set('accessToken', body.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', body.refreshToken);",
+                  "}",
+                  "pm.test('Status es 200', () => pm.response.to.have.status(200));"
+                ]
+              }
             }
-          }]
+          ]
         },
         {
           "name": "Refrescar token",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{baseUrl}}/api/v1/auth/refresh", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "refresh"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "refresh"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
             },
             "description": "Genera un access token nuevo (y un refresh token nuevo) a partir del refresh token vigente."
           },
-          "event": [{
-            "listen": "test",
-            "script": {
-              "exec": [
-                "if (pm.response.code === 200) {",
-                "    const body = pm.response.json();",
-                "    pm.collectionVariables.set('accessToken', body.accessToken);",
-                "    pm.collectionVariables.set('refreshToken', body.refreshToken);",
-                "}"
-              ]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const body = pm.response.json();",
+                  "    pm.collectionVariables.set('accessToken', body.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', body.refreshToken);",
+                  "}"
+                ]
+              }
             }
-          }]
+          ]
         },
         {
           "name": "Olvide mi contrasena",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{baseUrl}}/api/v1/auth/forgot-password", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "forgot-password"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/forgot-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "forgot-password"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"postulante@rumbou.com\"\n}"
@@ -119,8 +245,24 @@
           "name": "Resetear contrasena",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{baseUrl}}/api/v1/auth/reset-password", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "reset-password"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "reset-password"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"newPassword\": \"nueva-password123\"\n}"
@@ -137,38 +279,69 @@
           "name": "Iniciar simulacro",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{baseUrl}}/api/v1/simulacros", "host": ["{{baseUrl}}"], "path": ["api", "v1", "simulacros"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/simulacros",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "simulacros"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"areaId\": {{areaId}},\n  \"tipo\": \"POR_TEMA\"\n}"
             },
             "description": "tipo: DIAGNOSTICO | POR_TEMA | COMPLETO. Requiere que el area tenga EstructuraExamen con preguntas aprobadas, si no responde con un error claro. Requiere JWT."
           },
-          "event": [{
-            "listen": "test",
-            "script": {
-              "exec": [
-                "if (pm.response.code === 200 || pm.response.code === 201) {",
-                "    const body = pm.response.json();",
-                "    pm.collectionVariables.set('simulacroId', body.id);",
-                "    if (body.preguntas && body.preguntas.length > 0) {",
-                "        pm.collectionVariables.set('respuestaUsuarioId', body.preguntas[0].respuestaUsuarioId);",
-                "        pm.collectionVariables.set('preguntaId', body.preguntas[0].preguntaId);",
-                "    }",
-                "}"
-              ]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    const body = pm.response.json();",
+                  "    pm.collectionVariables.set('simulacroId', body.id);",
+                  "    if (body.preguntas && body.preguntas.length > 0) {",
+                  "        pm.collectionVariables.set('respuestaUsuarioId', body.preguntas[0].respuestaUsuarioId);",
+                  "        pm.collectionVariables.set('preguntaId', body.preguntas[0].preguntaId);",
+                  "    }",
+                  "}"
+                ]
+              }
             }
-          }]
+          ]
         },
         {
           "name": "Responder pregunta",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/simulacros/{{simulacroId}}/respuestas",
-              "host": ["{{baseUrl}}"], "path": ["api", "v1", "simulacros", "{{simulacroId}}", "respuestas"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "simulacros",
+                "{{simulacroId}}",
+                "respuestas"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -183,7 +356,16 @@
             "method": "POST",
             "url": {
               "raw": "{{baseUrl}}/api/v1/simulacros/{{simulacroId}}/finalizar",
-              "host": ["{{baseUrl}}"], "path": ["api", "v1", "simulacros", "{{simulacroId}}", "finalizar"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "simulacros",
+                "{{simulacroId}}",
+                "finalizar"
+              ]
             },
             "description": "Califica el simulacro, lo cierra, y publica SimulacroFinalizadoEvent y (por cada respuesta incorrecta) RespuestaIncorrectaEvent. Devuelve puntajeObtenido y psp."
           }
@@ -199,14 +381,43 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/api/v1/preguntas?temaId={{temaId}}&dificultad=MEDIA&page=0&size=10",
-              "host": ["{{baseUrl}}"], "path": ["api", "v1", "preguntas"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "preguntas"
+              ],
               "query": [
-                { "key": "temaId", "value": "{{temaId}}" },
-                { "key": "dificultad", "value": "MEDIA", "description": "FACIL | MEDIA | DIFICIL" },
-                { "key": "origen", "value": "IA_APROBADA", "description": "SEMILLA | IA_APROBADA", "disabled": true },
-                { "key": "aprobada", "value": "true", "disabled": true },
-                { "key": "page", "value": "0" },
-                { "key": "size", "value": "10" }
+                {
+                  "key": "temaId",
+                  "value": "{{temaId}}"
+                },
+                {
+                  "key": "dificultad",
+                  "value": "MEDIA",
+                  "description": "FACIL | MEDIA | DIFICIL"
+                },
+                {
+                  "key": "origen",
+                  "value": "IA_APROBADA",
+                  "description": "SEMILLA | IA_APROBADA",
+                  "disabled": true
+                },
+                {
+                  "key": "aprobada",
+                  "value": "true",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
               ]
             },
             "description": "Todos los filtros son opcionales y combinables. Un usuario normal solo ve preguntas aprobadas; un ADMIN ve todas. Nunca incluye claveCorrecta ni explicacion en este listado."
@@ -216,15 +427,41 @@
           "name": "Obtener pregunta por id",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/api/v1/preguntas/{{preguntaId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "preguntas", "{{preguntaId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/preguntas/{{preguntaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "preguntas",
+                "{{preguntaId}}"
+              ]
+            }
           }
         },
         {
           "name": "Crear pregunta (ADMIN)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{baseUrl}}/api/v1/preguntas", "host": ["{{baseUrl}}"], "path": ["api", "v1", "preguntas"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/preguntas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "preguntas"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"temaId\": {{temaId}},\n  \"enunciado\": \"¿Cual es la derivada de x^2?\",\n  \"alternativas\": [\"x\", \"2x\", \"x^2\", \"2\", \"0\"],\n  \"claveCorrecta\": 1,\n  \"explicacion\": \"La derivada de x^n es n*x^(n-1).\",\n  \"dificultad\": \"MEDIA\",\n  \"origen\": \"SEMILLA\",\n  \"aprobada\": true\n}"
@@ -236,8 +473,24 @@
           "name": "Actualizar pregunta (ADMIN)",
           "request": {
             "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{baseUrl}}/api/v1/preguntas/{{preguntaId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "preguntas", "{{preguntaId}}"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/preguntas/{{preguntaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "preguntas",
+                "{{preguntaId}}"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"temaId\": {{temaId}},\n  \"enunciado\": \"¿Cual es la derivada de x^2? (editado)\",\n  \"alternativas\": [\"x\", \"2x\", \"x^2\", \"2\", \"0\"],\n  \"claveCorrecta\": 1,\n  \"explicacion\": \"La derivada de x^n es n*x^(n-1).\",\n  \"dificultad\": \"MEDIA\",\n  \"origen\": \"SEMILLA\",\n  \"aprobada\": true\n}"
@@ -249,7 +502,19 @@
           "name": "Aprobar pregunta (ADMIN)",
           "request": {
             "method": "PATCH",
-            "url": { "raw": "{{baseUrl}}/api/v1/preguntas/{{preguntaId}}/aprobar", "host": ["{{baseUrl}}"], "path": ["api", "v1", "preguntas", "{{preguntaId}}", "aprobar"] },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/preguntas/{{preguntaId}}/aprobar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "preguntas",
+                "{{preguntaId}}",
+                "aprobar"
+              ]
+            },
             "description": "Marca aprobada=true. Se usa sobre todo en el panel de revision de preguntas generadas con Gemini (nacen con aprobada=false). Requiere role=ADMIN."
           }
         },
@@ -257,9 +522,125 @@
           "name": "Eliminar pregunta (ADMIN)",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/api/v1/preguntas/{{preguntaId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "preguntas", "{{preguntaId}}"] },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/preguntas/{{preguntaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "preguntas",
+                "{{preguntaId}}"
+              ]
+            },
             "description": "Requiere role=ADMIN. Devuelve 204 sin contenido."
           }
+        },
+        {
+          "name": "Tutor de IA (plan PRO)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/preguntas/{{preguntaId}}/tutor-ia",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "preguntas",
+                "{{preguntaId}}",
+                "tutor-ia"
+              ]
+            },
+            "description": "Explicacion personalizada de la pregunta generada con Gemini. Exclusiva del plan PRO, con tope de 30 consultas al dia controlado por PlanService (403 si el usuario es gratuito o supero el limite). Requiere GEMINI_API_KEY configurada en el servidor; si el proveedor falla responde 502 sin descontar cupo. Un usuario no-admin solo puede consultar preguntas aprobadas."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Responde 200 (PRO), 403 (sin plan o limite) o 502 (proveedor)', () => pm.expect([200,403,502]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Suscripciones",
+      "item": [
+        {
+          "name": "Crear suscripcion PRO",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/suscripciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "suscripciones"
+              ]
+            },
+            "description": "Crea la suscripcion del usuario logueado en estado pendiente y la preaprobacion de pago en Mercado Pago (requiere MP_ACCESS_TOKEN en el servidor; sin ella responde 502 controlado). La activacion real ocurre cuando llega el webhook de pago aprobado."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) { const b = pm.response.json(); pm.collectionVariables.set('suscripcionId', b.id); }",
+                  "pm.test('Responde 200/201 o 502 si falta la credencial de Mercado Pago', () => pm.expect([200,201,502]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Webhook de Mercado Pago (pago aprobado)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/webhooks/mercadopago",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "webhooks",
+                "mercadopago"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"payment.approved\",\n  \"paymentId\": 123456789,\n  \"mercadoPagoPreapprovalId\": \"preapproval-demo\",\n  \"externalReference\": \"{{suscripcionId}}\"\n}"
+            },
+            "description": "Endpoint publico que recibe la notificacion de pago de Mercado Pago. Es idempotente: cada paymentId se registra en la tabla pagos_webhook y repetirlo no vuelve a procesarlo. Con action=payment.approved publica PagoAprobadoEvent, que activa la suscripcion y dispara el correo de confirmacion."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Responde 2xx o 404 si la referencia no existe', () => pm.expect([200,204,404]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
         }
       ]
     }
