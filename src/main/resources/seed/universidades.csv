@@ -1,0 +1,6 @@
+# Universidades del catalogo academico.
+# Formato de todos los archivos de seed: UTF-8, separador "|".
+# Las lineas vacias y las que empiezan con "#" se ignoran; la primera fila restante es el encabezado.
+siglas|nombre|puntaje_maximo|total_preguntas
+UNI|Universidad Nacional de Ingeniería|1800|180
+UNMSM|Universidad Nacional Mayor de San Marcos|2000|100
