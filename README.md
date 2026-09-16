@@ -55,13 +55,7 @@ Por eso este proyecto usa el puerto **5433** en el host (`"5433:5432"` en `docke
 
 ### ⚠️ Nota sobre TestContainers en Windows
 
-Los tests que usan `@Testcontainers` pueden fallar en local con Docker Desktop 29 o superior, con un error como `BadRequestException (Status 400: ...)` al conectarse por el "named pipe". La causa: el BOM de Spring Boot 3.3 fija el núcleo de TestContainers en 1.19.8, cuya librería interna `docker-java` es anterior a la API de Docker 29. No es un error en el código del proyecto, y el CI (GitHub Actions, en Linux con un Docker más antiguo) sigue siendo la fuente de verdad para estos tests.
-
-Solución local mientras no se alinee la versión en el `pom.xml`: pasarla por línea de comandos al correr los tests:
-
-```bash
-./mvnw test -Dtestcontainers.version=1.21.4
-```
+El BOM de Spring Boot 3.3 fija el núcleo de TestContainers en 1.19.8, cuya librería interna `docker-java` es anterior a la API de Docker Desktop 29. Con esa versión, los tests que usan `@Testcontainers` fallaban en Windows con un error como `BadRequestException (Status 400: ...)` al conectarse por el "named pipe". Por eso el `pom.xml` declara la propiedad `testcontainers.version` en 1.21.4, que alinea el núcleo con los módulos `junit-jupiter` y `postgresql`. Con Docker Desktop abierto, `./mvnw test` corre los 110 tests sin ninguna opción adicional.
 
 ### Variables de entorno
 
