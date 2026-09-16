@@ -1,6 +1,7 @@
 package com.rumbou.backend.contenido;
 
 import com.rumbou.backend.academico.Tema;
+import com.rumbou.backend.academico.TemaRepository;
 import com.rumbou.backend.auth.Usuario;
 import com.rumbou.backend.contenido.dto.CreatePreguntaRequest;
 import com.rumbou.backend.contenido.dto.PreguntaAdminResponse;
@@ -11,7 +12,6 @@ import com.rumbou.backend.contenido.gemini.GeminiClient;
 import com.rumbou.backend.shared.exception.ResourceNotFoundException;
 import com.rumbou.backend.suscripcion.Funcionalidad;
 import com.rumbou.backend.suscripcion.PlanService;
-import jakarta.persistence.EntityManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -21,16 +21,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class PreguntaService {
 
     private final PreguntaRepository preguntaRepository;
-    private final EntityManager entityManager;
+    private final TemaRepository temaRepository;
     private final GeminiClient geminiClient;
     private final PlanService planService;
 
-    // Todavia no existe TemaRepository (le toca a academico/), asi que buscamos
-    // el Tema directamente por EntityManager en vez de crear un repo en otro paquete.
-    public PreguntaService(PreguntaRepository preguntaRepository, EntityManager entityManager,
+    public PreguntaService(PreguntaRepository preguntaRepository, TemaRepository temaRepository,
                             GeminiClient geminiClient, PlanService planService) {
         this.preguntaRepository = preguntaRepository;
-        this.entityManager = entityManager;
+        this.temaRepository = temaRepository;
         this.geminiClient = geminiClient;
         this.planService = planService;
     }
@@ -124,11 +122,8 @@ public class PreguntaService {
     }
 
     private Tema obtenerTema(Long temaId) {
-        Tema tema = entityManager.find(Tema.class, temaId);
-        if (tema == null) {
-            throw new ResourceNotFoundException("No existe un tema con id " + temaId);
-        }
-        return tema;
+        return temaRepository.findById(temaId)
+                .orElseThrow(() -> new ResourceNotFoundException("No existe un tema con id " + temaId));
     }
 
     private PreguntaResponse aResponse(Pregunta pregunta) {

@@ -2,6 +2,7 @@ package com.rumbou.backend.contenido;
 
 import com.rumbou.backend.academico.AreaConocimiento;
 import com.rumbou.backend.academico.Tema;
+import com.rumbou.backend.academico.TemaRepository;
 import com.rumbou.backend.auth.Role;
 import com.rumbou.backend.auth.Usuario;
 import com.rumbou.backend.contenido.dto.PreguntaResponse;
@@ -12,7 +13,6 @@ import com.rumbou.backend.shared.exception.ResourceNotFoundException;
 import com.rumbou.backend.shared.exception.UnauthorizedException;
 import com.rumbou.backend.suscripcion.Funcionalidad;
 import com.rumbou.backend.suscripcion.PlanService;
-import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -38,7 +38,7 @@ class PreguntaServiceTest {
     private PreguntaRepository preguntaRepository;
 
     @Mock
-    private EntityManager entityManager;
+    private TemaRepository temaRepository;
 
     @Mock
     private GeminiClient geminiClient;
@@ -51,7 +51,7 @@ class PreguntaServiceTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        preguntaService = new PreguntaService(preguntaRepository, entityManager, geminiClient, planService);
+        preguntaService = new PreguntaService(preguntaRepository, temaRepository, geminiClient, planService);
     }
 
     private Pregunta preguntaConId(Long id, boolean aprobada) {
