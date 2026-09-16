@@ -99,7 +99,7 @@ La API está desplegada en **Railway** con una base de datos **PostgreSQL gestio
 - **Datos oficiales cargados:** el seed del catálogo se ejecutó una vez contra la base de producción con el profile `seed`.
 - **Portabilidad:** al estar containerizada, la misma imagen puede moverse a AWS (App Runner, ECS o Elastic Beanstalk + RDS) sin cambios en el código; solo cambian las variables de entorno. Esa migración queda como paso opcional si el curso entrega el acceso a la cuenta.
 
-Al abrir la URL raíz en el navegador se recibe un `401` en JSON: es la respuesta esperada de la API, porque casi todos los recursos exigen un token. Los endpoints públicos (`/api/v1/auth/register`, `/api/v1/auth/login`, etc.) se prueban desde la colección de Postman, cuya variable `baseUrl` ya apunta a esta URL.
+Al abrir la URL raíz en el navegador se recibe un `401` en JSON: es la respuesta esperada de la API, porque casi todos los recursos exigen un token. Para comprobar que el servicio está vivo sin token existe `GET /api/v1/health` ([abrirlo](https://rumbou-backend-production.up.railway.app/api/v1/health)), que responde `{"status":"ok", ...}` y es también el health check de la plataforma. Los demás endpoints públicos (`/api/v1/auth/register`, `/api/v1/auth/login`, etc.) se prueban desde la colección de Postman, cuya variable `baseUrl` ya apunta a esta URL.
 
 ---
 
