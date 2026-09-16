@@ -25,7 +25,7 @@ public class GeminiClient {
 
     private static final Logger log = LoggerFactory.getLogger(GeminiClient.class);
 
-    private static final String MODEL = "gemini-2.5-flash";
+    private static final String MODEL = "gemini-3.6-flash";
     private static final String BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/"
             + MODEL + ":generateContent";
 
