@@ -23,6 +23,12 @@ public class GeminiClient {
     private static final String BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/"
             + MODEL + ":generateContent";
 
+    // La capa gratuita de Gemini limita solicitudes por minuto: un 429 es
+    // transitorio, no un error real, asi que conviene esperar y reintentar en
+    // vez de perder la pregunta completa (importa sobre todo generando en lote).
+    private static final int MAX_INTENTOS_POR_429 = 3;
+    private static final Duration ESPERA_BASE_429 = Duration.ofSeconds(2);
+
     private final String apiKey;
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
@@ -35,17 +41,22 @@ public class GeminiClient {
         this.objectMapper = new ObjectMapper();
     }
 
-    public PreguntaGeneradaDto generarPregunta(String temaNombre, Dificultad dificultad) {
+    public PreguntaGeneradaDto generarPregunta(String temaNombre, String temario, Dificultad dificultad) {
+        String temarioTexto = (temario == null || temario.isBlank())
+                ? ""
+                : "\n\nLimita la pregunta al siguiente temario oficial del tema "
+                        + "(no salgas de estos subtemas):\n" + temario + "\n";
+
         String prompt = """
                 Genera una pregunta de opcion multiple, estilo examen de admision universitaria \
-                peruano (UNI/UNMSM), sobre el tema "%s", con dificultad %s.
+                peruano (UNI/UNMSM), sobre el tema "%s", con dificultad %s.%s
 
                 No copies textualmente preguntas de examenes oficiales reales: usalas solo como \
                 referencia de estilo y nivel de dificultad. La pregunta debe ser original.
 
                 Debe tener exactamente 5 alternativas, con una unica respuesta correcta. \
                 Incluye una explicacion breve de por que esa alternativa es la correcta.
-                """.formatted(temaNombre, dificultad.name());
+                """.formatted(temaNombre, dificultad.name(), temarioTexto);
 
         ObjectNode schema = objectMapper.createObjectNode();
         schema.put("type", "OBJECT");
@@ -117,31 +128,73 @@ public class GeminiClient {
         generationConfig.put("responseMimeType", "application/json");
         generationConfig.set("responseSchema", responseSchema);
 
+        HttpRequest request;
         try {
-            HttpRequest request = HttpRequest.newBuilder()
+            request = HttpRequest.newBuilder()
                     .uri(URI.create(BASE_URL + "?key=" + apiKey))
                     .header("Content-Type", "application/json")
                     .timeout(Duration.ofSeconds(60))
                     .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)))
                     .build();
+        } catch (IOException ex) {
+            throw new GeminiException("Error armando la solicitud a Gemini", ex);
+        }
 
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = enviarConReintento(request);
 
-            if (response.statusCode() != 200) {
+        JsonNode root = leerJson(response.body());
+        String textoJson = root.path("candidates").get(0)
+                .path("content").path("parts").get(0)
+                .path("text").asText();
+
+        return leerJson(textoJson);
+    }
+
+    // Un 429 se reintenta con espera creciente; cualquier otro codigo distinto
+    // de 200 (o un 429 que ya agoto los intentos) se trata como fallo definitivo.
+    // while(true) en vez de un for: asi el mensaje de "agoto los intentos" es
+    // alcanzable de verdad, en vez de quedar detras del chequeo generico de abajo.
+    private HttpResponse<String> enviarConReintento(HttpRequest request) {
+        int intento = 1;
+        while (true) {
+            HttpResponse<String> response;
+            try {
+                response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            } catch (IOException | InterruptedException ex) {
+                if (ex instanceof InterruptedException) {
+                    Thread.currentThread().interrupt();
+                }
+                throw new GeminiException("Error llamando a la API de Gemini", ex);
+            }
+
+            if (response.statusCode() == 200) {
+                return response;
+            }
+            if (response.statusCode() != 429) {
                 throw new GeminiException("Gemini respondio " + response.statusCode() + ": " + response.body());
             }
-
-            JsonNode root = objectMapper.readTree(response.body());
-            String textoJson = root.path("candidates").get(0)
-                    .path("content").path("parts").get(0)
-                    .path("text").asText();
-
-            return objectMapper.readTree(textoJson);
-        } catch (IOException | InterruptedException ex) {
-            if (ex instanceof InterruptedException) {
-                Thread.currentThread().interrupt();
+            if (intento >= MAX_INTENTOS_POR_429) {
+                throw new GeminiException("Gemini sigue respondiendo 429 despues de " + MAX_INTENTOS_POR_429 + " intentos");
             }
-            throw new GeminiException("Error llamando a la API de Gemini", ex);
+            esperarAntesDeReintentar(intento);
+            intento++;
+        }
+    }
+
+    private void esperarAntesDeReintentar(int intento) {
+        try {
+            Thread.sleep(ESPERA_BASE_429.toMillis() * intento);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new GeminiException("Interrumpido esperando para reintentar la llamada a Gemini", ex);
+        }
+    }
+
+    private JsonNode leerJson(String texto) {
+        try {
+            return objectMapper.readTree(texto);
+        } catch (IOException ex) {
+            throw new GeminiException("Gemini devolvio una respuesta que no se pudo interpretar", ex);
         }
     }
 }

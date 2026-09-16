@@ -55,7 +55,8 @@ public class GeneradorPreguntasRunner implements ApplicationRunner {
 
         for (int i = 0; i < cantidad; i++) {
             try {
-                PreguntaGeneradaDto generada = geminiClient.generarPregunta(tema.getNombre(), dificultad);
+                PreguntaGeneradaDto generada = geminiClient.generarPregunta(
+                        tema.getNombre(), tema.getTemario(), dificultad);
 
                 var rechazo = validator.validar(generada);
                 if (rechazo.isPresent()) {
