@@ -2,6 +2,7 @@ package com.rumbou.backend.contenido;
 
 import com.rumbou.backend.auth.Role;
 import com.rumbou.backend.auth.Usuario;
+import com.rumbou.backend.contenido.dto.AprobarLoteRequest;
 import com.rumbou.backend.contenido.dto.CreatePreguntaRequest;
 import com.rumbou.backend.contenido.dto.PreguntaAdminResponse;
 import com.rumbou.backend.contenido.dto.PreguntaResponse;
@@ -25,6 +26,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/preguntas")
@@ -74,6 +77,14 @@ public class PreguntaController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<PreguntaAdminResponse> aprobar(@PathVariable Long id) {
         return ResponseEntity.ok(preguntaService.aprobar(id));
+    }
+
+    // Para el panel de revision: aprobar de un jalon todas las preguntas
+    // generadas con Gemini que ya se revisaron para un tema y dificultad.
+    @PatchMapping("/aprobar-lote")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<PreguntaAdminResponse>> aprobarLote(@Valid @RequestBody AprobarLoteRequest request) {
+        return ResponseEntity.ok(preguntaService.aprobarLote(request));
     }
 
     @DeleteMapping("/{id}")
