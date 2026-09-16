@@ -79,6 +79,32 @@
   ],
   "item": [
     {
+      "name": "Sistema",
+      "item": [
+        {
+          "name": "Health check (publico)",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "health"
+              ]
+            },
+            "description": "Unico endpoint publico fuera de auth y webhooks. No requiere token. Responde {status, servicio, timestamp} sin tocar la base de datos. Sirve para comprobar que la API esta arriba (abrir la URL en el navegador) y como health check de la plataforma de despliegue."
+          }
+        }
+      ]
+    },
+    {
       "name": "Autenticacion",
       "item": [
         {
@@ -516,6 +542,35 @@
               ]
             },
             "description": "Marca aprobada=true. Se usa sobre todo en el panel de revision de preguntas generadas con Gemini (nacen con aprobada=false). Requiere role=ADMIN."
+          }
+        },
+        {
+          "name": "Aprobar preguntas en lote (ADMIN)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ids\": [{{preguntaId}}]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/preguntas/aprobar-lote",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "preguntas",
+                "aprobar-lote"
+              ]
+            },
+            "description": "Marca aprobada=true en todas las preguntas indicadas en una sola llamada. Pensado para el panel de revision: despues de generar un lote con Gemini (profile generar-preguntas) y leerlo, se aprueban de un jalon. Devuelve la lista de preguntas aprobadas. Requiere role=ADMIN; ids no puede ir vacio (400)."
           }
         },
         {
