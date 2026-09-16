@@ -1,0 +1,8 @@
+# Catalogo de logros de RumboU
+# Columnas: nombre | descripcion | condicion | valorRequerido
+nombre | descripcion | condicion | valorRequerido
+Primer simulacro|Completa tu primer simulacro|PRIMER_SIMULACRO|1
+Racha de 7 dias|Estudia 7 dias seguidos|RACHA_DIAS|7
+Racha de 30 dias|Estudia 30 dias seguidos|RACHA_DIAS|30
+1000 XP|Alcanza 1000 puntos de experiencia|XP_TOTAL|1000
+5000 XP|Alcanza 5000 puntos de experiencia|XP_TOTAL|5000
