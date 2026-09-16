@@ -4,6 +4,8 @@ import com.rumbou.backend.academico.AreaConocimiento;
 import com.rumbou.backend.academico.Tema;
 import com.rumbou.backend.auth.Role;
 import com.rumbou.backend.auth.Usuario;
+import com.rumbou.backend.contenido.dto.AprobarLoteRequest;
+import com.rumbou.backend.contenido.dto.PreguntaAdminResponse;
 import com.rumbou.backend.contenido.dto.PreguntaResponse;
 import com.rumbou.backend.contenido.dto.TutorIaResponse;
 import com.rumbou.backend.contenido.gemini.GeminiClient;
@@ -126,6 +128,33 @@ class PreguntaServiceTest {
 
         assertThat(respuesta.aprobada()).isTrue();
         assertThat(pregunta.isAprobada()).isTrue();
+    }
+
+    @Test
+    void aprobarLoteMarcaTodasLasPreguntasDelLoteComoAprobadas() {
+        Pregunta pregunta1 = preguntaConId(1L, false);
+        Pregunta pregunta2 = preguntaConId(2L, false);
+        given(preguntaRepository.findById(1L)).willReturn(Optional.of(pregunta1));
+        given(preguntaRepository.findById(2L)).willReturn(Optional.of(pregunta2));
+
+        List<PreguntaAdminResponse> respuesta = preguntaService.aprobarLote(new AprobarLoteRequest(List.of(1L, 2L)));
+
+        assertThat(respuesta).hasSize(2);
+        assertThat(pregunta1.isAprobada()).isTrue();
+        assertThat(pregunta2.isAprobada()).isTrue();
+    }
+
+    // El @Transactional del metodo real hace el rollback en produccion; aqui solo
+    // se puede probar que un id inexistente interrumpe el lote con una excepcion,
+    // que es justamente lo que deja que Spring revierta la transaccion completa.
+    @Test
+    void aprobarLoteFallaSiAlgunIdNoExiste() {
+        Pregunta pregunta1 = preguntaConId(1L, false);
+        given(preguntaRepository.findById(1L)).willReturn(Optional.of(pregunta1));
+        given(preguntaRepository.findById(99L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> preguntaService.aprobarLote(new AprobarLoteRequest(List.of(1L, 99L))))
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 
     @Test
