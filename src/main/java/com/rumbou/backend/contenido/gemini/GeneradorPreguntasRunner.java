@@ -18,12 +18,18 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 // Script fuera del runtime normal: solo corre con el profile "generar-preguntas".
+// Cada par tema+dificultad es UNA sola llamada de generacion a Gemini (pide las
+// "cantidad" preguntas juntas, ver GeminiClient.generarPreguntas), no una por
+// pregunta. Ojo: GeminiPreguntaValidator hace ademas una llamada de resolucion
+// por cada pregunta generada, asi que el total real de llamadas a Gemini es
+// mayor a la cantidad de llamadas de generacion.
 //
-// Un solo tema (modo original, sin pausa entre llamadas):
+// Un solo tema (modo original, sin pausa: es una unica llamada de todas formas):
 //   ./mvnw spring-boot:run -Dspring-boot.run.profiles=generar-preguntas
 //      -Dspring-boot.run.arguments="--temaId=1 --dificultad=MEDIA --cantidad=10"
 //
-// Todos los temas de temas.csv x las 3 dificultades, con pausa entre llamadas:
+// Todos los temas de temas.csv x las 3 dificultades (22 x 3 = 66 llamadas de
+// generacion), con pausa entre cada par:
 //   ./mvnw spring-boot:run -Dspring-boot.run.profiles=generar-preguntas
 //      -Dspring-boot.run.arguments="--todos --cantidad=5"
 //
@@ -111,33 +117,39 @@ public class GeneradorPreguntasRunner implements ApplicationRunner {
                 totalGeneradas, totalRechazadas, paresOmitidos);
     }
 
-    // Nucleo compartido por ambos modos. conPausa solo se activa en --todos: el
-    // modo --temaId original no la necesita y no cambia su comportamiento.
+    // Nucleo compartido por ambos modos: una sola llamada a Gemini pide las
+    // "cantidad" preguntas del par de una vez (ver GeminiClient.generarPreguntas).
+    // conPausa solo se activa en --todos: el modo --temaId original no la
+    // necesita, ya que hace una unica llamada de todas formas.
     private Resultado generar(Tema tema, Dificultad dificultad, int cantidad, boolean conPausa) {
+        if (conPausa) {
+            pausar();
+        }
+
+        List<PreguntaGeneradaDto> generadasPorGemini;
+        try {
+            generadasPorGemini = geminiClient.generarPreguntas(tema.getNombre(), tema.getTemario(), dificultad, cantidad);
+        } catch (GeminiException ex) {
+            // No se cuenta como "rechazada" (eso es del validador): el par se queda
+            // por debajo de "cantidad" y una proxima corrida lo va a reintentar solo,
+            // gracias al salteo idempotente de generarTodos().
+            log.warn("Error llamando a Gemini para {} / {}, se omite este par por ahora: {}",
+                    tema.getNombre(), dificultad, ex.getMessage());
+            return new Resultado(0, 0);
+        }
+
         int generadas = 0;
         int rechazadas = 0;
-
-        for (int i = 0; i < cantidad; i++) {
-            if (conPausa) {
-                pausar();
-            }
-            try {
-                PreguntaGeneradaDto generada = geminiClient.generarPregunta(
-                        tema.getNombre(), tema.getTemario(), dificultad);
-
-                var rechazo = validator.validar(generada);
-                if (rechazo.isPresent()) {
-                    rechazadas++;
-                    log.info("Pregunta rechazada ({}): {}", rechazo.get(), generada.enunciado());
-                    continue;
-                }
-
-                guardar(tema, dificultad, generada);
-                generadas++;
-            } catch (GeminiException ex) {
+        for (PreguntaGeneradaDto generada : generadasPorGemini) {
+            var rechazo = validator.validar(generada);
+            if (rechazo.isPresent()) {
                 rechazadas++;
-                log.warn("Error llamando a Gemini, se omite esta pregunta: {}", ex.getMessage());
+                log.info("Pregunta rechazada ({}): {}", rechazo.get(), generada.enunciado());
+                continue;
             }
+
+            guardar(tema, dificultad, generada);
+            generadas++;
         }
 
         return new Resultado(generadas, rechazadas);
