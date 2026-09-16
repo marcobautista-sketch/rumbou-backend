@@ -3,6 +3,7 @@ package com.rumbou.backend.contenido;
 import com.rumbou.backend.academico.Tema;
 import com.rumbou.backend.academico.TemaRepository;
 import com.rumbou.backend.auth.Usuario;
+import com.rumbou.backend.contenido.dto.AprobarLoteRequest;
 import com.rumbou.backend.contenido.dto.CreatePreguntaRequest;
 import com.rumbou.backend.contenido.dto.PreguntaAdminResponse;
 import com.rumbou.backend.contenido.dto.PreguntaResponse;
@@ -16,6 +17,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class PreguntaService {
@@ -56,6 +60,19 @@ public class PreguntaService {
         Pregunta pregunta = obtenerEntidad(id);
         pregunta.setAprobada(true);
         return aAdminResponse(pregunta);
+    }
+
+    // Todo el lote en una sola transaccion: si un id no existe, se revierte
+    // completo y no queda un lote aprobado a medias.
+    @Transactional
+    public List<PreguntaAdminResponse> aprobarLote(AprobarLoteRequest request) {
+        List<PreguntaAdminResponse> aprobadas = new ArrayList<>();
+        for (Long id : request.ids()) {
+            Pregunta pregunta = obtenerEntidad(id);
+            pregunta.setAprobada(true);
+            aprobadas.add(aAdminResponse(pregunta));
+        }
+        return aprobadas;
     }
 
     @Transactional

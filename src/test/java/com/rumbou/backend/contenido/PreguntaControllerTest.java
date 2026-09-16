@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rumbou.backend.auth.JwtService;
 import com.rumbou.backend.auth.Role;
 import com.rumbou.backend.auth.Usuario;
+import com.rumbou.backend.contenido.dto.AprobarLoteRequest;
 import com.rumbou.backend.contenido.dto.CreatePreguntaRequest;
 import com.rumbou.backend.contenido.dto.PreguntaAdminResponse;
 import com.rumbou.backend.contenido.dto.PreguntaResponse;
@@ -139,6 +140,42 @@ class PreguntaControllerTest {
                         .with(user(usuarioConRol(Role.USER)))
                         .with(csrf()))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void unAdminPuedeAprobarPreguntasEnLote() throws Exception {
+        given(preguntaService.aprobarLote(any())).willReturn(List.of(
+                new PreguntaAdminResponse(1L, 1L, "Algebra", "¿Cuanto es 2 + 2?",
+                        List.of("1", "2", "3", "4", "5"), 3, "2 + 2 = 4", Dificultad.FACIL, OrigenPregunta.SEMILLA, true),
+                new PreguntaAdminResponse(2L, 1L, "Algebra", "¿Cuanto es 3 + 3?",
+                        List.of("1", "2", "3", "4", "6"), 4, "3 + 3 = 6", Dificultad.FACIL, OrigenPregunta.SEMILLA, true)));
+
+        mockMvc.perform(patch("/api/v1/preguntas/aprobar-lote")
+                        .with(user(usuarioConRol(Role.ADMIN)))
+                        .with(csrf())
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(new AprobarLoteRequest(List.of(1L, 2L)))))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void unUsuarioSinRolAdminNoPuedeAprobarPreguntasEnLote() throws Exception {
+        mockMvc.perform(patch("/api/v1/preguntas/aprobar-lote")
+                        .with(user(usuarioConRol(Role.USER)))
+                        .with(csrf())
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(new AprobarLoteRequest(List.of(1L)))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void rechazaAprobarLoteSinIds() throws Exception {
+        mockMvc.perform(patch("/api/v1/preguntas/aprobar-lote")
+                        .with(user(usuarioConRol(Role.ADMIN)))
+                        .with(csrf())
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(new AprobarLoteRequest(List.of()))))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
