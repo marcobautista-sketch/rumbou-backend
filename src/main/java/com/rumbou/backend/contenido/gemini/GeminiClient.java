@@ -1,9 +1,12 @@
 package com.rumbou.backend.contenido.gemini;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.rumbou.backend.contenido.Dificultad;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -13,11 +16,14 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.List;
 
 // Cliente para la API de Gemini (Google AI Studio). No agrega dependencia nueva:
 // usa java.net.http.HttpClient y Jackson, que ya vienen con Spring Boot.
 @Component
 public class GeminiClient {
+
+    private static final Logger log = LoggerFactory.getLogger(GeminiClient.class);
 
     private static final String MODEL = "gemini-2.5-flash";
     private static final String BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/"
@@ -28,6 +34,11 @@ public class GeminiClient {
     // vez de perder la pregunta completa (importa sobre todo generando en lote).
     private static final int MAX_INTENTOS_POR_429 = 3;
     private static final Duration ESPERA_BASE_429 = Duration.ofSeconds(2);
+
+    // El JSON malformado (forma que no calza con PreguntaGeneradaDto) es raro con
+    // responseSchema, pero cuando pasa no vale la pena perder todo el lote: se
+    // reintenta la llamada completa una vez antes de darse por vencido.
+    private static final int MAX_INTENTOS_JSON_LOTE = 2;
 
     private final String apiKey;
     private final HttpClient httpClient;
@@ -41,37 +52,65 @@ public class GeminiClient {
         this.objectMapper = new ObjectMapper();
     }
 
-    public PreguntaGeneradaDto generarPregunta(String temaNombre, String temario, Dificultad dificultad) {
+    // Pide las "cantidad" preguntas de un tema+dificultad en una sola llamada (un
+    // arreglo JSON), en vez de una llamada por pregunta: para el generador en
+    // lote eso es la diferencia entre 22 temas x 3 dificultades = 66 llamadas o
+    // 330. minItems/maxItems en el schema hacen que Gemini devuelva exactamente
+    // "cantidad" elementos.
+    public List<PreguntaGeneradaDto> generarPreguntas(String temaNombre, String temario, Dificultad dificultad,
+                                                        int cantidad) {
         String temarioTexto = (temario == null || temario.isBlank())
                 ? ""
-                : "\n\nLimita la pregunta al siguiente temario oficial del tema "
+                : "\n\nLimita las preguntas al siguiente temario oficial del tema "
                         + "(no salgas de estos subtemas):\n" + temario + "\n";
 
         String prompt = """
-                Genera una pregunta de opcion multiple, estilo examen de admision universitaria \
+                Genera %d preguntas de opcion multiple, estilo examen de admision universitaria \
                 peruano (UNI/UNMSM), sobre el tema "%s", con dificultad %s.%s
 
                 No copies textualmente preguntas de examenes oficiales reales: usalas solo como \
-                referencia de estilo y nivel de dificultad. La pregunta debe ser original.
+                referencia de estilo y nivel de dificultad. Cada pregunta debe ser original, y \
+                entre ellas deben cubrir subtemas distintos (no repitas el mismo subtema dos veces \
+                si el temario lo permite).
 
-                Debe tener exactamente 5 alternativas, con una unica respuesta correcta. \
-                Incluye una explicacion breve de por que esa alternativa es la correcta.
-                """.formatted(temaNombre, dificultad.name(), temarioTexto);
+                Cada pregunta debe tener exactamente 5 alternativas, con una unica respuesta \
+                correcta. Incluye una explicacion breve de por que esa alternativa es la correcta.
+                """.formatted(cantidad, temaNombre, dificultad.name(), temarioTexto);
 
-        ObjectNode schema = objectMapper.createObjectNode();
-        schema.put("type", "OBJECT");
-        ObjectNode properties = schema.putObject("properties");
+        ObjectNode itemSchema = objectMapper.createObjectNode();
+        itemSchema.put("type", "OBJECT");
+        ObjectNode properties = itemSchema.putObject("properties");
         properties.putObject("enunciado").put("type", "STRING");
         ObjectNode alternativas = properties.putObject("alternativas");
         alternativas.put("type", "ARRAY");
         alternativas.putObject("items").put("type", "STRING");
         properties.putObject("claveCorrecta").put("type", "INTEGER");
         properties.putObject("explicacion").put("type", "STRING");
-        schema.putArray("required").add("enunciado").add("alternativas").add("claveCorrecta").add("explicacion");
+        itemSchema.putArray("required").add("enunciado").add("alternativas").add("claveCorrecta").add("explicacion");
 
-        JsonNode respuesta = llamar(prompt, schema);
+        ObjectNode schema = objectMapper.createObjectNode();
+        schema.put("type", "ARRAY");
+        schema.put("minItems", cantidad);
+        schema.put("maxItems", cantidad);
+        schema.set("items", itemSchema);
 
-        return objectMapper.convertValue(respuesta, PreguntaGeneradaDto.class);
+        int intento = 1;
+        while (true) {
+            JsonNode respuesta = llamar(prompt, schema);
+            try {
+                return objectMapper.convertValue(respuesta, new TypeReference<List<PreguntaGeneradaDto>>() {
+                });
+            } catch (IllegalArgumentException ex) {
+                GeminiException error = new GeminiException(
+                        "Gemini devolvio un lote de preguntas con formato invalido para "
+                                + temaNombre + " / " + dificultad, ex);
+                if (intento >= MAX_INTENTOS_JSON_LOTE) {
+                    throw error;
+                }
+                log.warn("Intento {} de {}: {}", intento, MAX_INTENTOS_JSON_LOTE, error.getMessage());
+                intento++;
+            }
+        }
     }
 
     // Segunda llamada de validacion: no le decimos cual es la clave, y comparamos

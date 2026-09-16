@@ -10,18 +10,21 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-// JUnit + Mockito puro: prueba el recorrido de --todos y el salteo idempotente,
-// sin llamar a Gemini de verdad. pausaEntreLlamadasMs=0 para que el test no espere.
+// JUnit + Mockito puro: prueba el recorrido de --todos, el salteo idempotente y
+// la tolerancia a fallos por par, sin llamar a Gemini de verdad.
+// pausaEntreLlamadasMs=0 para que el test no espere.
 class GeneradorPreguntasRunnerTest {
 
     @Mock
@@ -55,19 +58,27 @@ class GeneradorPreguntasRunnerTest {
                 "¿Cuanto es 2 + 2?", List.of("1", "2", "3", "4", "5"), 3, "2 + 2 = 4");
     }
 
+    private List<PreguntaGeneradaDto> preguntasValidas(int cantidad) {
+        List<PreguntaGeneradaDto> preguntas = new ArrayList<>();
+        for (int i = 0; i < cantidad; i++) {
+            preguntas.add(preguntaValida());
+        }
+        return preguntas;
+    }
+
     @Test
-    void generarTodosRecorreTodosLosTemasYLasTresDificultades() {
+    void generarTodosRecorreTodosLosTemasYLasTresDificultadesConUnaLlamadaPorPar() {
         Tema tema1 = temaConId(1L, "Algebra");
         Tema tema2 = temaConId(2L, "Geometria");
         given(temaRepository.findAll()).willReturn(List.of(tema1, tema2));
         given(preguntaRepository.countByTemaIdAndDificultad(any(), any())).willReturn(0L);
-        given(geminiClient.generarPregunta(any(), any(), any())).willReturn(preguntaValida());
+        given(geminiClient.generarPreguntas(any(), any(), any(), anyInt())).willReturn(List.of(preguntaValida()));
         given(validator.validar(any())).willReturn(Optional.empty());
 
         runner.generarTodos(1);
 
-        // 2 temas x 3 dificultades x cantidad=1 = 6 llamadas.
-        verify(geminiClient, times(6)).generarPregunta(any(), any(), any());
+        // 2 temas x 3 dificultades = 6 pares, una llamada de generacion por par (no una por pregunta).
+        verify(geminiClient, times(6)).generarPreguntas(any(), any(), any(), eq(1));
         verify(preguntaRepository, times(6)).save(any());
     }
 
@@ -78,15 +89,15 @@ class GeneradorPreguntasRunnerTest {
         given(preguntaRepository.countByTemaIdAndDificultad(1L, Dificultad.FACIL)).willReturn(5L);
         given(preguntaRepository.countByTemaIdAndDificultad(1L, Dificultad.MEDIA)).willReturn(0L);
         given(preguntaRepository.countByTemaIdAndDificultad(1L, Dificultad.DIFICIL)).willReturn(0L);
-        given(geminiClient.generarPregunta(any(), any(), any())).willReturn(preguntaValida());
+        given(geminiClient.generarPreguntas(any(), any(), any(), eq(5))).willReturn(preguntasValidas(5));
         given(validator.validar(any())).willReturn(Optional.empty());
 
         runner.generarTodos(5);
 
-        // FACIL ya tiene 5 (>= cantidad): se salta por completo. MEDIA y DIFICIL generan 5 cada una.
-        verify(geminiClient, never()).generarPregunta(any(), any(), eq(Dificultad.FACIL));
-        verify(geminiClient, times(5)).generarPregunta(any(), any(), eq(Dificultad.MEDIA));
-        verify(geminiClient, times(5)).generarPregunta(any(), any(), eq(Dificultad.DIFICIL));
+        // FACIL ya tiene 5 (>= cantidad): se salta por completo, ni una llamada.
+        verify(geminiClient, never()).generarPreguntas(any(), any(), eq(Dificultad.FACIL), anyInt());
+        verify(geminiClient, times(1)).generarPreguntas(any(), any(), eq(Dificultad.MEDIA), eq(5));
+        verify(geminiClient, times(1)).generarPreguntas(any(), any(), eq(Dificultad.DIFICIL), eq(5));
         verify(preguntaRepository, times(10)).save(any());
     }
 
@@ -95,11 +106,29 @@ class GeneradorPreguntasRunnerTest {
         Tema tema = temaConId(1L, "Algebra");
         given(temaRepository.findAll()).willReturn(List.of(tema));
         given(preguntaRepository.countByTemaIdAndDificultad(any(), any())).willReturn(0L);
-        given(geminiClient.generarPregunta(any(), any(), any())).willReturn(preguntaValida());
+        given(geminiClient.generarPreguntas(any(), any(), any(), anyInt())).willReturn(List.of(preguntaValida()));
         given(validator.validar(any())).willReturn(Optional.of("explicacion vacia"));
 
         runner.generarTodos(1);
 
         verify(preguntaRepository, never()).save(any());
+    }
+
+    @Test
+    void generarTodosSigueConLosDemasParesSiUnoFallaPorErrorDeGemini() {
+        Tema tema1 = temaConId(1L, "Algebra");
+        Tema tema2 = temaConId(2L, "Geometria");
+        given(temaRepository.findAll()).willReturn(List.of(tema1, tema2));
+        given(preguntaRepository.countByTemaIdAndDificultad(any(), any())).willReturn(0L);
+        given(geminiClient.generarPreguntas(eq("Algebra"), any(), any(), anyInt()))
+                .willThrow(new GeminiException("Gemini respondio 500"));
+        given(geminiClient.generarPreguntas(eq("Geometria"), any(), any(), anyInt()))
+                .willReturn(List.of(preguntaValida()));
+        given(validator.validar(any())).willReturn(Optional.empty());
+
+        runner.generarTodos(1);
+
+        // Algebra fallo en sus 3 pares, pero Geometria se sigue procesando igual.
+        verify(preguntaRepository, times(3)).save(any());
     }
 }
