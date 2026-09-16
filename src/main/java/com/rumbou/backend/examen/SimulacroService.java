@@ -15,6 +15,8 @@ import com.rumbou.backend.examen.dto.SimulacroResponse;
 import com.rumbou.backend.shared.exception.InvalidOperationException;
 import com.rumbou.backend.shared.exception.ResourceNotFoundException;
 import com.rumbou.backend.shared.exception.UnauthorizedException;
+import com.rumbou.backend.suscripcion.Funcionalidad;
+import com.rumbou.backend.suscripcion.PlanService;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +37,7 @@ public class SimulacroService {
     private final SimulacroGeneratorService simulacroGeneratorService;
     private final CalificadorService calificadorService;
     private final ApplicationEventPublisher eventPublisher;
+    private final PlanService planService;
 
     public SimulacroService(SimulacroRepository simulacroRepository,
                              RespuestaUsuarioRepository respuestaUsuarioRepository,
@@ -42,7 +45,8 @@ public class SimulacroService {
                              EstructuraExamenRepository estructuraExamenRepository,
                              SimulacroGeneratorService simulacroGeneratorService,
                              CalificadorService calificadorService,
-                             ApplicationEventPublisher eventPublisher) {
+                             ApplicationEventPublisher eventPublisher,
+                             PlanService planService) {
         this.simulacroRepository = simulacroRepository;
         this.respuestaUsuarioRepository = respuestaUsuarioRepository;
         this.areaRepository = areaRepository;
@@ -50,6 +54,7 @@ public class SimulacroService {
         this.simulacroGeneratorService = simulacroGeneratorService;
         this.calificadorService = calificadorService;
         this.eventPublisher = eventPublisher;
+        this.planService = planService;
     }
 
     @Transactional
@@ -57,7 +62,11 @@ public class SimulacroService {
         Area area = areaRepository.findById(request.areaId())
                 .orElseThrow(() -> new ResourceNotFoundException("No existe el area indicada"));
 
+        Funcionalidad funcionalidad = funcionalidadSegunTipo(request.tipo());
+        planService.puedeAcceder(usuario, funcionalidad);
+
         Simulacro simulacro = simulacroGeneratorService.generar(usuario, area, request.tipo());
+        planService.registrarUso(usuario, funcionalidad);
 
         return construirRespuesta(simulacro);
     }
@@ -197,5 +206,15 @@ public class SimulacroService {
         return new SimulacroResponse(
                 simulacro.getId(), simulacro.getTipo(), simulacro.getEstado(),
                 simulacro.getFechaInicio(), preguntas);
+    }
+
+    // El diagnostico gratuito "una vez" se cobra con el contador del simulacro
+    // completo mensual: no existe Funcionalidad.DIAGNOSTICO (no se agrega un
+    // valor a un enum persistido sin migracion SQL). Trato acordado con el equipo.
+    private Funcionalidad funcionalidadSegunTipo(TipoSimulacro tipo) {
+        return switch (tipo) {
+            case POR_TEMA -> Funcionalidad.SIMULACRO_TEMA;
+            case COMPLETO, DIAGNOSTICO -> Funcionalidad.SIMULACRO_COMPLETO;
+        };
     }
 }
