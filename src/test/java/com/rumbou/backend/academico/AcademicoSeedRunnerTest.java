@@ -15,6 +15,8 @@ import static org.assertj.core.api.Assertions.within;
 // los demas tests de repositorio.
 class AcademicoSeedRunnerTest extends AbstractContainerBaseTest {
 
+    private static final String PROCESO = "2026-II";
+
     @Autowired
     private UniversidadRepository universidadRepository;
 
@@ -31,6 +33,12 @@ class AcademicoSeedRunnerTest extends AbstractContainerBaseTest {
     private EstructuraExamenRepository estructuraExamenRepository;
 
     @Autowired
+    private CarreraRepository carreraRepository;
+
+    @Autowired
+    private OfertaAcademicaRepository ofertaAcademicaRepository;
+
+    @Autowired
     private EntityManager entityManager;
 
     private AcademicoSeedRunner seed;
@@ -38,7 +46,8 @@ class AcademicoSeedRunnerTest extends AbstractContainerBaseTest {
     @BeforeEach
     void crearSeed() {
         seed = new AcademicoSeedRunner(universidadRepository, areaRepository,
-                esquemaCalificacionRepository, temaRepository, estructuraExamenRepository);
+                esquemaCalificacionRepository, temaRepository, estructuraExamenRepository,
+                carreraRepository, ofertaAcademicaRepository);
     }
 
     @Test
@@ -65,6 +74,29 @@ class AcademicoSeedRunnerTest extends AbstractContainerBaseTest {
         assertThat(preguntasDelArea(uni, "GENERAL")).isEqualTo(180);
         assertThat(preguntasDelArea(unmsm, "B")).isEqualTo(100);
         assertThat(preguntasDelArea(unmsm, "C")).isEqualTo(100);
+    }
+
+    @Test
+    void cargaLasCarrerasYSusOfertasDeAdmision() {
+        seed.run();
+        entityManager.flush();
+
+        assertThat(carreraRepository.count()).isEqualTo(51);
+        assertThat(ofertaAcademicaRepository.count()).isEqualTo(70);
+    }
+
+    // El caso que justifica que OfertaAcademica sea un M:N con atributos: la misma
+    // carrera existe en las dos universidades, con puntajes de corte distintos.
+    @Test
+    void laMismaCarreraTienePuntajeDistintoEnCadaUniversidad() {
+        seed.run();
+
+        Carrera sistemas = carreraRepository.findByNombre("Ingeniería de Sistemas").orElseThrow();
+        Universidad uni = universidadRepository.findBySiglas("UNI").orElseThrow();
+        Universidad unmsm = universidadRepository.findBySiglas("UNMSM").orElseThrow();
+
+        assertThat(puntajeDeCorte(uni, sistemas, "GENERAL")).isCloseTo(1209.0, within(0.001));
+        assertThat(puntajeDeCorte(unmsm, sistemas, "C")).isCloseTo(1268.0, within(0.001));
     }
 
     @Test
@@ -106,13 +138,24 @@ class AcademicoSeedRunnerTest extends AbstractContainerBaseTest {
                 .sum();
     }
 
+    private double puntajeDeCorte(Universidad universidad, Carrera carrera, String codigoArea) {
+        Area area = areaRepository.findByUniversidadIdAndCodigo(universidad.getId(), codigoArea).orElseThrow();
+        return ofertaAcademicaRepository
+                .findByUniversidadIdAndCarreraIdAndAreaIdAndProcesoAdmision(
+                        universidad.getId(), carrera.getId(), area.getId(), PROCESO)
+                .orElseThrow()
+                .getPuntajeUltimoIngresante();
+    }
+
     private long[] conteos() {
         return new long[] {
                 universidadRepository.count(),
                 areaRepository.count(),
                 esquemaCalificacionRepository.count(),
                 temaRepository.count(),
-                estructuraExamenRepository.count()
+                estructuraExamenRepository.count(),
+                carreraRepository.count(),
+                ofertaAcademicaRepository.count()
         };
     }
 }

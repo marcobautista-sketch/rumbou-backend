@@ -24,6 +24,8 @@ class ArchivosSeedConsistenciaTest {
     private static List<Fila> esquemas;
     private static List<Fila> temas;
     private static List<Fila> estructura;
+    private static List<Fila> carreras;
+    private static List<Fila> ofertas;
 
     @BeforeAll
     static void leerArchivos() {
@@ -32,6 +34,8 @@ class ArchivosSeedConsistenciaTest {
         esquemas = ArchivoSeed.leer("esquemas.csv", 6);
         temas = ArchivoSeed.leer("temas.csv", 3);
         estructura = ArchivoSeed.leer("estructura-examen.csv", 6);
+        carreras = ArchivoSeed.leer("carreras.csv", 2);
+        ofertas = ArchivoSeed.leer("ofertas-2026-II.csv", 6);
     }
 
     @Test
@@ -117,10 +121,7 @@ class ArchivosSeedConsistenciaTest {
         for (Fila area : areas) {
             String siglas = area.texto(0);
             String codigo = area.texto(1);
-            Fila universidad = universidades.stream()
-                    .filter(u -> u.texto(0).equals(siglas))
-                    .findFirst()
-                    .orElseThrow();
+            Fila universidad = buscarUniversidad(siglas);
             List<Fila> filasDelArea = estructura.stream()
                     .filter(fila -> fila.texto(0).equals(siglas) && fila.texto(1).equals(codigo))
                     .toList();
@@ -162,6 +163,73 @@ class ArchivosSeedConsistenciaTest {
                         .isCloseTo(esquema.decimal(4), within(0.001));
             }
         }
+    }
+
+    @Test
+    void lasCarrerasTienenNombreUnico() {
+        assertThat(carreras.stream().map(carrera -> carrera.texto(0)).toList()).doesNotHaveDuplicates();
+    }
+
+    @Test
+    void cadaOfertaReferenciaUnAreaYUnaCarreraExistentes() {
+        Set<String> areasExistentes = areas.stream()
+                .map(area -> clave(area.texto(0), area.texto(1)))
+                .collect(Collectors.toSet());
+        Set<String> carrerasExistentes = carreras.stream()
+                .map(carrera -> carrera.texto(0))
+                .collect(Collectors.toSet());
+
+        for (Fila oferta : ofertas) {
+            assertThat(areasExistentes).as("area de %s", ubicacion(oferta))
+                    .contains(clave(oferta.texto(0), oferta.texto(1)));
+            assertThat(carrerasExistentes).as("carrera de %s", ubicacion(oferta))
+                    .contains(oferta.texto(2));
+        }
+    }
+
+    // La clave de OfertaAcademica es universidad + carrera + area + proceso:
+    // la misma carrera puede repetirse en la otra universidad o en otro proceso.
+    @Test
+    void ningunaOfertaSeRepite() {
+        List<String> claves = ofertas.stream()
+                .map(oferta -> clave(oferta.texto(0), oferta.texto(1), oferta.texto(2), oferta.texto(3)))
+                .toList();
+
+        assertThat(claves).doesNotHaveDuplicates();
+    }
+
+    // Atrapa un error de escala facil de cometer: cargar el puntaje de UNI en la
+    // escala vigesimal (13.43) en vez de la escala de 1800 puntos (1209).
+    @Test
+    void cadaPuntajeDeCorteEstaDentroDeLaEscalaDeSuUniversidad() {
+        for (Fila oferta : ofertas) {
+            String siglas = oferta.texto(0);
+            double puntaje = oferta.decimal(4);
+            int puntajeMaximo = buscarUniversidad(siglas).entero(2);
+
+            assertThat(puntaje).as("puntaje del ultimo ingresante en %s", ubicacion(oferta))
+                    .isGreaterThan(0)
+                    .isLessThanOrEqualTo(puntajeMaximo);
+        }
+    }
+
+    @Test
+    void todaCarreraTieneAlMenosUnaOferta() {
+        Set<String> carrerasConOferta = ofertas.stream()
+                .map(oferta -> oferta.texto(2))
+                .collect(Collectors.toSet());
+
+        for (Fila carrera : carreras) {
+            assertThat(carrerasConOferta).as("carrera sin oferta en %s", ubicacion(carrera))
+                    .contains(carrera.texto(0));
+        }
+    }
+
+    private static Fila buscarUniversidad(String siglas) {
+        return universidades.stream()
+                .filter(universidad -> universidad.texto(0).equals(siglas))
+                .findFirst()
+                .orElseThrow();
     }
 
     private static String clave(String... partes) {
