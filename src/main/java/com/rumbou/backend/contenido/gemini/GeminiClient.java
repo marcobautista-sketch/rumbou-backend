@@ -29,11 +29,11 @@ public class GeminiClient {
     private static final String BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/"
             + MODEL + ":generateContent";
 
-    // La capa gratuita de Gemini limita solicitudes por minuto: un 429 es
-    // transitorio, no un error real, asi que conviene esperar y reintentar en
-    // vez de perder la pregunta completa (importa sobre todo generando en lote).
+    // 429 (limite de cuota) y 503 (modelo saturado) son transitorios, no
+    // errores reales, asi que conviene esperar y reintentar en vez de perder
+    // la pregunta completa (importa sobre todo generando en lote).
     private static final int MAX_INTENTOS_POR_429 = 3;
-    private static final Duration ESPERA_BASE_429 = Duration.ofSeconds(2);
+    private static final Duration ESPERA_BASE_TRANSITORIO = Duration.ofSeconds(2);
 
     // El JSON malformado (forma que no calza con PreguntaGeneradaDto) es raro con
     // responseSchema, pero cuando pasa no vale la pena perder todo el lote: se
@@ -189,10 +189,12 @@ public class GeminiClient {
         return leerJson(textoJson);
     }
 
-    // Un 429 se reintenta con espera creciente; cualquier otro codigo distinto
-    // de 200 (o un 429 que ya agoto los intentos) se trata como fallo definitivo.
-    // while(true) en vez de un for: asi el mensaje de "agoto los intentos" es
-    // alcanzable de verdad, en vez de quedar detras del chequeo generico de abajo.
+    // 429 (limite de cuota) y 503 (modelo saturado, "high demand") son ambos
+    // transitorios y se reintentan con espera creciente; cualquier otro codigo
+    // distinto de 200 (o un 429/503 que ya agoto los intentos) se trata como
+    // fallo definitivo. while(true) en vez de un for: asi el mensaje de "agoto
+    // los intentos" es alcanzable de verdad, en vez de quedar detras del
+    // chequeo generico de abajo.
     private HttpResponse<String> enviarConReintento(HttpRequest request) {
         int intento = 1;
         while (true) {
@@ -209,20 +211,25 @@ public class GeminiClient {
             if (response.statusCode() == 200) {
                 return response;
             }
-            if (response.statusCode() != 429) {
+            if (!esTransitorio(response.statusCode())) {
                 throw new GeminiException("Gemini respondio " + response.statusCode() + ": " + response.body());
             }
             if (intento >= MAX_INTENTOS_POR_429) {
-                throw new GeminiException("Gemini sigue respondiendo 429 despues de " + MAX_INTENTOS_POR_429 + " intentos");
+                throw new GeminiException("Gemini sigue respondiendo " + response.statusCode()
+                        + " despues de " + MAX_INTENTOS_POR_429 + " intentos");
             }
             esperarAntesDeReintentar(intento);
             intento++;
         }
     }
 
+    private boolean esTransitorio(int statusCode) {
+        return statusCode == 429 || statusCode == 503;
+    }
+
     private void esperarAntesDeReintentar(int intento) {
         try {
-            Thread.sleep(ESPERA_BASE_429.toMillis() * intento);
+            Thread.sleep(ESPERA_BASE_TRANSITORIO.toMillis() * intento);
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
             throw new GeminiException("Interrumpido esperando para reintentar la llamada a Gemini", ex);
