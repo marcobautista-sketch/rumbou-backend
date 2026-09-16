@@ -1,0 +1,8 @@
+# Banco de preguntas aprobadas. Lo genera ExportadorPreguntasRunner (profile
+# "exportar-preguntas") a partir de las preguntas aprobadas en una base local, y
+# lo carga ContenidoSeedRunner (profile "seed"). No editar a mano salvo casos
+# puntuales: el flujo normal es generar con Gemini, aprobar y volver a exportar.
+# Columnas: tema | dificultad | enunciado | alternativa1..5 | claveCorrecta | explicacion | origen
+# tema debe existir en temas.csv. dificultad: FACIL, MEDIA o DIFICIL. claveCorrecta: 0 a 4.
+# origen: SEMILLA o IA_APROBADA.
+tema|dificultad|enunciado|alternativa1|alternativa2|alternativa3|alternativa4|alternativa5|claveCorrecta|explicacion|origen
