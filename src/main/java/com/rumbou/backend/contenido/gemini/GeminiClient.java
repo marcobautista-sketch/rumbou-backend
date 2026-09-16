@@ -167,12 +167,14 @@ public class GeminiClient {
         generationConfig.put("responseMimeType", "application/json");
         generationConfig.set("responseSchema", responseSchema);
 
+        // 25s y no 60s: en "high demand" (503) mejor fallar rapido y reintentar
+        // que quedarse colgado casi un minuto por cada intento fallido.
         HttpRequest request;
         try {
             request = HttpRequest.newBuilder()
                     .uri(URI.create(BASE_URL + "?key=" + apiKey))
                     .header("Content-Type", "application/json")
-                    .timeout(Duration.ofSeconds(60))
+                    .timeout(Duration.ofSeconds(25))
                     .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)))
                     .build();
         } catch (IOException ex) {
