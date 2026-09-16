@@ -1,0 +1,82 @@
+# Ofertas academicas del proceso 2026-II: universidad + area + carrera + puntaje del ultimo ingresante.
+# La columna carrera debe coincidir exactamente con un nombre de carreras.csv.
+# puntaje_ultimo_ingresante va en la escala de puntaje_maximo de cada universidad:
+#   UNI sobre 1800 (nota minima /20 x 90, tal como la reporta la fuente); UNMSM sobre 2000 (columna Minimo, sede Lima).
+# Fuentes: reporte oficial de resultados UNI 2026-II y reportes de resultados de admision UNMSM 2026-II.
+# vacantes: UNI usa las del examen ordinario. UNMSM usa las del Prospecto 2026-I (sede Lima), porque no se consiguieron
+#   las de 2026-II; la excepcion son Geofisica, Ingenieria de Inteligencia Artificial e Ingenieria de Transportes y
+#   Sistemas Ferroviarios, que traen su cifra oficial 2026-II. Las vacantes no entran en ningun calculo.
+# Esas 3 carreras nuevas de UNMSM la fuente las ubica en un "Area F"; por decision de producto se tratan como area B
+#   (Geofisica) y area C (las dos ingenierias), con la misma distribucion de preguntas de su area.
+# Datos atipicos que se cargan tal cual la fuente: UNMSM Matematica = 152 y Estadistica = 396.75.
+universidad|area|carrera|proceso|puntaje_ultimo_ingresante|vacantes
+UNI|GENERAL|Arquitectura|2026-II|1073.7|23
+UNI|GENERAL|Urbanismo|2026-II|829.2|15
+UNI|GENERAL|Física|2026-II|816|10
+UNI|GENERAL|Matemática|2026-II|828.6|10
+UNI|GENERAL|Química|2026-II|801|10
+UNI|GENERAL|Ingeniería Física|2026-II|843.6|10
+UNI|GENERAL|Ciencia de la Computación|2026-II|993.6|10
+UNI|GENERAL|Ingeniería Sanitaria|2026-II|808.2|14
+UNI|GENERAL|Ingeniería de Higiene y Seguridad Industrial|2026-II|807|14
+UNI|GENERAL|Ingeniería Ambiental|2026-II|849|14
+UNI|GENERAL|Ingeniería Civil|2026-II|1132.2|47
+UNI|GENERAL|Ingeniería Económica|2026-II|932.4|21
+UNI|GENERAL|Ingeniería Estadística|2026-II|858.6|24
+UNI|GENERAL|Ingeniería Eléctrica|2026-II|870|18
+UNI|GENERAL|Ingeniería Electrónica|2026-II|916.8|18
+UNI|GENERAL|Ingeniería de Telecomunicaciones|2026-II|903|18
+UNI|GENERAL|Ingeniería de Ciberseguridad|2026-II|1048.8|18
+UNI|GENERAL|Ingeniería Biomédica|2026-II|838.2|18
+UNI|GENERAL|Ingeniería Geológica|2026-II|818.4|20
+UNI|GENERAL|Ingeniería Metalúrgica|2026-II|832.8|17
+UNI|GENERAL|Ingeniería de Minas|2026-II|1009.2|17
+UNI|GENERAL|Ingeniería Industrial|2026-II|1069.2|31
+UNI|GENERAL|Ingeniería de Sistemas|2026-II|1209|31
+UNI|GENERAL|Ingeniería de Software|2026-II|1179.6|17
+UNI|GENERAL|Ingeniería de Inteligencia Artificial|2026-II|1187.4|17
+UNI|GENERAL|Ingeniería Mecánica|2026-II|1104.6|24
+UNI|GENERAL|Ingeniería Mecánica-Eléctrica|2026-II|1041.6|24
+UNI|GENERAL|Ingeniería Naval|2026-II|856.8|12
+UNI|GENERAL|Ingeniería Mecatrónica|2026-II|1191.6|24
+UNI|GENERAL|Ingeniería Aeroespacial|2026-II|1166.4|17
+UNI|GENERAL|Ingeniería de Petróleo y Gas Natural|2026-II|816|8
+UNI|GENERAL|Ingeniería Petroquímica|2026-II|826.7|8
+UNI|GENERAL|Ingeniería Química|2026-II|802.8|43
+UNI|GENERAL|Ingeniería Textil|2026-II|897.6|19
+UNMSM|B|Química|2026-II|561.375|28
+UNMSM|B|Ciencias Biológicas|2026-II|964.125|25
+UNMSM|B|Genética y Biotecnología|2026-II|1058.5|21
+UNMSM|B|Microbiología y Parasitología|2026-II|969.625|23
+UNMSM|B|Física|2026-II|503.125|35
+UNMSM|B|Matemática|2026-II|152|49
+UNMSM|B|Estadística|2026-II|396.75|47
+UNMSM|B|Investigación Operativa|2026-II|467.875|49
+UNMSM|B|Computación Científica|2026-II|576|48
+UNMSM|B|Geofísica|2026-II|497.125|90
+UNMSM|C|Ingeniería Química|2026-II|973.375|38
+UNMSM|C|Ingeniería Agroindustrial|2026-II|898.625|35
+UNMSM|C|Ingeniería del Agua y Tecnologías de Tratamiento|2026-II|651.875|16
+UNMSM|C|Ingeniería Mecánica de Fluidos|2026-II|723.875|30
+UNMSM|C|Ingeniería Geológica|2026-II|969.25|21
+UNMSM|C|Ingeniería Geográfica|2026-II|936.875|25
+UNMSM|C|Ingeniería de Minas|2026-II|1175.375|15
+UNMSM|C|Ingeniería Metalúrgica|2026-II|877.5|15
+UNMSM|C|Ingeniería Civil|2026-II|1269.75|27
+UNMSM|C|Ingeniería Ambiental|2026-II|1126|15
+UNMSM|C|Arquitectura y Urbanismo|2026-II|1187.5|20
+UNMSM|C|Ingeniería Industrial|2026-II|1164.125|73
+UNMSM|C|Ingeniería Textil y Confecciones|2026-II|826|26
+UNMSM|C|Ingeniería de Seguridad y Salud en el Trabajo|2026-II|902.625|18
+UNMSM|C|Ingeniería Logística y Cadena de Suministro Digital|2026-II|1004.25|26
+UNMSM|C|Ingeniería Electrónica|2026-II|1065.875|45
+UNMSM|C|Ingeniería Eléctrica|2026-II|993.375|20
+UNMSM|C|Ingeniería de Telecomunicaciones|2026-II|1025.375|30
+UNMSM|C|Ingeniería Biomédica|2026-II|1310.25|15
+UNMSM|C|Ingeniería Mecatrónica|2026-II|1125.75|20
+UNMSM|C|Ingeniería Nuclear|2026-II|760.875|20
+UNMSM|C|Ingeniería de Sistemas|2026-II|1268|32
+UNMSM|C|Ingeniería de Software|2026-II|1177.75|15
+UNMSM|C|Ciencia de la Computación|2026-II|1018.5|15
+UNMSM|C|Ingeniería de Inteligencia Artificial|2026-II|1131|61
+UNMSM|C|Ingeniería de Transportes y Sistemas Ferroviarios|2026-II|912.875|48
