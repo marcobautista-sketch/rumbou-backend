@@ -16,6 +16,7 @@ import com.rumbou.backend.contenido.Pregunta;
 import com.rumbou.backend.examen.dto.ResponderPreguntaRequest;
 import com.rumbou.backend.shared.exception.InvalidOperationException;
 import com.rumbou.backend.shared.exception.UnauthorizedException;
+import com.rumbou.backend.suscripcion.PlanService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -59,7 +60,8 @@ class SimulacroServiceTest {
                 estructuraExamenRepository,
                 mock(SimulacroGeneratorService.class),
                 new CalificadorService(),
-                eventPublisher
+                eventPublisher,
+                mock(PlanService.class)
         );
 
         usuario = new Usuario("postulante@rumbou.com", "hash", "Ana", Role.USER);
