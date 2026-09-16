@@ -1,0 +1,60 @@
+# Carreras: una fila por programa. Si UNI y UNMSM tienen una carrera con EXACTAMENTE el mismo nombre oficial,
+# comparten esta fila (asi OfertaAcademica muestra la misma carrera con cortes distintos por universidad).
+# facultad: para las carreras que existen en ambas universidades se usa la de UNI.
+# Para las carreras que solo existen en UNMSM, la facultad se deduce del prefijo de su codigo oficial de escuela:
+#   07 Quimica e Ing. Quimica, 10 Ciencias Biologicas, 13 Ciencias Fisicas, 14 Ciencias Matematicas,
+#   16 Ing. Geologica, Minera, Metalurgica y Geografica, 17 Ing. Industrial, 19 Ing. Electronica y Electrica,
+#   20 Ing. de Sistemas e Informatica.
+# Excepciones con facultad dada por la fuente: Geofisica e Ingenieria de Transportes y Sistemas Ferroviarios.
+nombre|facultad
+Arquitectura|Facultad de Arquitectura, Urbanismo y Artes
+Urbanismo|Facultad de Arquitectura, Urbanismo y Artes
+Física|Facultad de Ciencias
+Matemática|Facultad de Ciencias
+Química|Facultad de Ciencias
+Ingeniería Física|Facultad de Ciencias
+Ciencia de la Computación|Facultad de Ciencias
+Ingeniería Sanitaria|Facultad de Ingeniería Ambiental
+Ingeniería de Higiene y Seguridad Industrial|Facultad de Ingeniería Ambiental
+Ingeniería Ambiental|Facultad de Ingeniería Ambiental
+Ingeniería Civil|Facultad de Ingeniería Civil
+Ingeniería Económica|Facultad de Ingeniería Económica, Estadística y Ciencias Sociales
+Ingeniería Estadística|Facultad de Ingeniería Económica, Estadística y Ciencias Sociales
+Ingeniería Eléctrica|Facultad de Ingeniería Eléctrica y Electrónica
+Ingeniería Electrónica|Facultad de Ingeniería Eléctrica y Electrónica
+Ingeniería de Telecomunicaciones|Facultad de Ingeniería Eléctrica y Electrónica
+Ingeniería de Ciberseguridad|Facultad de Ingeniería Eléctrica y Electrónica
+Ingeniería Biomédica|Facultad de Ingeniería Eléctrica y Electrónica
+Ingeniería Geológica|Facultad de Ingeniería Geológica, Minera y Metalúrgica
+Ingeniería Metalúrgica|Facultad de Ingeniería Geológica, Minera y Metalúrgica
+Ingeniería de Minas|Facultad de Ingeniería Geológica, Minera y Metalúrgica
+Ingeniería Industrial|Facultad de Ingeniería Industrial y de Sistemas
+Ingeniería de Sistemas|Facultad de Ingeniería Industrial y de Sistemas
+Ingeniería de Software|Facultad de Ingeniería Industrial y de Sistemas
+Ingeniería de Inteligencia Artificial|Facultad de Ingeniería Industrial y de Sistemas
+Ingeniería Mecánica|Facultad de Ingeniería Mecánica
+Ingeniería Mecánica-Eléctrica|Facultad de Ingeniería Mecánica
+Ingeniería Naval|Facultad de Ingeniería Mecánica
+Ingeniería Mecatrónica|Facultad de Ingeniería Mecánica
+Ingeniería Aeroespacial|Facultad de Ingeniería Mecánica
+Ingeniería de Petróleo y Gas Natural|Facultad de Ingeniería de Petróleo, Gas Natural y Petroquímica
+Ingeniería Petroquímica|Facultad de Ingeniería de Petróleo, Gas Natural y Petroquímica
+Ingeniería Química|Facultad de Ingeniería Química y Textil
+Ingeniería Textil|Facultad de Ingeniería Química y Textil
+Ciencias Biológicas|Facultad de Ciencias Biológicas
+Genética y Biotecnología|Facultad de Ciencias Biológicas
+Microbiología y Parasitología|Facultad de Ciencias Biológicas
+Estadística|Facultad de Ciencias Matemáticas
+Investigación Operativa|Facultad de Ciencias Matemáticas
+Computación Científica|Facultad de Ciencias Matemáticas
+Geofísica|Facultad de Ciencias Físicas
+Ingeniería Agroindustrial|Facultad de Química e Ingeniería Química
+Ingeniería del Agua y Tecnologías de Tratamiento|Facultad de Química e Ingeniería Química
+Ingeniería Mecánica de Fluidos|Facultad de Ciencias Físicas
+Ingeniería Geográfica|Facultad de Ingeniería Geológica, Minera, Metalúrgica y Geográfica
+Arquitectura y Urbanismo|Facultad de Ingeniería Geológica, Minera, Metalúrgica y Geográfica
+Ingeniería Textil y Confecciones|Facultad de Ingeniería Industrial
+Ingeniería de Seguridad y Salud en el Trabajo|Facultad de Ingeniería Industrial
+Ingeniería Logística y Cadena de Suministro Digital|Facultad de Ingeniería Industrial
+Ingeniería de Transportes y Sistemas Ferroviarios|Facultad de Ingeniería Industrial
+Ingeniería Nuclear|Facultad de Ingeniería Electrónica y Eléctrica

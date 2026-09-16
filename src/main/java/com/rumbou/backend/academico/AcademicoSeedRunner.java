@@ -33,17 +33,23 @@ public class AcademicoSeedRunner implements CommandLineRunner {
     private final EsquemaCalificacionRepository esquemaCalificacionRepository;
     private final TemaRepository temaRepository;
     private final EstructuraExamenRepository estructuraExamenRepository;
+    private final CarreraRepository carreraRepository;
+    private final OfertaAcademicaRepository ofertaAcademicaRepository;
 
     public AcademicoSeedRunner(UniversidadRepository universidadRepository,
                                 AreaRepository areaRepository,
                                 EsquemaCalificacionRepository esquemaCalificacionRepository,
                                 TemaRepository temaRepository,
-                                EstructuraExamenRepository estructuraExamenRepository) {
+                                EstructuraExamenRepository estructuraExamenRepository,
+                                CarreraRepository carreraRepository,
+                                OfertaAcademicaRepository ofertaAcademicaRepository) {
         this.universidadRepository = universidadRepository;
         this.areaRepository = areaRepository;
         this.esquemaCalificacionRepository = esquemaCalificacionRepository;
         this.temaRepository = temaRepository;
         this.estructuraExamenRepository = estructuraExamenRepository;
+        this.carreraRepository = carreraRepository;
+        this.ofertaAcademicaRepository = ofertaAcademicaRepository;
     }
 
     // Todo el seed va en una sola transaccion: si un archivo trae un dato invalido,
@@ -57,6 +63,8 @@ public class AcademicoSeedRunner implements CommandLineRunner {
         sembrarEsquemas();
         sembrarTemas();
         sembrarEstructuraExamen();
+        sembrarCarreras();
+        sembrarOfertasAcademicas();
         log.info("Seed del catalogo academico terminado");
     }
 
@@ -136,6 +144,43 @@ public class AcademicoSeedRunner implements CommandLineRunner {
         }
     }
 
+    // Una sola fila por programa: si UNI y UNMSM tienen una carrera con el mismo
+    // nombre oficial, comparten esta fila. Eso es lo que hace que OfertaAcademica
+    // sea un M:N con atributos de verdad (la misma carrera con cortes distintos).
+    private void sembrarCarreras() {
+        for (Fila fila : leer("carreras.csv", 2)) {
+            String nombre = fila.texto(0);
+            Carrera carrera = carreraRepository.findByNombre(nombre).orElseGet(Carrera::new);
+            carrera.setNombre(nombre);
+            carrera.setFacultad(fila.texto(1));
+            carreraRepository.save(carrera);
+        }
+    }
+
+    // La clave es (universidad, carrera, area, proceso): la misma carrera puede
+    // repetirse en otra universidad o en otro proceso de admision, con su propio
+    // puntaje del ultimo ingresante.
+    private void sembrarOfertasAcademicas() {
+        for (Fila fila : leer("ofertas-2026-II.csv", 6)) {
+            Universidad universidad = buscarUniversidad(fila, 0);
+            Area area = buscarArea(fila, universidad, 1);
+            Carrera carrera = buscarCarrera(fila, 2);
+            String proceso = fila.texto(3);
+
+            OfertaAcademica oferta = ofertaAcademicaRepository
+                    .findByUniversidadIdAndCarreraIdAndAreaIdAndProcesoAdmision(
+                            universidad.getId(), carrera.getId(), area.getId(), proceso)
+                    .orElseGet(OfertaAcademica::new);
+            oferta.setUniversidad(universidad);
+            oferta.setCarrera(carrera);
+            oferta.setArea(area);
+            oferta.setProcesoAdmision(proceso);
+            oferta.setPuntajeUltimoIngresante(fila.decimal(4));
+            oferta.setVacantes(fila.entero(5));
+            ofertaAcademicaRepository.save(oferta);
+        }
+    }
+
     private List<Fila> leer(String archivo, int columnasEsperadas) {
         List<Fila> filas = ArchivoSeed.leer(archivo, columnasEsperadas);
         log.info("{}: {} filas sincronizadas", archivo, filas.size());
@@ -166,6 +211,12 @@ public class AcademicoSeedRunner implements CommandLineRunner {
         String nombre = fila.texto(columna);
         return temaRepository.findByNombre(nombre)
                 .orElseThrow(() -> fila.error("no existe el tema '" + nombre + "' en temas.csv"));
+    }
+
+    private Carrera buscarCarrera(Fila fila, int columna) {
+        String nombre = fila.texto(columna);
+        return carreraRepository.findByNombre(nombre)
+                .orElseThrow(() -> fila.error("no existe la carrera '" + nombre + "' en carreras.csv"));
     }
 
     private AreaConocimiento areaConocimiento(Fila fila, int columna) {
