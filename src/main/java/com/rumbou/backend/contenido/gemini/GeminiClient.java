@@ -15,8 +15,10 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 
 // Cliente para la API de Gemini (Google AI Studio). No agrega dependencia nueva:
 // usa java.net.http.HttpClient y Jackson, que ya vienen con Spring Boot.
@@ -25,15 +27,15 @@ public class GeminiClient {
 
     private static final Logger log = LoggerFactory.getLogger(GeminiClient.class);
 
-    private static final String MODEL = "gemini-3.6-flash";
-    private static final String BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/"
-            + MODEL + ":generateContent";
+    private static final String API_BASE = "https://generativelanguage.googleapis.com/v1beta/models/";
 
-    // 429 (limite de cuota) y 503 (modelo saturado) son transitorios, no
-    // errores reales, asi que conviene esperar y reintentar en vez de perder
-    // la pregunta completa (importa sobre todo generando en lote).
-    private static final int MAX_INTENTOS_POR_429 = 3;
-    private static final Duration ESPERA_BASE_TRANSITORIO = Duration.ofSeconds(2);
+    // 429 (limite de cuota), 503 (modelo saturado) y un timeout de red son
+    // transitorios, no errores reales. La cuota gratuita se mide POR MINUTO, asi
+    // que la espera tiene que ser larga (30 s, 60 s, 90 s): con 2 o 4 segundos el
+    // reintento cae dentro del mismo minuto y vuelve a fallar. Si Gemini manda
+    // Retry-After, se respeta ese valor.
+    private static final int MAX_INTENTOS_TRANSITORIO = 4;
+    private static final Duration ESPERA_BASE_TRANSITORIO = Duration.ofSeconds(30);
 
     // El JSON malformado (forma que no calza con PreguntaGeneradaDto) es raro con
     // responseSchema, pero cuando pasa no vale la pena perder todo el lote: se
@@ -41,11 +43,16 @@ public class GeminiClient {
     private static final int MAX_INTENTOS_JSON_LOTE = 2;
 
     private final String apiKey;
+    private final String url;
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
 
-    public GeminiClient(@Value("${gemini.api-key:}") String apiKey) {
+    // El modelo es configurable (GEMINI_MODEL) porque Google los va retirando y
+    // no todas las keys gratuitas ven los mismos: asi se cambia sin recompilar.
+    public GeminiClient(@Value("${gemini.api-key:}") String apiKey,
+                        @Value("${gemini.model:gemini-3.6-flash}") String model) {
         this.apiKey = apiKey;
+        this.url = API_BASE + model + ":generateContent";
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(20))
                 .build();
@@ -132,6 +139,42 @@ public class GeminiClient {
         return respuesta.path("claveElegida").asInt(-1);
     }
 
+    // Version en lote de resolver(): UNA llamada para las N preguntas de un
+    // tema+dificultad. Es lo que hace viable el generador --todos con la cuota
+    // gratuita: validar de a una duplicaba (x5) las llamadas de generacion.
+    // Devuelve la clave elegida por pregunta, en el mismo orden (-1 si no vino).
+    public List<Integer> resolverLote(List<PreguntaGeneradaDto> preguntas) {
+        StringBuilder prompt = new StringBuilder("Resuelve cada una de las siguientes preguntas de opcion multiple. ");
+        prompt.append("Para cada pregunta responde unicamente con el indice (0 a 4) de la alternativa correcta, ");
+        prompt.append("en el mismo orden en que aparecen.\n\n");
+        for (int p = 0; p < preguntas.size(); p++) {
+            PreguntaGeneradaDto pregunta = preguntas.get(p);
+            prompt.append("Pregunta ").append(p + 1).append(":\n").append(pregunta.enunciado()).append("\n");
+            for (int i = 0; i < pregunta.alternativas().size(); i++) {
+                prompt.append(i).append(") ").append(pregunta.alternativas().get(i)).append("\n");
+            }
+            prompt.append("\n");
+        }
+
+        ObjectNode itemSchema = objectMapper.createObjectNode();
+        itemSchema.put("type", "OBJECT");
+        itemSchema.putObject("properties").putObject("claveElegida").put("type", "INTEGER");
+        itemSchema.putArray("required").add("claveElegida");
+
+        ObjectNode schema = objectMapper.createObjectNode();
+        schema.put("type", "ARRAY");
+        schema.put("minItems", preguntas.size());
+        schema.put("maxItems", preguntas.size());
+        schema.set("items", itemSchema);
+
+        JsonNode respuesta = llamar(prompt.toString(), schema);
+        List<Integer> claves = new java.util.ArrayList<>();
+        for (int p = 0; p < preguntas.size(); p++) {
+            claves.add(respuesta.path(p).path("claveElegida").asInt(-1));
+        }
+        return claves;
+    }
+
     // A diferencia de resolver(), aqui si le damos la clave: el objetivo es explicar, no validar.
     public String explicar(String enunciado, java.util.List<String> alternativas, int claveCorrecta) {
         StringBuilder prompt = new StringBuilder();
@@ -167,14 +210,12 @@ public class GeminiClient {
         generationConfig.put("responseMimeType", "application/json");
         generationConfig.set("responseSchema", responseSchema);
 
-        // 25s y no 60s: en "high demand" (503) mejor fallar rapido y reintentar
-        // que quedarse colgado casi un minuto por cada intento fallido.
         HttpRequest request;
         try {
             request = HttpRequest.newBuilder()
-                    .uri(URI.create(BASE_URL + "?key=" + apiKey))
+                    .uri(URI.create(url + "?key=" + apiKey))
                     .header("Content-Type", "application/json")
-                    .timeout(Duration.ofSeconds(25))
+                    .timeout(Duration.ofSeconds(60))
                     .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)))
                     .build();
         } catch (IOException ex) {
@@ -191,18 +232,26 @@ public class GeminiClient {
         return leerJson(textoJson);
     }
 
-    // 429 (limite de cuota) y 503 (modelo saturado, "high demand") son ambos
-    // transitorios y se reintentan con espera creciente; cualquier otro codigo
-    // distinto de 200 (o un 429/503 que ya agoto los intentos) se trata como
-    // fallo definitivo. while(true) en vez de un for: asi el mensaje de "agoto
-    // los intentos" es alcanzable de verdad, en vez de quedar detras del
-    // chequeo generico de abajo.
+    // 429 (limite de cuota), 503 (modelo saturado, "high demand") y el timeout
+    // de red (HttpTimeoutException) son transitorios y se reintentan con espera
+    // creciente; cualquier otro codigo distinto de 200, u otro error de red, se
+    // trata como fallo definitivo. while(true) en vez de un for: asi el mensaje
+    // de "agoto los intentos" es alcanzable de verdad.
     private HttpResponse<String> enviarConReintento(HttpRequest request) {
         int intento = 1;
         while (true) {
             HttpResponse<String> response;
             try {
                 response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            } catch (HttpTimeoutException ex) {
+                if (intento >= MAX_INTENTOS_TRANSITORIO) {
+                    throw new GeminiException("Gemini no respondio a tiempo despues de "
+                            + MAX_INTENTOS_TRANSITORIO + " intentos", ex);
+                }
+                log.warn("Timeout llamando a Gemini (intento {} de {}), se reintenta", intento, MAX_INTENTOS_TRANSITORIO);
+                esperarAntesDeReintentar(intento, Optional.empty());
+                intento++;
+                continue;
             } catch (IOException | InterruptedException ex) {
                 if (ex instanceof InterruptedException) {
                     Thread.currentThread().interrupt();
@@ -216,11 +265,16 @@ public class GeminiClient {
             if (!esTransitorio(response.statusCode())) {
                 throw new GeminiException("Gemini respondio " + response.statusCode() + ": " + response.body());
             }
-            if (intento >= MAX_INTENTOS_POR_429) {
+            if (intento >= MAX_INTENTOS_TRANSITORIO) {
                 throw new GeminiException("Gemini sigue respondiendo " + response.statusCode()
-                        + " despues de " + MAX_INTENTOS_POR_429 + " intentos");
+                        + " despues de " + MAX_INTENTOS_TRANSITORIO + " intentos");
             }
-            esperarAntesDeReintentar(intento);
+            Optional<Duration> retryAfter = response.headers().firstValue("Retry-After")
+                    .flatMap(GeminiClient::parsearSegundos);
+            log.warn("Gemini respondio {} (intento {} de {}), se reintenta en {} s",
+                    response.statusCode(), intento, MAX_INTENTOS_TRANSITORIO,
+                    retryAfter.orElse(ESPERA_BASE_TRANSITORIO.multipliedBy(intento)).toSeconds());
+            esperarAntesDeReintentar(intento, retryAfter);
             intento++;
         }
     }
@@ -229,9 +283,20 @@ public class GeminiClient {
         return statusCode == 429 || statusCode == 503;
     }
 
-    private void esperarAntesDeReintentar(int intento) {
+    private static Optional<Duration> parsearSegundos(String valor) {
         try {
-            Thread.sleep(ESPERA_BASE_TRANSITORIO.toMillis() * intento);
+            return Optional.of(Duration.ofSeconds(Long.parseLong(valor.trim())));
+        } catch (NumberFormatException ex) {
+            return Optional.empty();
+        }
+    }
+
+    // Si el servidor dijo cuanto esperar (Retry-After), eso manda; si no,
+    // espera creciente: 30 s, 60 s, 90 s.
+    private void esperarAntesDeReintentar(int intento, Optional<Duration> retryAfter) {
+        Duration espera = retryAfter.orElse(ESPERA_BASE_TRANSITORIO.multipliedBy(intento));
+        try {
+            Thread.sleep(espera.toMillis());
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
             throw new GeminiException("Interrumpido esperando para reintentar la llamada a Gemini", ex);

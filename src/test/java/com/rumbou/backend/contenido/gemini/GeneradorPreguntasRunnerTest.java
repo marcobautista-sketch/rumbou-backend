@@ -58,6 +58,15 @@ class GeneradorPreguntasRunnerTest {
                 "¿Cuanto es 2 + 2?", List.of("1", "2", "3", "4", "5"), 3, "2 + 2 = 4");
     }
 
+    // El validador en lote devuelve un Optional por pregunta, en el mismo orden:
+    // aqui acepta todas. Los tests que rechazan lo redefinen.
+    private void validadorAceptaTodo() {
+        given(validator.validarLote(any())).willAnswer(inv -> {
+            List<PreguntaGeneradaDto> lote = inv.getArgument(0);
+            return lote.stream().map(p -> Optional.<String>empty()).toList();
+        });
+    }
+
     private List<PreguntaGeneradaDto> preguntasValidas(int cantidad) {
         List<PreguntaGeneradaDto> preguntas = new ArrayList<>();
         for (int i = 0; i < cantidad; i++) {
@@ -73,12 +82,45 @@ class GeneradorPreguntasRunnerTest {
         given(temaRepository.findAll()).willReturn(List.of(tema1, tema2));
         given(preguntaRepository.countByTemaIdAndDificultad(any(), any())).willReturn(0L);
         given(geminiClient.generarPreguntas(any(), any(), any(), anyInt())).willReturn(List.of(preguntaValida()));
-        given(validator.validar(any())).willReturn(Optional.empty());
+        validadorAceptaTodo();
 
-        runner.generarTodos(1);
+        runner.generarTodos(1, true);
 
-        // 2 temas x 3 dificultades = 6 pares, una llamada de generacion por par (no una por pregunta).
+        // 2 temas x 3 dificultades = 6 pares: una llamada de generacion y una de
+        // validacion por par (no una por pregunta).
         verify(geminiClient, times(6)).generarPreguntas(any(), any(), any(), eq(1));
+        verify(validator, times(6)).validarLote(any());
+        verify(preguntaRepository, times(6)).save(any());
+    }
+
+    @Test
+    void sinValidarSoloRevisaLaEstructuraYNoLlamaAlValidadorConIa() {
+        Tema tema = temaConId(1L, "Algebra");
+        given(temaRepository.findAll()).willReturn(List.of(tema));
+        given(preguntaRepository.countByTemaIdAndDificultad(any(), any())).willReturn(0L);
+        given(geminiClient.generarPreguntas(any(), any(), any(), anyInt())).willReturn(preguntasValidas(2));
+        given(validator.validarEstructura(any())).willReturn(Optional.empty());
+
+        runner.generarTodos(2, false);
+
+        verify(validator, never()).validarLote(any());
+        verify(validator, times(6)).validarEstructura(any());
+        verify(preguntaRepository, times(6)).save(any());
+    }
+
+    @Test
+    void siLaValidacionConIaFallaElLoteSeGuardaConValidacionEstructural() {
+        Tema tema = temaConId(1L, "Algebra");
+        given(temaRepository.findAll()).willReturn(List.of(tema));
+        given(preguntaRepository.countByTemaIdAndDificultad(any(), any())).willReturn(0L);
+        given(geminiClient.generarPreguntas(any(), any(), any(), anyInt())).willReturn(preguntasValidas(2));
+        given(validator.validarLote(any())).willThrow(new GeminiException("Gemini sigue respondiendo 429"));
+        given(validator.validarEstructura(any())).willReturn(Optional.empty());
+
+        runner.generarTodos(2, true);
+
+        // La cuota agotada en la validacion no tira las preguntas ya generadas
+        // (que costaron su propia llamada): quedan para la revision humana.
         verify(preguntaRepository, times(6)).save(any());
     }
 
@@ -90,9 +132,9 @@ class GeneradorPreguntasRunnerTest {
         given(preguntaRepository.countByTemaIdAndDificultad(1L, Dificultad.MEDIA)).willReturn(0L);
         given(preguntaRepository.countByTemaIdAndDificultad(1L, Dificultad.DIFICIL)).willReturn(0L);
         given(geminiClient.generarPreguntas(any(), any(), any(), eq(5))).willReturn(preguntasValidas(5));
-        given(validator.validar(any())).willReturn(Optional.empty());
+        validadorAceptaTodo();
 
-        runner.generarTodos(5);
+        runner.generarTodos(5, true);
 
         // FACIL ya tiene 5 (>= cantidad): se salta por completo, ni una llamada.
         verify(geminiClient, never()).generarPreguntas(any(), any(), eq(Dificultad.FACIL), anyInt());
@@ -107,9 +149,9 @@ class GeneradorPreguntasRunnerTest {
         given(temaRepository.findAll()).willReturn(List.of(tema));
         given(preguntaRepository.countByTemaIdAndDificultad(any(), any())).willReturn(0L);
         given(geminiClient.generarPreguntas(any(), any(), any(), anyInt())).willReturn(List.of(preguntaValida()));
-        given(validator.validar(any())).willReturn(Optional.of("explicacion vacia"));
+        given(validator.validarLote(any())).willReturn(List.of(Optional.of("explicacion vacia")));
 
-        runner.generarTodos(1);
+        runner.generarTodos(1, true);
 
         verify(preguntaRepository, never()).save(any());
     }
@@ -124,9 +166,9 @@ class GeneradorPreguntasRunnerTest {
                 .willThrow(new GeminiException("Gemini respondio 500"));
         given(geminiClient.generarPreguntas(eq("Geometria"), any(), any(), anyInt()))
                 .willReturn(List.of(preguntaValida()));
-        given(validator.validar(any())).willReturn(Optional.empty());
+        validadorAceptaTodo();
 
-        runner.generarTodos(1);
+        runner.generarTodos(1, true);
 
         // Algebra fallo en sus 3 pares, pero Geometria se sigue procesando igual.
         verify(preguntaRepository, times(3)).save(any());
