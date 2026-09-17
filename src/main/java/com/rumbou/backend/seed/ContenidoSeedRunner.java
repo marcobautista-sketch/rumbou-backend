@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +25,10 @@ import java.util.List;
 // partir de las preguntas ya aprobadas en una base local: asi produccion tiene el
 // banco de preguntas cargado sin volver a llamar a Gemini.
 //   ./mvnw spring-boot:run -Dspring-boot.run.profiles=seed
+// Sin @Order, Spring no garantiza en que orden corren los runners: en una base
+// vacia el seed de preguntas llego a correr antes que el de temas y fallo.
+// Al final: cada pregunta se cuelga de un tema que debe existir ya.
+@Order(3)
 @Component
 @Profile("seed")
 public class ContenidoSeedRunner implements CommandLineRunner {
