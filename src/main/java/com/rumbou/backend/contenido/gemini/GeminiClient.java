@@ -17,7 +17,10 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 // Cliente para la API de Gemini (Google AI Studio). No agrega dependencia nueva:
@@ -111,6 +114,94 @@ public class GeminiClient {
                 GeminiException error = new GeminiException(
                         "Gemini devolvio un lote de preguntas con formato invalido para "
                                 + temaNombre + " / " + dificultad, ex);
+                if (intento >= MAX_INTENTOS_JSON_LOTE) {
+                    throw error;
+                }
+                log.warn("Intento {} de {}: {}", intento, MAX_INTENTOS_JSON_LOTE, error.getMessage());
+                intento++;
+            }
+        }
+    }
+
+    // Version "por tema": UNA llamada pide las preguntas de las tres dificultades
+    // a la vez (por ejemplo 5 + 5 + 5). Existe porque la cuota gratuita de Gemini
+    // es de unas 20 llamadas POR DIA por modelo: con una llamada por dificultad
+    // (66) no alcanza; con una por tema (22) si. "cantidades" dice cuantas
+    // preguntas se quieren de cada dificultad; las que ya estan completas no se
+    // piden. El resultado viene agrupado por dificultad.
+    public Map<Dificultad, List<PreguntaGeneradaDto>> generarPreguntasPorTema(String temaNombre, String temario,
+                                                                              Map<Dificultad, Integer> cantidades) {
+        int total = cantidades.values().stream().mapToInt(Integer::intValue).sum();
+        if (total == 0) {
+            return Map.of();
+        }
+
+        String temarioTexto = (temario == null || temario.isBlank())
+                ? ""
+                : "\n\nLimita las preguntas al siguiente temario oficial del tema "
+                        + "(no salgas de estos subtemas):\n" + temario + "\n";
+
+        StringBuilder reparto = new StringBuilder();
+        for (Dificultad dificultad : Dificultad.values()) {
+            int n = cantidades.getOrDefault(dificultad, 0);
+            if (n > 0) {
+                reparto.append("- ").append(n).append(" con dificultad ").append(dificultad.name()).append("\n");
+            }
+        }
+
+        String prompt = """
+                Genera %d preguntas de opcion multiple, estilo examen de admision universitaria \
+                peruano (UNI/UNMSM), sobre el tema "%s", repartidas asi:
+                %s
+                Cada pregunta debe indicar en el campo "dificultad" a cual de esos grupos pertenece \
+                (FACIL, MEDIA o DIFICIL), respetando exactamente las cantidades pedidas.%s
+
+                No copies textualmente preguntas de examenes oficiales reales: usalas solo como \
+                referencia de estilo y nivel de dificultad. Cada pregunta debe ser original, y \
+                entre ellas deben cubrir subtemas distintos (no repitas el mismo subtema dos veces \
+                si el temario lo permite).
+
+                Cada pregunta debe tener exactamente 5 alternativas, con una unica respuesta \
+                correcta. Incluye una explicacion breve de por que esa alternativa es la correcta.
+                """.formatted(total, temaNombre, reparto, temarioTexto);
+
+        ObjectNode itemSchema = objectMapper.createObjectNode();
+        itemSchema.put("type", "OBJECT");
+        ObjectNode properties = itemSchema.putObject("properties");
+        ObjectNode dificultadProp = properties.putObject("dificultad");
+        dificultadProp.put("type", "STRING");
+        dificultadProp.putArray("enum").add("FACIL").add("MEDIA").add("DIFICIL");
+        properties.putObject("enunciado").put("type", "STRING");
+        ObjectNode alternativas = properties.putObject("alternativas");
+        alternativas.put("type", "ARRAY");
+        alternativas.putObject("items").put("type", "STRING");
+        properties.putObject("claveCorrecta").put("type", "INTEGER");
+        properties.putObject("explicacion").put("type", "STRING");
+        itemSchema.putArray("required").add("dificultad").add("enunciado").add("alternativas")
+                .add("claveCorrecta").add("explicacion");
+
+        ObjectNode schema = objectMapper.createObjectNode();
+        schema.put("type", "ARRAY");
+        schema.put("minItems", total);
+        schema.put("maxItems", total);
+        schema.set("items", itemSchema);
+
+        int intento = 1;
+        while (true) {
+            JsonNode respuesta = llamar(prompt, schema);
+            try {
+                List<PreguntaGeneradaConDificultadDto> generadas = objectMapper.convertValue(
+                        respuesta, new TypeReference<List<PreguntaGeneradaConDificultadDto>>() {
+                        });
+                Map<Dificultad, List<PreguntaGeneradaDto>> porDificultad = new EnumMap<>(Dificultad.class);
+                for (PreguntaGeneradaConDificultadDto generada : generadas) {
+                    porDificultad.computeIfAbsent(generada.dificultad(), d -> new ArrayList<>())
+                            .add(generada.sinDificultad());
+                }
+                return porDificultad;
+            } catch (IllegalArgumentException ex) {
+                GeminiException error = new GeminiException(
+                        "Gemini devolvio un lote de preguntas con formato invalido para " + temaNombre, ex);
                 if (intento >= MAX_INTENTOS_JSON_LOTE) {
                     throw error;
                 }
