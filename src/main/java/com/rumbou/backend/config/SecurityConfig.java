@@ -1,6 +1,7 @@
 package com.rumbou.backend.config;
 
-import com.rumbou.backend.auth.JwtAuthenticationFilter;
+import com.rumbou.backend.security.JwtAuthenticationEntryPoint;
+import com.rumbou.backend.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
