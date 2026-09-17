@@ -259,6 +259,7 @@ Una excepción propia más está planificada para cuando se conecte `PlanService
 - **Autenticación stateless con JWT:** access token de 15 minutos y refresh token de 7 días, ambos firmados con una clave HMAC que viene de una variable de entorno (`JWT_SECRET`), nunca del código.
 - **Roles en dos lugares:** el rol vive en la base de datos y también viaja embebido dentro del JWT, para que cada request pueda autorizarse sin una consulta adicional.
 - **Autorización por método:** `@PreAuthorize("hasRole('ADMIN')")` sobre los endpoints sensibles (crear, editar, aprobar y borrar preguntas; buscar usuarios y cambiar roles), habilitado con `@EnableMethodSecurity`.
+- **El rol `ADMIN` no tiene límites de plan:** `PlanService` deja pasar al administrador sin consultar su suscripción, para que pueda probar todas las funciones (incluido el tutor de IA) sin pasar por Mercado Pago. Su uso igual queda registrado.
 - **Alta de administradores controlada:** el registro público siempre crea cuentas `USER`. El primer `ADMIN` nace de las variables de entorno `ADMIN_EMAIL`/`ADMIN_PASSWORD` al arrancar (nunca de un endpoint), y solo un admin puede promover a otros; un admin no puede quitarse su propio rol, para que el sistema nunca quede sin administradores.
 - **Recuperación de contraseña segura:** el token es de un solo uso, expira a los 30 minutos, y pedir un reseteo nuevo invalida cualquier token anterior todavía vigente. El endpoint responde igual exista o no el email, para no revelar qué correos están registrados.
 
