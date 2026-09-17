@@ -26,21 +26,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-// Carga el catalogo academico desde los archivos de src/main/resources/seed/.
-// Solo corre con el profile "seed" (decision del equipo: un runner por paquete,
-// cada uno dueno de sembrar solo sus propias tablas, y nada de data.sql):
+// Carga el catalogo academico desde src/main/resources/seed/ (profile "seed"):
 //   ./mvnw spring-boot:run -Dspring-boot.run.profiles=seed
-//
-// Ningun valor del examen esta escrito aqui: este runner solo lee archivos (con
-// ArchivoSeed) y los guarda. Corregir un puntaje o agregar un tema es editar un
-// archivo, no el codigo.
-//
-// Es idempotente: cada fila se busca por su clave natural (siglas, codigo, nombre)
-// y se crea si no existe o se actualiza si ya existe. Correrlo dos veces no duplica
-// nada, y correrlo despues de corregir un archivo aplica la correccion.
-// Sin @Order, Spring no garantiza en que orden corren los runners: en una base
-// vacia el seed de preguntas llego a correr antes que el de temas y fallo.
-// El catalogo va primero: los demas seeds (logros, preguntas) dependen de los temas.
+// Ningun valor del examen esta en el codigo: se leen los archivos y se guardan.
+// Idempotente: cada fila se busca por su clave natural y se crea o actualiza.
+// @Order(1): logros y preguntas dependen de los temas que se cargan aqui.
 @Order(1)
 @Component
 @Profile("seed")
@@ -72,9 +62,8 @@ public class AcademicoSeedRunner implements CommandLineRunner {
         this.ofertaAcademicaRepository = ofertaAcademicaRepository;
     }
 
-    // Todo el seed va en una sola transaccion: si un archivo trae un dato invalido,
-    // se revierte completo y no queda un catalogo cargado a medias.
-    // El orden importa: cada archivo referencia filas que ya cargaron los anteriores.
+    // Una sola transaccion: un dato invalido revierte todo. El orden importa:
+    // cada archivo referencia filas que cargaron los anteriores.
     @Override
     @Transactional
     public void run(String... args) {
@@ -141,10 +130,8 @@ public class AcademicoSeedRunner implements CommandLineRunner {
         }
     }
 
-    // La clave de cada fila es (area, tema), la misma pareja que protege la
-    // restriccion unica uk_estructura_area_tema. El area y el bloque se buscan
-    // dentro de la misma universidad de la fila, asi no se puede mezclar por
-    // error un area de UNI con un bloque de calificacion de UNMSM.
+    // Clave (area, tema), la misma de uk_estructura_area_tema. Area y bloque se
+    // buscan dentro de la universidad de la fila para no mezclar UNI con UNMSM.
     private void sembrarEstructuraExamen() {
         for (Fila fila : leer("estructura-examen.csv", 6)) {
             Universidad universidad = buscarUniversidad(fila, 0);
@@ -164,9 +151,8 @@ public class AcademicoSeedRunner implements CommandLineRunner {
         }
     }
 
-    // Una sola fila por programa: si UNI y UNMSM tienen una carrera con el mismo
-    // nombre oficial, comparten esta fila. Eso es lo que hace que OfertaAcademica
-    // sea un M:N con atributos de verdad (la misma carrera con cortes distintos).
+    // Una fila por programa: una carrera con el mismo nombre en UNI y UNMSM
+    // comparte fila (OfertaAcademica es el M:N con atributos).
     private void sembrarCarreras() {
         for (Fila fila : leer("carreras.csv", 2)) {
             String nombre = fila.texto(0);
@@ -177,9 +163,8 @@ public class AcademicoSeedRunner implements CommandLineRunner {
         }
     }
 
-    // La clave es (universidad, carrera, area, proceso): la misma carrera puede
-    // repetirse en otra universidad o en otro proceso de admision, con su propio
-    // puntaje del ultimo ingresante.
+    // Clave (universidad, carrera, area, proceso): la misma carrera se repite
+    // por universidad y por proceso, con su propio puntaje.
     private void sembrarOfertasAcademicas() {
         for (Fila fila : leer("ofertas-2026-II.csv", 6)) {
             Universidad universidad = buscarUniversidad(fila, 0);

@@ -23,10 +23,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
-// Corre el seed contra un PostgreSQL real (TestContainers). El runner se construye
-// a mano en vez de activar el profile "seed": asi corre dentro de la transaccion
-// del test, que se deshace al terminar, y no deja datos en la base que comparten
-// los demas tests de repositorio.
+// Contra PostgreSQL real. El runner se construye a mano en vez de activar el
+// profile: asi corre dentro de la transaccion del test y no deja datos.
 class AcademicoSeedRunnerTest extends AbstractContainerBaseTest {
 
     private static final String PROCESO = "2026-II";
@@ -99,8 +97,7 @@ class AcademicoSeedRunnerTest extends AbstractContainerBaseTest {
         assertThat(ofertaAcademicaRepository.count()).isEqualTo(70);
     }
 
-    // El caso que justifica que OfertaAcademica sea un M:N con atributos: la misma
-    // carrera existe en las dos universidades, con puntajes de corte distintos.
+    // La misma carrera existe en las dos universidades con puntajes distintos: OfertaAcademica es M:N con atributos.
     @Test
     void laMismaCarreraTienePuntajeDistintoEnCadaUniversidad() {
         seed.run();

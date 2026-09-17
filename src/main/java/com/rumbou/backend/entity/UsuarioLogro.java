@@ -10,8 +10,7 @@ import jakarta.persistence.UniqueConstraint;
 
 import java.time.LocalDateTime;
 
-// M:N con atributos entre Usuario y Logro: cada fila dice cuando un usuario
-// desbloqueo un logro. La constraint unica evita que se gane el mismo logro 2 veces.
+// M:N con atributos entre Usuario y Logro; la restriccion unica evita ganar el mismo logro dos veces.
 @Entity
 @Table(name = "usuarios_logros",
         uniqueConstraints = @UniqueConstraint(columnNames = {"usuario_id", "logro_id"}))

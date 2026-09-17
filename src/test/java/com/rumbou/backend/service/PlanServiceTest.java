@@ -23,8 +23,6 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-// JUnit puro con Mockito: PlanService no necesita levantar Spring,
-// sus colaboradores (los dos repos) se simulan con datos prefabricados.
 class PlanServiceTest {
 
     private SuscripcionRepository suscripcionRepository;
@@ -208,8 +206,6 @@ class PlanServiceTest {
     void registrarUsoCreaLaFilaDelDiaSiNoExisteYSuma() {
         when(usoDiarioRepository.findByUsuarioIdAndFecha(anyLong(), any(LocalDate.class)))
                 .thenReturn(Optional.empty());
-        // Instruccion especial de ensayo: "cuando te pidan guardar algo, devuelveme
-        // exactamente ese objeto" (un mock por defecto devuelve null).
         when(usoDiarioRepository.save(any(UsoDiario.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 

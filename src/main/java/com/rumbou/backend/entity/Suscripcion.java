@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 
 import java.time.LocalDate;
 
-// El "contrato" del plan: que usuario lo tiene, que plan, y hasta cuando.
 @Entity
 @Table(name = "suscripciones")
 public class Suscripcion extends BaseEntity {
@@ -35,7 +34,6 @@ public class Suscripcion extends BaseEntity {
         this.estado = estado;
     }
 
-    // getters y setters para todos los campos, igual que en Tema
     public Usuario getUsuario() { return usuario; }
     public void setUsuario(Usuario usuario) { this.usuario = usuario; }
 

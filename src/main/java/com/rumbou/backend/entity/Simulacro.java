@@ -19,7 +19,6 @@ public class Simulacro extends BaseEntity {
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 
-    // Define la estructura generada: de que area salen las preguntas.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "area_id", nullable = false)
     private Area area;

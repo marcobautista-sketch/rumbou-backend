@@ -25,7 +25,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-// JUnit puro con Mockito, como AuthServiceTest: la logica solo depende del repo.
 class SuscripcionServiceTest {
 
     private SuscripcionRepository suscripcionRepository;

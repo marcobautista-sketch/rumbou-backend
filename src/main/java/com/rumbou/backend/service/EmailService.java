@@ -38,8 +38,8 @@ public class EmailService {
 
             Context contexto = new Context();
             contexto.setVariables(variables);
-            String html = templateEngine.process(plantilla, contexto);  // rellena la plantilla
-            helper.setText(html, true);                                   // true = cuerpo en HTML
+            String html = templateEngine.process(plantilla, contexto);
+            helper.setText(html, true);
 
             mailSender.send(mime);
             log.info("Correo '{}' enviado a {}", asunto, destinatario);

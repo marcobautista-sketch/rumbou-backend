@@ -1,7 +1,6 @@
 package com.rumbou.backend.exception;
 
-// Raiz para fallos de servicios externos (Gemini, y a futuro Mercado Pago,
-// proveedor de correo, etc). Se mapea a 502: el error no es culpa del usuario.
+// Raiz de los fallos de servicios externos (Gemini, Mercado Pago, correo): 502, no es culpa del usuario.
 public class ExternalServiceException extends RuntimeException {
 
     public ExternalServiceException(String message) {

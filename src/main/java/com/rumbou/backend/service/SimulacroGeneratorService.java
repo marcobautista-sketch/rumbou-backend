@@ -19,10 +19,7 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 
-// Arma un simulacro leyendo EstructuraExamen para el area indicada.
-// Deliberadamente no recibe ni pregunta la universidad: el area ya trae
-// implicita toda la informacion necesaria (que temas, cuantas preguntas,
-// bajo que esquema se califican).
+// Arma el simulacro desde la EstructuraExamen del area; no necesita saber la universidad.
 @Service
 public class SimulacroGeneratorService {
 
@@ -62,8 +59,7 @@ public class SimulacroGeneratorService {
             }
         }
 
-        // Sin banco de preguntas aprobadas el simulacro saldria vacio y el
-        // postulante no entenderia por que. Mejor un error explicito.
+        // Sin preguntas aprobadas el simulacro saldria vacio: mejor un error explicito.
         if (preguntasAgregadas == 0) {
             throw new InvalidOperationException(
                     "No hay preguntas aprobadas para armar un simulacro de esta area todavia");

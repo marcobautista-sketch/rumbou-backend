@@ -30,8 +30,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-// JUnit puro con Mockito: AuthService no necesita levantar Spring para
-// probarse, sus colaboradores (repos, encoder, publisher) se simulan.
 class AuthServiceTest {
 
     private UsuarioRepository usuarioRepository;

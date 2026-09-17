@@ -30,9 +30,8 @@ public class PagoAprobadoCorreoListener {
         this.suscripcionRepository = suscripcionRepository;
     }
 
-    // REQUIRES_NEW: aqui leemos la suscripcion y su @ManyToOne(LAZY) a Usuario;
-    // despues de AFTER_COMMIT no hay transaccion activa, hay que abrir una nueva
-    // para que Hibernate pueda cargar el usuario bajo demanda sin LazyInitializationException.
+    // REQUIRES_NEW: tras AFTER_COMMIT no hay transaccion activa y aqui se carga
+    // el usuario LAZY de la suscripcion.
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)

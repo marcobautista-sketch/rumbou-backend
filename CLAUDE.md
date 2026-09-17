@@ -29,7 +29,7 @@ Esta es la entrega del backend completo: funcionalidades, seguridad, pruebas, de
 - **GitHub Projects/Issues** para gestionar tareas, con milestones y labels — no solo código, también proceso.
 - **El `README.md` debe incluir además un informe narrativo de 1000-2000 palabras** con esta estructura fija: Portada, Índice, Introducción (contexto + objetivos), Identificación del Problema (descripción + justificación), Descripción de la Solución (funcionalidades + tecnologías), Modelo de Entidades (diagrama + descripción), Manejo de Errores, Medidas de Seguridad (seguridad de datos + prevención de SQLi/XSS/CSRF), Eventos y Asincronía, GitHub & Management, Conclusión (logros + aprendizajes + trabajo futuro), Apéndices (licencia + referencias). Esto convive con las instrucciones técnicas de instalación que ya tiene el README (la rúbrica también las pide, en la sección 9.1).
 
-Lo que ya estaba en el diseño original **cumple sin cambios**: más de 6 entidades (tenemos ~16), más de 2 casos de uso con eventos (tenemos 3), y la dirección del `GlobalExceptionHandler` ya construido — solo falta ampliarlo con más tipos de excepción.
+Estado actual frente a la rúbrica: 17 entidades, 5 eventos con 6 listeners, 8 excepciones propias, 23 DTOs, roles + refresh tokens + correo + admin por variables de entorno, desplegado en Railway. Falta `progreso/` (IP, dominio por tema) y la migración a AWS si llega la cuenta.
 
 ---
 
@@ -102,9 +102,11 @@ Cómo se reparte el trabajo ahora que las carpetas son compartidas: **cada perso
 
 | Evento | Publica | Escuchan | Modo |
 |---|---|---|---|
-| `SimulacroFinalizadoEvent` | examen | gamificacion, progreso | síncrono, transaccional |
-| `RespuestaIncorrectaEvent` | examen | contenido (tutor IA) | `@Async` + AFTER_COMMIT |
-| `PagoAprobadoEvent` | suscripcion (webhook) | suscripcion (activación) | AFTER_COMMIT |
+| `SimulacroFinalizadoEvent` | `SimulacroService` | `GamificacionListener` (y progreso, cuando exista) | síncrono, transaccional |
+| `RespuestaIncorrectaEvent` | `SimulacroService` | `TutorIaExplicacionListener` | `@Async` + AFTER_COMMIT |
+| `PagoAprobadoEvent` | `WebhookService` | `SuscripcionActivacionListener`, `PagoAprobadoCorreoListener` | AFTER_COMMIT |
+| `PasswordResetRequestedEvent` | `AuthService` | `RecuperacionContrasenaCorreoListener` | `@Async` + AFTER_COMMIT |
+| `UsuarioRegistradoEvent` | `AuthService` | `RegistroConfirmacionListener` | `@Async` + AFTER_COMMIT |
 
 Sin eventos, el módulo de examen tendría que llamar a los services de progreso, gamificación y contenido, y nadie podría avanzar hasta que los otros terminen. Los eventos son lo que permite que 4 personas trabajen en paralelo.
 
@@ -115,15 +117,15 @@ Sin eventos, el módulo de examen tendría que llamar a los services de progreso
 Entidades principales y la razón de existir de las menos obvias:
 
 - `Usuario` — con `currentStreak`, `longestStreak`, `lastActivityDate`, `xpTotal`, `xpSemanal`, `version`
-- `ObjetivoUsuario` — la carrera a la que apunta; 1 en plan gratuito, hasta 3 en PRO
 - `Universidad`, `Carrera` — catálogo
 - `OfertaAcademica` — **M:N con atributos**: universidad + carrera + proceso de admisión + `puntajeUltimoIngresante`. Se cargan varios procesos por carrera para que la tabla tenga contenido real.
 - `EsquemaCalificacion` — las reglas de puntaje como dato: `valorAcierto`, `valorPenalidad`, `puntajeMaximoBloque`
 - `Tema`, `EstructuraExamen` — qué preguntas y cuántas arma cada simulacro
 - `Pregunta` — pertenece a un `Tema`, nunca a una universidad. Campos `origen` y `aprobada` para trazabilidad
 - `Simulacro`, `RespuestaUsuario` — **M:N con atributos**: incluye `puntajeAportado`, que puede ser negativo
-- `Suscripcion`, `UsoDiario` — plan y contadores con `@Version`
+- `Suscripcion`, `UsoDiario` — plan y contadores con `@Version`; `PagoWebhook` — notificaciones de pago ya procesadas (idempotencia)
 - `Logro`, `UsuarioLogro`
+- `PasswordResetToken` — token de un solo uso para recuperar la contraseña
 
 ### Cálculo de puntaje
 
@@ -151,7 +153,7 @@ IP  = PSP / ofertaAcademica.puntajeUltimoIngresante
 
 **PRO (S/ 39/mes):** simulacros ilimitados, tutor de IA con tope de 30 consultas diarias, hasta 3 objetivos, panel completo con histórico y dominio por tema, reportes.
 
-El control lo centraliza `PlanService.puedeAcceder(usuario, funcionalidad)`. Los controllers no consultan la suscripción directamente. Al superar un límite se responde **403** con un DTO que indica qué límite se alcanzó.
+El control lo centraliza `PlanService.puedeAcceder(usuario, funcionalidad)`. Los controllers no consultan la suscripción directamente. Al superar un límite se responde **403** con un DTO que indica qué límite se alcanzó. El rol `ADMIN` pasa todos los límites (decisión del 17 de septiembre) para poder probar y demostrar el tutor de IA sin Mercado Pago.
 
 ---
 

@@ -39,8 +39,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-// JUnit puro con Mockito: SimulacroService no necesita Spring ni base de
-// datos para probarse, sus colaboradores se simulan.
 class SimulacroServiceTest {
 
     private SimulacroRepository simulacroRepository;
@@ -181,10 +179,7 @@ class SimulacroServiceTest {
                 .isInstanceOf(UnauthorizedException.class);
     }
 
-    // Escenario real: el seed del catalogo puede poner el mismo Tema en dos
-    // bloques distintos de la misma area (por ejemplo "Matematica" dentro de
-    // Habilidades y dentro de Conocimientos). Antes esto reventaba con un
-    // IllegalStateException de Collectors.toMap y devolvia HTTP 500.
+    // El seed puede poner el mismo Tema en dos bloques de un area; antes reventaba con IllegalStateException (500).
     @Test
     void finalizarAvisaConUnErrorClaroSiElAreaTieneElMismoTemaEnDosBloques() {
         Simulacro simulacro = simulacroEnCurso();
@@ -205,9 +200,7 @@ class SimulacroServiceTest {
                 .hasMessageContaining("mismo tema");
     }
 
-    // Si la estructura del area cambio despues de generar el simulacro, puede
-    // haber respuestas cuyo tema ya no tiene esquema. Antes eso era un
-    // NullPointerException (HTTP 500) al calificar.
+    // Si la estructura cambio despues de generar el simulacro puede haber respuestas sin esquema; antes era un NPE (500).
     @Test
     void finalizarAvisaConUnErrorClaroSiUnTemaYaNoTieneEsquema() {
         Simulacro simulacro = simulacroEnCurso();
