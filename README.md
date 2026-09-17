@@ -67,6 +67,7 @@ Ninguna credencial real vive en el repositorio. Las que ya usa el código:
 | `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` | Conexión a PostgreSQL | Producción (en local apuntan por defecto al Postgres del `docker-compose`) |
 | `PORT` | Puerto HTTP; lo inyecta la plataforma de despliegue | Producción (en local, 8080) |
 | `SHOW_SQL` | Imprime el SQL de Hibernate en el log | Opcional (`true` por defecto; en producción se pone `false`) |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | `seed/AdminBootstrapRunner`: al arrancar crea (o promueve) esa cuenta con rol `ADMIN` | Al desplegar por primera vez, para tener el primer administrador sin tocar la base de datos; sin ellas no pasa nada |
 | `GEMINI_API_KEY` | `client/gemini/GeneradorPreguntasRunner` y el tutor de IA del plan PRO | Al generar preguntas con IA y al usar el tutor |
 | `MP_ACCESS_TOKEN` | `client/mercadopago/MercadoPagoService`, para crear la preaprobación de pago | Al crear suscripciones PRO |
 | `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD` | `service/EmailService` (SMTP) | Al enviar correos reales (en local apunta a `localhost:1025`, por ejemplo Mailpit o Mailtrap) |
@@ -138,9 +139,9 @@ El acceso a una preparación de calidad y personalizada suele estar limitado a q
 ### Funcionalidades implementadas
 
 **Completo y probado:**
-- ✅ Registro, login, JWT con roles (`USER`/`ADMIN`) embebidos en el token, refresh tokens, y recuperación de contraseña de un solo uso.
+- ✅ Registro, login, JWT con roles (`USER`/`ADMIN`) embebidos en el token, refresh tokens, recuperación de contraseña de un solo uso, y administración de roles (primer admin por variables de entorno, los siguientes con `PATCH /api/v1/usuarios/{id}/rol`).
 - ✅ Motor de simulacros: generación de la prueba según la estructura real del área, calificación con penalidad configurable por esquema, cierre y cálculo de PSP — probado contra los 4 esquemas reales de UNI y UNMSM.
-- ✅ Banco de preguntas: CRUD protegido por rol, filtros paginados, generación asistida por Gemini con validación automática y aprobación humana obligatoria antes de usarse en un simulacro.
+- ✅ Banco de preguntas: CRUD protegido por rol, filtros paginados, generación asistida por Gemini con validación automática y aprobación humana obligatoria antes de usarse en un simulacro. **792 preguntas cargadas** (36 por tema en los 22 temas), suficientes para el simulacro completo de la UNI (180) y de UNMSM (100).
 - ✅ Gamificación: racha diaria y XP actualizados al finalizar un simulacro, catálogo de logros.
 - ✅ Tutor de IA del plan PRO: explicación personalizada con Gemini, con tope diario controlado por `PlanService`.
 - ✅ Catálogo académico: modelo completo y **seed reproducible** desde CSV con los datos oficiales de UNI y UNMSM (esquemas de calificación, 22 temas con temario y estructura del examen).
@@ -149,7 +150,6 @@ El acceso a una preparación de calidad y personalizada suele estar limitado a q
 - ✅ Deployment en Railway con PostgreSQL en la nube, contenedor Docker y despliegue continuo desde `main`.
 
 **En desarrollo activo:**
-- 🔧 Banco de preguntas real, generado por tema a partir del temario cargado y aprobado por un humano.
 - 🔧 Cálculo de progreso: Índice de Progreso (IP) respecto al puntaje de corte y dominio por tema.
 
 ### Tecnologías utilizadas
@@ -258,7 +258,8 @@ Una excepción propia más está planificada para cuando se conecte `PlanService
 - **Contraseñas:** nunca se guardan en texto plano — se hashean con `BCryptPasswordEncoder` antes de persistir.
 - **Autenticación stateless con JWT:** access token de 15 minutos y refresh token de 7 días, ambos firmados con una clave HMAC que viene de una variable de entorno (`JWT_SECRET`), nunca del código.
 - **Roles en dos lugares:** el rol vive en la base de datos y también viaja embebido dentro del JWT, para que cada request pueda autorizarse sin una consulta adicional.
-- **Autorización por método:** `@PreAuthorize("hasRole('ADMIN')")` sobre los endpoints sensibles (crear, editar, aprobar y borrar preguntas), habilitado con `@EnableMethodSecurity`.
+- **Autorización por método:** `@PreAuthorize("hasRole('ADMIN')")` sobre los endpoints sensibles (crear, editar, aprobar y borrar preguntas; buscar usuarios y cambiar roles), habilitado con `@EnableMethodSecurity`.
+- **Alta de administradores controlada:** el registro público siempre crea cuentas `USER`. El primer `ADMIN` nace de las variables de entorno `ADMIN_EMAIL`/`ADMIN_PASSWORD` al arrancar (nunca de un endpoint), y solo un admin puede promover a otros; un admin no puede quitarse su propio rol, para que el sistema nunca quede sin administradores.
 - **Recuperación de contraseña segura:** el token es de un solo uso, expira a los 30 minutos, y pedir un reseteo nuevo invalida cualquier token anterior todavía vigente. El endpoint responde igual exista o no el email, para no revelar qué correos están registrados.
 
 ### Prevención de vulnerabilidades

@@ -75,6 +75,10 @@
       "value": "",
       "type": "string",
       "description": "Se guarda al crear la suscripcion."
+    },
+    {
+      "key": "usuarioId",
+      "value": ""
     }
   ],
   "item": [
@@ -294,6 +298,112 @@
               "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"newPassword\": \"nueva-password123\"\n}"
             },
             "description": "El token vale 30 minutos y es de un solo uso. Pegar el valor de {{resetToken}} obtenido del paso anterior."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Usuarios",
+      "description": "Cuenta propia y administracion de roles. El primer ADMIN se crea al arrancar la app con las variables ADMIN_EMAIL y ADMIN_PASSWORD; los siguientes se promueven desde aqui.",
+      "item": [
+        {
+          "name": "Mi perfil",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    pm.collectionVariables.set('usuarioId', pm.response.json().id);",
+                  "}",
+                  "pm.test('Status es 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/usuarios/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "usuarios",
+                "me"
+              ]
+            },
+            "description": "Devuelve id, email, nombre y rol de la cuenta del token (nunca el hash de la contrasena). Sirve para comprobar con que rol se esta llamando a la API; guarda el id en la variable usuarioId."
+          }
+        },
+        {
+          "name": "Buscar usuario por email (ADMIN)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    pm.collectionVariables.set('usuarioId', pm.response.json().id);",
+                  "}",
+                  "pm.test('Status es 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/usuarios?email=postulante@rumbou.com",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "usuarios"
+              ],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "postulante@rumbou.com",
+                  "description": "Email exacto de la cuenta"
+                }
+              ]
+            },
+            "description": "Ubica una cuenta por su email para conocer su id (lo guarda en usuarioId) antes de cambiarle el rol. Requiere role=ADMIN; 404 si el email no existe."
+          }
+        },
+        {
+          "name": "Cambiar rol (ADMIN)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"ADMIN\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/usuarios/{{usuarioId}}/rol",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "usuarios",
+                "{{usuarioId}}",
+                "rol"
+              ]
+            },
+            "description": "Cambia el rol de la cuenta indicada (USER o ADMIN). Requiere role=ADMIN. Un admin no puede quitarse su propio rol (400), para que el sistema nunca se quede sin administradores. El usuario promovido debe volver a hacer login: el rol viaja dentro del JWT y su token anterior sigue diciendo USER."
           }
         }
       ]
