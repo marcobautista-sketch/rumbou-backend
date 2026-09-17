@@ -141,6 +141,12 @@ public class GeneradorPreguntasRunner implements ApplicationRunner {
         int generadas = 0;
         int rechazadas = 0;
         for (PreguntaGeneradaDto generada : generadasPorGemini) {
+            // El validador hace su propia llamada a Gemini (resolver()) por cada
+            // pregunta: sin pausa aca, un lote de 5 dispara 5 llamadas seguidas y
+            // el 429 vuelve aunque la pausa entre pares sea larga.
+            if (conPausa) {
+                pausar();
+            }
             var rechazo = validator.validar(generada);
             if (rechazo.isPresent()) {
                 rechazadas++;
