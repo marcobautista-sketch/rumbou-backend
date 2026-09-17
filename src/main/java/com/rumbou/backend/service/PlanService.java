@@ -2,6 +2,7 @@ package com.rumbou.backend.service;
 
 import com.rumbou.backend.entity.EstadoSuscripcion;
 import com.rumbou.backend.entity.Funcionalidad;
+import com.rumbou.backend.entity.Role;
 import com.rumbou.backend.entity.Suscripcion;
 import com.rumbou.backend.entity.UsoDiario;
 import com.rumbou.backend.entity.Usuario;
@@ -38,7 +39,13 @@ public class PlanService {
                 .orElse(false);
     }
 
+    // El ADMIN no tiene limites de plan: necesita probar todas las funciones
+    // (incluido el tutor de IA) sin pasar por Mercado Pago. Su uso se sigue
+    // registrando en registrarUso, solo se salta la verificacion.
     public void puedeAcceder(Usuario usuario, Funcionalidad funcionalidad) {
+        if (usuario.getRole() == Role.ADMIN) {
+            return;
+        }
         boolean pro = esPro(usuario.getId());
         switch (funcionalidad) {
             case TUTOR_IA -> {
