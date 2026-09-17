@@ -40,9 +40,8 @@ public class PreguntaService {
         this.planService = planService;
     }
 
-    // esAdmin fuerza aprobada=true para cualquiera que no sea administrador: un
-    // postulante no debe poder ver preguntas generadas por IA que todavia no
-    // pasaron revision humana.
+    // Quien no es admin solo ve aprobadas: una pregunta generada por IA no llega
+    // a un postulante sin revision humana.
     public Page<PreguntaResponse> buscar(Long temaId, Dificultad dificultad, OrigenPregunta origen,
                                           Boolean aprobada, Pageable pageable, boolean esAdmin) {
         Boolean aprobadaEfectiva = esAdmin ? aprobada : Boolean.TRUE;
@@ -65,8 +64,7 @@ public class PreguntaService {
         return aAdminResponse(pregunta);
     }
 
-    // Todo el lote en una sola transaccion: si un id no existe, se revierte
-    // completo y no queda un lote aprobado a medias.
+    // Todo el lote en una transaccion: un id inexistente revierte el lote completo.
     @Transactional
     public List<PreguntaAdminResponse> aprobarLote(AprobarLoteRequest request) {
         List<PreguntaAdminResponse> aprobadas = new ArrayList<>();
@@ -113,9 +111,8 @@ public class PreguntaService {
         return aAdminResponse(pregunta);
     }
 
-    // A diferencia de la explicacion estatica que cachea TutorIaExplicacionListener,
-    // esta es la consulta PRO real: se le pregunta a Gemini en el momento y se
-    // descuenta del cupo diario del usuario, sin cachear la respuesta en la Pregunta.
+    // Consulta PRO real: se pregunta a Gemini en el momento y se descuenta del cupo
+    // diario, sin cachear (la explicacion estatica la cachea TutorIaExplicacionListener).
     public TutorIaResponse pedirExplicacionTutorIa(Long id, Usuario usuario, boolean esAdmin) {
         Pregunta pregunta = obtenerEntidad(id);
         if (!esAdmin && !pregunta.isAprobada()) {

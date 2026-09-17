@@ -8,11 +8,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
 
-// Unico endpoint publico que no es de auth ni de webhooks. Sirve para dos cosas:
-// que la URL de produccion muestre algo vivo al abrirla, y como health check
-// de la plataforma de despliegue (Railway, y ECS cuando se migre a AWS): si
-// responde 200, el contenedor esta sano. No toca la base de datos a proposito,
-// para que una caida de Postgres no tumbe el contenedor entero.
+// Unico endpoint publico fuera de auth y webhooks: health check de la plataforma
+// de despliegue. No toca la base de datos a proposito.
 @RestController
 @RequestMapping("/api/v1/health")
 public class HealthController {

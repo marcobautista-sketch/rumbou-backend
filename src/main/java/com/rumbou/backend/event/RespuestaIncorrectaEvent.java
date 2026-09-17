@@ -1,8 +1,6 @@
 package com.rumbou.backend.event;
 
-// Asincrono (el listener futuro va con @Async + AFTER_COMMIT). Lo escucha
-// el modulo de Contenido para llamar al tutor de IA y generar/cachear la
-// explicacion de esta pregunta puntual.
+// Lo publica SimulacroService por cada respuesta incorrecta; lo escucha TutorIaExplicacionListener (asincrono).
 public record RespuestaIncorrectaEvent(
         Long respuestaUsuarioId,
         Long preguntaId,

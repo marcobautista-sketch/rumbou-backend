@@ -6,10 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-// No reemplaza la revision humana (aprobada siempre se guarda en false):
-// solo evita persistir preguntas obviamente mal formadas. Tiene dos niveles:
-// la validacion estructural (gratis, sin IA) y la de "resolver" (Gemini vuelve
-// a contestar la pregunta a ciegas y debe dar la misma clave).
+// No reemplaza la revision humana (aprobada queda en false): filtra preguntas mal
+// formadas y, con IA, las que Gemini no resuelve a ciegas con la misma clave.
 @Component
 public class GeminiPreguntaValidator {
 
@@ -44,7 +42,6 @@ public class GeminiPreguntaValidator {
         return Optional.empty();
     }
 
-    // Una pregunta suelta: estructura + una llamada a Gemini para resolverla.
     public Optional<String> validar(PreguntaGeneradaDto pregunta) {
         Optional<String> rechazoEstructural = validarEstructura(pregunta);
         if (rechazoEstructural.isPresent()) {
@@ -55,9 +52,8 @@ public class GeminiPreguntaValidator {
         return compararClave(pregunta, claveResuelta);
     }
 
-    // Un lote completo: estructura de cada una y UNA sola llamada a Gemini para
-    // resolver todas las que pasaron la estructura. Devuelve el motivo de
-    // rechazo por pregunta, en el mismo orden (Optional.empty() = valida).
+    // Estructura de cada una y UNA llamada a Gemini para resolver todas. Devuelve
+    // el motivo de rechazo por pregunta, en el mismo orden (Optional.empty() = valida).
     public List<Optional<String>> validarLote(List<PreguntaGeneradaDto> preguntas) {
         List<Optional<String>> rechazos = new ArrayList<>();
         List<Integer> posicionesAResolver = new ArrayList<>();

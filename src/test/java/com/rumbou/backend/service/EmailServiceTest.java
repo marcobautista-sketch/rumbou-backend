@@ -19,7 +19,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-// JUnit puro con Mockito: el JavaMailSender se simula (no enviamos correos reales).
 class EmailServiceTest {
 
     private JavaMailSender mailSender;

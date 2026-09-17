@@ -30,8 +30,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// Mismo esquema que PreguntaControllerTest: @WebMvcTest no carga SecurityConfig,
-// asi que @EnableMethodSecurity se agrega aparte para que @PreAuthorize funcione.
+// @WebMvcTest no carga SecurityConfig: @EnableMethodSecurity se agrega aparte para que @PreAuthorize funcione.
 @WebMvcTest(UsuarioController.class)
 @Import(UsuarioControllerTest.MethodSecurityTestConfig.class)
 class UsuarioControllerTest {

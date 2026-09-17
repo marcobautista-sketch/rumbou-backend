@@ -21,8 +21,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-// JUnit puro con Mockito, igual que AuthServiceTest: el repositorio y el
-// encoder se simulan, no hace falta levantar Spring.
 class UsuarioServiceTest {
 
     private UsuarioRepository usuarioRepository;

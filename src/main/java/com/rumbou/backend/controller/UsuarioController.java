@@ -26,7 +26,6 @@ public class UsuarioController {
         this.usuarioService = usuarioService;
     }
 
-    // Quien soy: id, email, nombre y rol de la cuenta del token.
     @GetMapping("/me")
     public ResponseEntity<UsuarioResponse> me(@AuthenticationPrincipal Usuario usuario) {
         return ResponseEntity.ok(UsuarioResponse.de(usuario));

@@ -6,9 +6,8 @@ import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
 
-// El "recibo" de una notificacion de Mercado Pago ya procesada.
-// paymentId unico = la llave de idempotencia: si MP reenvia la misma
-// notificacion, existsByPaymentId() la detecta y no se procesa dos veces.
+// Notificacion de Mercado Pago ya procesada. paymentId es la llave de
+// idempotencia: un reenvio de MP se detecta y no se procesa dos veces.
 @Entity
 @Table(name = "pagos_webhook")
 public class PagoWebhook extends BaseEntity {
@@ -34,5 +33,4 @@ public class PagoWebhook extends BaseEntity {
         this.recibidoEn = LocalDateTime.now();
     }
 
-    // getters y setters para los 4 campos (BaseEntity ya da el id)
 }

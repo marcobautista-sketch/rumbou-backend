@@ -22,12 +22,8 @@ import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// @WebMvcTest solo levanta la capa web (controller + validacion), no carga
-// SecurityConfig ni la base de datos: aqui probamos que los DTOs invalidos
-// se rechacen con 400 y que el controller llame al service correctamente.
-// addFilters = false desactiva los filtros de seguridad (incluido CSRF) en
-// este slice: la seguridad real de /api/v1/auth/** (publica) ya esta
-// definida en SecurityConfig y no es lo que estamos probando aqui.
+// @WebMvcTest: solo capa web, sin SecurityConfig ni BD. addFilters=false apaga los
+// filtros (incluido CSRF): la seguridad de /api/v1/auth/** no es lo que se prueba aqui.
 @WebMvcTest(AuthController.class)
 @AutoConfigureMockMvc(addFilters = false)
 class AuthControllerTest {
@@ -41,11 +37,7 @@ class AuthControllerTest {
     @MockBean
     private AuthService authService;
 
-    // JwtAuthenticationFilter es un @Component (implementa Filter), asi que
-    // Spring lo instancia igual al armar el contexto aunque el slice sea
-    // solo de este controller: sin estos mocks no puede construirse (le
-    // faltan sus propias dependencias). addFilters=false ya evita que se
-    // ejecute contra las requests, pero el bean igual debe poder crearse.
+    // JwtAuthenticationFilter se instancia igual en el slice: necesita sus dependencias aunque no se ejecute.
     @MockBean
     private JwtService jwtService;
 

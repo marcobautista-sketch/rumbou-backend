@@ -15,7 +15,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-// JUnit puro con Mockito: valida la idempotencia y la publicacion del evento.
 class WebhookServiceTest {
 
     private PagoWebhookRepository pagoWebhookRepository;

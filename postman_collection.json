@@ -720,7 +720,7 @@
                 "tutor-ia"
               ]
             },
-            "description": "Explicacion personalizada de la pregunta generada con Gemini. Exclusiva del plan PRO, con tope de 30 consultas al dia controlado por PlanService (403 si el usuario es gratuito o supero el limite). Requiere GEMINI_API_KEY configurada en el servidor; si el proveedor falla responde 502 sin descontar cupo. Un usuario no-admin solo puede consultar preguntas aprobadas."
+            "description": "Explicacion personalizada de la pregunta generada con Gemini. Exclusiva del plan PRO (el rol ADMIN tambien puede usarla), con tope de 30 consultas al dia controlado por PlanService (403 si el usuario es gratuito o supero el limite). Requiere GEMINI_API_KEY configurada en el servidor; si el proveedor falla responde 502 sin descontar cupo. Un usuario no-admin solo puede consultar preguntas aprobadas."
           },
           "event": [
             {

@@ -47,9 +47,8 @@ public class UsuarioService {
         return UsuarioResponse.de(usuarioRepository.save(usuario));
     }
 
-    // Garantiza que exista un administrador con ese email. Si la cuenta ya
-    // existe solo se promueve (su contrasena se respeta); si no existe se crea
-    // con la contrasena indicada. Lo usa AdminBootstrapRunner al arrancar.
+    // Si la cuenta existe solo se promueve (su contrasena se respeta); si no,
+    // se crea. Lo usa AdminBootstrapRunner al arrancar.
     @Transactional
     public void asegurarAdmin(String email, String password, String nombre) {
         Usuario existente = usuarioRepository.findByEmail(email).orElse(null);

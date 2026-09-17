@@ -110,14 +110,12 @@ public class AuthService {
         );
     }
 
-    // No lanza excepcion si el email no existe: si respondieramos distinto en
-    // ese caso, cualquiera podria usar este endpoint para averiguar que
-    // emails estan registrados.
+    // Responde igual exista o no el email: si no, el endpoint serviria para
+    // averiguar que correos estan registrados.
     @Transactional
     public void forgotPassword(String email) {
         usuarioRepository.findByEmail(email).ifPresent(usuario -> {
-            // Pedir un reseteo nuevo invalida los anteriores: si no, cada
-            // solicitud dejaria otro token vivo hasta que expire por su cuenta.
+            // Un reseteo nuevo invalida los anteriores para no dejar tokens vivos de mas.
             invalidarTokensVigentesDe(usuario);
 
             String token = UUID.randomUUID().toString();

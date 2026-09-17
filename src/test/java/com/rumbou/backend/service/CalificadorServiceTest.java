@@ -13,14 +13,11 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
-// JUnit puro, sin Spring: el CalificadorService no necesita base de datos
-// ni contexto de Spring para probarse, porque es una funcion pura sobre datos.
 class CalificadorServiceTest {
 
     private final CalificadorService calificadorService = new CalificadorService();
 
-    // blancos no participa en el calculo (no suma ni resta), pero se deja
-    // en la firma para dejar explicito que el test los tuvo en cuenta.
+    // blancos no participa en el calculo; queda en la firma para dejar explicito que se tuvo en cuenta.
     static Stream<Arguments> esquemasReales() {
         return Stream.of(
                 Arguments.of(6.0, 1.20, 80, 15, 5, 462.0),      // UNI, prueba de Aptitud

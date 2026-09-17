@@ -60,8 +60,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // En desarrollo permitimos cualquier origen. Antes de desplegar a produccion,
-        // esto se debe restringir al dominio real del frontend/cliente.
+        // Abierto en desarrollo; restringir al dominio real del cliente antes de produccion.
         configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));

@@ -3,8 +3,7 @@ package com.rumbou.backend.dto.request;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
-// Lo que Mercado Pago envia al webhook (version simplificada para el curso;
-// en produccion se mapea la notificacion real de MP a estos campos).
+// Version simplificada de la notificacion de Mercado Pago.
 public record WebhookNotificationRequest(
         @NotBlank String action,
         @NotNull Long paymentId,

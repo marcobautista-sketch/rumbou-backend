@@ -23,8 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-// Cliente para la API de Gemini (Google AI Studio). No agrega dependencia nueva:
-// usa java.net.http.HttpClient y Jackson, que ya vienen con Spring Boot.
+// Cliente HTTP de Gemini con java.net.http y Jackson: sin dependencias nuevas.
 @Component
 public class GeminiClient {
 
@@ -32,17 +31,12 @@ public class GeminiClient {
 
     private static final String API_BASE = "https://generativelanguage.googleapis.com/v1beta/models/";
 
-    // 429 (limite de cuota), 503 (modelo saturado) y un timeout de red son
-    // transitorios, no errores reales. La cuota gratuita se mide POR MINUTO, asi
-    // que la espera tiene que ser larga (30 s, 60 s, 90 s): con 2 o 4 segundos el
-    // reintento cae dentro del mismo minuto y vuelve a fallar. Si Gemini manda
-    // Retry-After, se respeta ese valor.
+    // 429, 503 y timeout son transitorios. La cuota se mide por minuto, asi que
+    // la espera debe ser larga (30/60/90 s) o el reintento cae en el mismo minuto.
     private static final int MAX_INTENTOS_TRANSITORIO = 4;
     private static final Duration ESPERA_BASE_TRANSITORIO = Duration.ofSeconds(30);
 
-    // El JSON malformado (forma que no calza con PreguntaGeneradaDto) es raro con
-    // responseSchema, pero cuando pasa no vale la pena perder todo el lote: se
-    // reintenta la llamada completa una vez antes de darse por vencido.
+    // Un JSON que no calza con el DTO es raro con responseSchema; se reintenta una vez.
     private static final int MAX_INTENTOS_JSON_LOTE = 2;
 
     private final String apiKey;
@@ -50,8 +44,7 @@ public class GeminiClient {
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
 
-    // El modelo es configurable (GEMINI_MODEL) porque Google los va retirando y
-    // no todas las keys gratuitas ven los mismos: asi se cambia sin recompilar.
+    // Configurable (GEMINI_MODEL): Google retira modelos y no todas las keys ven los mismos.
     public GeminiClient(@Value("${gemini.api-key:}") String apiKey,
                         @Value("${gemini.model:gemini-3.6-flash}") String model) {
         this.apiKey = apiKey;
@@ -62,11 +55,7 @@ public class GeminiClient {
         this.objectMapper = new ObjectMapper();
     }
 
-    // Pide las "cantidad" preguntas de un tema+dificultad en una sola llamada (un
-    // arreglo JSON), en vez de una llamada por pregunta: para el generador en
-    // lote eso es la diferencia entre 22 temas x 3 dificultades = 66 llamadas o
-    // 330. minItems/maxItems en el schema hacen que Gemini devuelva exactamente
-    // "cantidad" elementos.
+    // Las "cantidad" preguntas del par en una sola llamada; minItems/maxItems fijan el tamano.
     public List<PreguntaGeneradaDto> generarPreguntas(String temaNombre, String temario, Dificultad dificultad,
                                                         int cantidad) {
         String temarioTexto = (temario == null || temario.isBlank())
@@ -123,12 +112,8 @@ public class GeminiClient {
         }
     }
 
-    // Version "por tema": UNA llamada pide las preguntas de las tres dificultades
-    // a la vez (por ejemplo 5 + 5 + 5). Existe porque la cuota gratuita de Gemini
-    // es de unas 20 llamadas POR DIA por modelo: con una llamada por dificultad
-    // (66) no alcanza; con una por tema (22) si. "cantidades" dice cuantas
-    // preguntas se quieren de cada dificultad; las que ya estan completas no se
-    // piden. El resultado viene agrupado por dificultad.
+    // Una llamada por tema con las tres dificultades a la vez (la cuota diaria
+    // gratuita no alcanza para una por dificultad). Devuelve agrupado por dificultad.
     public Map<Dificultad, List<PreguntaGeneradaDto>> generarPreguntasPorTema(String temaNombre, String temario,
                                                                               Map<Dificultad, Integer> cantidades) {
         int total = cantidades.values().stream().mapToInt(Integer::intValue).sum();
@@ -211,8 +196,7 @@ public class GeminiClient {
         }
     }
 
-    // Segunda llamada de validacion: no le decimos cual es la clave, y comparamos
-    // su respuesta contra claveCorrecta en GeminiPreguntaValidator.
+    // Validacion: no se le da la clave; la respuesta se compara en GeminiPreguntaValidator.
     public int resolver(String enunciado, java.util.List<String> alternativas) {
         StringBuilder prompt = new StringBuilder("Resuelve la siguiente pregunta de opcion multiple ");
         prompt.append("y responde unicamente con el indice (0 a 4) de la alternativa correcta.\n\n");
@@ -230,10 +214,7 @@ public class GeminiClient {
         return respuesta.path("claveElegida").asInt(-1);
     }
 
-    // Version en lote de resolver(): UNA llamada para las N preguntas de un
-    // tema+dificultad. Es lo que hace viable el generador --todos con la cuota
-    // gratuita: validar de a una duplicaba (x5) las llamadas de generacion.
-    // Devuelve la clave elegida por pregunta, en el mismo orden (-1 si no vino).
+    // resolver() en lote: una llamada para las N preguntas; clave por pregunta en orden (-1 si falta).
     public List<Integer> resolverLote(List<PreguntaGeneradaDto> preguntas) {
         StringBuilder prompt = new StringBuilder("Resuelve cada una de las siguientes preguntas de opcion multiple. ");
         prompt.append("Para cada pregunta responde unicamente con el indice (0 a 4) de la alternativa correcta, ");
@@ -323,11 +304,8 @@ public class GeminiClient {
         return leerJson(textoJson);
     }
 
-    // 429 (limite de cuota), 503 (modelo saturado, "high demand") y el timeout
-    // de red (HttpTimeoutException) son transitorios y se reintentan con espera
-    // creciente; cualquier otro codigo distinto de 200, u otro error de red, se
-    // trata como fallo definitivo. while(true) en vez de un for: asi el mensaje
-    // de "agoto los intentos" es alcanzable de verdad.
+    // 429, 503 y timeout se reintentan con espera creciente; cualquier otro
+    // fallo es definitivo.
     private HttpResponse<String> enviarConReintento(HttpRequest request) {
         int intento = 1;
         while (true) {
@@ -382,8 +360,7 @@ public class GeminiClient {
         }
     }
 
-    // Si el servidor dijo cuanto esperar (Retry-After), eso manda; si no,
-    // espera creciente: 30 s, 60 s, 90 s.
+    // Retry-After manda si vino; si no, 30 s, 60 s, 90 s.
     private void esperarAntesDeReintentar(int intento, Optional<Duration> retryAfter) {
         Duration espera = retryAfter.orElse(ESPERA_BASE_TRANSITORIO.multipliedBy(intento));
         try {
