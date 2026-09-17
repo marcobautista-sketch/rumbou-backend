@@ -73,24 +73,28 @@ Estas reglas existen porque el proyecto ya fue diseñado. Romperlas obliga a ref
 
 ## Estructura de paquetes
 
-Organización por funcionalidad, no por capa. Esto es deliberado: cada persona trabaja dentro de su propio paquete y los conflictos de merge en Git se reducen al mínimo.
+Organización **por capas**, como pide el curso (cambio hecho el 17 de septiembre a pedido del profesor; antes era por módulo funcional). Cada carpeta contiene un solo tipo de componente:
 
 ```
 com.rumbou.backend
-  config/          AsyncConfig, SecurityConfig, SeedLoader
-  shared/          BaseEntity, excepciones, GlobalExceptionHandler, DTOs comunes
-  auth/            Usuario, JWT, login y registro
-  academico/       Universidad, Carrera, OfertaAcademica,
-                   EsquemaCalificacion, EstructuraExamen, Tema
-                   (+ Area solo en escenario B)
-  contenido/       Pregunta, generación y validación del banco
-  examen/          Simulacro, RespuestaUsuario, CalificadorService, eventos
-  progreso/        cálculo de PSP, IP y dominio por tema
-  suscripcion/     Suscripcion, UsoDiario, PlanService, integración Mercado Pago
-  gamificacion/    Logro, UsuarioLogro, listeners de racha y XP
+  config/          AsyncConfig, SchedulingConfig, SecurityConfig
+  controller/      un controller por recurso REST (/api/v1/...)
+  dto/request/     lo que entra a la API (con Bean Validation)
+  dto/response/    lo que sale de la API (nunca entidades)
+  entity/          entidades JPA y sus enums (Role, Dificultad, TipoSimulacro, ...)
+  exception/       excepciones propias + GlobalExceptionHandler
+  repository/      interfaces Spring Data JPA
+  security/        JwtService, JwtAuthenticationFilter, UserDetailsServiceImpl, entry point
+  service/         lógica de negocio (AuthService, SimulacroService, PlanService, EmailService, ...)
+  event/           eventos de dominio (records)
+  listener/        oyentes de esos eventos (@EventListener / @TransactionalEventListener)
+  seed/            runners de carga del catálogo desde CSV (profile "seed") + ArchivoSeed
+  client/gemini/   cliente de Gemini, validador y generador/exportador de preguntas
+  client/mercadopago/  cliente de Mercado Pago
+  scheduler/       tareas @Scheduled
 ```
 
-**Nadie edita el paquete de otro sin avisar.** `config/` y `shared/` son territorio común y se tocan solo con acuerdo previo.
+Cómo se reparte el trabajo ahora que las carpetas son compartidas: **cada persona sigue siendo dueña de sus clases** (las de su módulo: auth/examen → Marco, contenido → Fabiana, academico/progreso → Juan Carlos, suscripcion/gamificacion/correo → Zoe), estén en la carpeta que estén. Antes de editar una clase ajena, se avisa. Una funcionalidad nueva se crea en las capas que le tocan: entidad en `entity/`, repositorio en `repository/`, servicio en `service/`, DTOs en `dto/`, controller en `controller/`.
 
 ---
 

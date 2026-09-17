@@ -63,13 +63,13 @@ Ninguna credencial real vive en el repositorio. Las que ya usa el código:
 
 | Variable | La usa | Obligatoria en |
 |---|---|---|
-| `JWT_SECRET` | `auth/JwtService`, para firmar los tokens | Producción (en local tiene un valor de desarrollo por defecto en `application.properties`) |
+| `JWT_SECRET` | `security/JwtService`, para firmar los tokens | Producción (en local tiene un valor de desarrollo por defecto en `application.properties`) |
 | `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` | Conexión a PostgreSQL | Producción (en local apuntan por defecto al Postgres del `docker-compose`) |
 | `PORT` | Puerto HTTP; lo inyecta la plataforma de despliegue | Producción (en local, 8080) |
 | `SHOW_SQL` | Imprime el SQL de Hibernate en el log | Opcional (`true` por defecto; en producción se pone `false`) |
-| `GEMINI_API_KEY` | `contenido/gemini/GeneradorPreguntasRunner` y el tutor de IA del plan PRO | Al generar preguntas con IA y al usar el tutor |
-| `MP_ACCESS_TOKEN` | `suscripcion/MercadoPagoService`, para crear la preaprobación de pago | Al crear suscripciones PRO |
-| `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD` | `correo/EmailService` (SMTP) | Al enviar correos reales (en local apunta a `localhost:1025`, por ejemplo Mailpit o Mailtrap) |
+| `GEMINI_API_KEY` | `client/gemini/GeneradorPreguntasRunner` y el tutor de IA del plan PRO | Al generar preguntas con IA y al usar el tutor |
+| `MP_ACCESS_TOKEN` | `client/mercadopago/MercadoPagoService`, para crear la preaprobación de pago | Al crear suscripciones PRO |
+| `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD` | `service/EmailService` (SMTP) | Al enviar correos reales (en local apunta a `localhost:1025`, por ejemplo Mailpit o Mailtrap) |
 
 Todas siguen el mismo patrón: variable de entorno con valor por defecto vacío o de desarrollo, nunca commiteadas. La aplicación arranca aunque falten las de Gemini, Mercado Pago y correo; esas funcionalidades fallan de forma controlada (`ExternalServiceException` → 502) hasta que se configuran.
 
@@ -144,15 +144,13 @@ El acceso a una preparación de calidad y personalizada suele estar limitado a q
 - ✅ Gamificación: racha diaria y XP actualizados al finalizar un simulacro, catálogo de logros.
 - ✅ Tutor de IA del plan PRO: explicación personalizada con Gemini, con tope diario controlado por `PlanService`.
 - ✅ Catálogo académico: modelo completo y **seed reproducible** desde CSV con los datos oficiales de UNI y UNMSM (esquemas de calificación, 22 temas con temario y estructura del examen).
-- ✅ Suscripción PRO: `PlanService` como puerta única de límites, creación de la preaprobación en Mercado Pago, webhook con idempotencia (tabla `pagos_webhook`) y activación del plan por evento.
+- ✅ Suscripción PRO: `PlanService` como puerta única de límites (aplicados al tutor de IA y al inicio de simulacros), creación de la preaprobación en Mercado Pago, webhook con idempotencia (tabla `pagos_webhook`) y activación del plan por evento.
 - ✅ Correo transaccional asíncrono con plantillas Thymeleaf: confirmación de registro, recuperación de contraseña y pago aprobado, disparados por eventos.
 - ✅ Deployment en Railway con PostgreSQL en la nube, contenedor Docker y despliegue continuo desde `main`.
 
 **En desarrollo activo:**
-- 🔧 Segunda parte del seed: carreras y ofertas académicas (puntaje del último ingresante) y las áreas A, D y E de UNMSM.
 - 🔧 Banco de preguntas real, generado por tema a partir del temario cargado y aprobado por un humano.
-- 🔧 Cálculo de progreso (`progreso/`): Índice de Progreso (IP) respecto al puntaje de corte y dominio por tema.
-- 🔧 Conectar el chequeo de límites de `PlanService` al inicio de simulacros (hoy solo protege al tutor de IA).
+- 🔧 Cálculo de progreso: Índice de Progreso (IP) respecto al puntaje de corte y dominio por tema.
 
 ### Tecnologías utilizadas
 
@@ -162,14 +160,34 @@ El acceso a una preparación de calidad y personalizada suele estar limitado a q
 - JUnit 5, Mockito, TestContainers, MockMvc
 - GitHub Actions (CI)
 - Mercado Pago (pagos) y Google AI Studio / Gemini (generación de preguntas) como integraciones externas
-- Proveedor de correo transaccional: por definir entre JavaMailSender/SMTP o un servicio como Resend, en el marco del módulo `suscripcion/`
+- JavaMailSender (SMTP) con plantillas Thymeleaf para el correo transaccional
 - Postman (documentación y prueba de la API — ver `postman_collection.json` en la raíz)
+
+### Organización del código
+
+El código está organizado **por capas**, siguiendo la convención del curso: cada carpeta contiene un solo tipo de componente, y la petición atraviesa las capas en orden (controller → service → repository → entity).
+
+```
+com.rumbou.backend
+  config/        configuración de Spring (seguridad, @Async, @Scheduled)
+  controller/    endpoints REST (/api/v1/...)
+  dto/           request/ y response/: lo que entra y sale de la API, nunca entidades
+  entity/        las 17 entidades JPA y sus enums
+  exception/     excepciones propias y el GlobalExceptionHandler
+  repository/    interfaces Spring Data JPA
+  security/      JWT: filtro, servicio de tokens y UserDetailsService
+  service/       lógica de negocio
+  event/         eventos de dominio; listener/ sus oyentes
+  seed/          carga idempotente del catálogo desde CSV (profile seed)
+  client/        integraciones externas: Gemini (IA) y Mercado Pago
+  scheduler/     tareas programadas
+```
 
 ---
 
 ## Modelo de entidades
 
-16 entidades en total (la rúbrica pide más de 6), organizadas por paquete funcional. Relaciones principales:
+17 entidades en total (la rúbrica pide más de 6), todas en `entity/`; aquí se agrupan por el módulo funcional al que sirven. Relaciones principales:
 
 ```mermaid
 erDiagram
@@ -196,19 +214,19 @@ erDiagram
     Logro ||--o{ UsuarioLogro : otorga
 ```
 
-| Entidad | Paquete | Qué representa |
+| Entidad | Módulo | Qué representa |
 |---|---|---|
-| `Usuario` | `auth/` | Cuenta del postulante, con rol, racha, XP y control de concurrencia optimista (`@Version`) |
-| `PasswordResetToken` | `auth/` | Token de un solo uso para resetear contraseña (30 min de vigencia) |
-| `Universidad`, `Area`, `Carrera` | `academico/` | Catálogo base |
-| `OfertaAcademica` | `academico/` | Relación M:N con atributos entre universidad, carrera y área: guarda el puntaje del último ingresante por proceso |
-| `EsquemaCalificacion` | `academico/` | El valor de acierto, penalidad y puntaje máximo de un bloque del examen — nunca hardcodeado |
-| `Tema` | `academico/` | Tema de conocimiento, con su temario oficial (usado por el generador de preguntas con IA) |
-| `EstructuraExamen` | `academico/` | Cuántas preguntas de cada tema entran en cada área, y con qué esquema se califican |
-| `Pregunta` | `contenido/` | Pertenece a un Tema, nunca a una universidad — el mismo banco sirve para UNI y UNMSM |
-| `Simulacro`, `RespuestaUsuario` | `examen/` | Relación M:N con atributos: cada respuesta guarda su puntaje aportado, que puede ser negativo |
-| `Suscripcion`, `UsoDiario` | `suscripcion/` | Plan del usuario y contadores de uso diario, con `@Version` por ser una condición de carrera real |
-| `Logro`, `UsuarioLogro` | `gamificacion/` | Catálogo de logros y cuáles desbloqueó cada usuario |
+| `Usuario` | Autenticación | Cuenta del postulante, con rol, racha, XP y control de concurrencia optimista (`@Version`) |
+| `PasswordResetToken` | Autenticación | Token de un solo uso para resetear contraseña (30 min de vigencia) |
+| `Universidad`, `Area`, `Carrera` | Académico | Catálogo base |
+| `OfertaAcademica` | Académico | Relación M:N con atributos entre universidad, carrera y área: guarda el puntaje del último ingresante por proceso |
+| `EsquemaCalificacion` | Académico | El valor de acierto, penalidad y puntaje máximo de un bloque del examen — nunca hardcodeado |
+| `Tema` | Académico | Tema de conocimiento, con su temario oficial (usado por el generador de preguntas con IA) |
+| `EstructuraExamen` | Académico | Cuántas preguntas de cada tema entran en cada área, y con qué esquema se califican |
+| `Pregunta` | Contenido | Pertenece a un Tema, nunca a una universidad — el mismo banco sirve para UNI y UNMSM |
+| `Simulacro`, `RespuestaUsuario` | Examen | Relación M:N con atributos: cada respuesta guarda su puntaje aportado, que puede ser negativo |
+| `Suscripcion`, `UsoDiario`, `PagoWebhook` | Suscripción | Plan del usuario y contadores de uso diario, con `@Version` por ser una condición de carrera real |
+| `Logro`, `UsuarioLogro` | Gamificación | Catálogo de logros y cuáles desbloqueó cada usuario |
 
 ---
 
@@ -258,13 +276,13 @@ Los módulos no se llaman directamente entre sí: se comunican publicando evento
 
 | Evento | Publica | Escucha | Modo |
 |---|---|---|---|
-| `SimulacroFinalizadoEvent` | `examen/` al finalizar un simulacro | `gamificacion/` (racha y XP) | Síncrono, misma transacción |
-| `RespuestaIncorrectaEvent` | `examen/` por cada respuesta incorrecta | `contenido/` (tutor de IA, cachea una explicación) | `@Async` + `@TransactionalEventListener(AFTER_COMMIT)` |
-| `PagoAprobadoEvent` | `suscripcion/` (webhook de Mercado Pago) | `suscripcion/` (activa el plan) y `correo/` (correo de pago aprobado) | `@TransactionalEventListener(AFTER_COMMIT)` |
-| `PasswordResetRequestedEvent` | `auth/` al pedir recuperar contraseña | `correo/` (correo con el enlace de recuperación) | `@TransactionalEventListener(AFTER_COMMIT)` |
-| `UsuarioRegistradoEvent` | `auth/` al registrarse | `correo/` (correo de bienvenida) | `@TransactionalEventListener(AFTER_COMMIT)` |
+| `SimulacroFinalizadoEvent` | `SimulacroService` al finalizar un simulacro | `GamificacionListener` (racha, XP y logros) | Síncrono, misma transacción |
+| `RespuestaIncorrectaEvent` | `SimulacroService` por cada respuesta incorrecta | `TutorIaExplicacionListener` (tutor de IA, cachea una explicación) | `@Async` + `@TransactionalEventListener(AFTER_COMMIT)` |
+| `PagoAprobadoEvent` | `WebhookService` (webhook de Mercado Pago) | `SuscripcionActivacionListener` (activa el plan) y `PagoAprobadoCorreoListener` (correo) | `@TransactionalEventListener(AFTER_COMMIT)` |
+| `PasswordResetRequestedEvent` | `AuthService` al pedir recuperar contraseña | `RecuperacionContrasenaCorreoListener` (correo con el enlace) | `@TransactionalEventListener(AFTER_COMMIT)` |
+| `UsuarioRegistradoEvent` | `AuthService` al registrarse | `RegistroConfirmacionListener` (correo de bienvenida) | `@TransactionalEventListener(AFTER_COMMIT)` |
 
-Los dos últimos ya se publican correctamente; solo falta que el servicio de correo los escuche para completar el flujo de punta a punta.
+Los eventos viven en `event/` y sus oyentes en `listener/`; además, `scheduler/SuscripcionVencimientoJob` marca cada día las suscripciones vencidas con `@Scheduled`.
 
 ---
 
@@ -293,7 +311,7 @@ El núcleo compartido, la autenticación completa (incluida recuperación de con
 ### Trabajo futuro
 
 - Completar el seed con carreras y ofertas académicas (puntaje del último ingresante) y llevar el banco de preguntas a su meta de cobertura por tema.
-- Completar el paquete `progreso/` (IP, dominio por tema) y conectar los límites del plan al inicio de simulacros.
+- Completar el cálculo de progreso (IP, dominio por tema) con sus endpoints.
 - Migrar el despliegue de Railway a AWS (misma imagen Docker, base RDS) si el curso entrega el acceso a la cuenta; restringir CORS al dominio del futuro frontend.
 - Ampliar la gamificación con ligas semanales, marcada como opcional desde el diseño original.
 
