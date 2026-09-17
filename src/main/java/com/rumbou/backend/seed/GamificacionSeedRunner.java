@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +17,10 @@ import java.util.List;
 // Siembra el catalogo de logros desde src/main/resources/seed/logros.csv.
 // Mismo patron del equipo que AcademicoSeedRunner: @Profile("seed"), una sola
 // transaccion, idempotente por clave natural (nombre), sin data.sql.
+// Sin @Order, Spring no garantiza en que orden corren los runners: en una base
+// vacia el seed de preguntas llego a correr antes que el de temas y fallo.
+// Despues del catalogo academico.
+@Order(2)
 @Component
 @Profile("seed")
 public class GamificacionSeedRunner implements CommandLineRunner {
