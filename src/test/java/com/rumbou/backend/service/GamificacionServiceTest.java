@@ -9,8 +9,6 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-// JUnit puro, sin Spring: la funcion de racha es pura (no toca base de datos),
-// igual que el CalificadorService se prueba con parametros.
 class GamificacionServiceTest {
 
     private final GamificacionService gamificacionService = new GamificacionService(null, null, null);

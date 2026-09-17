@@ -18,7 +18,7 @@ public class MercadoPagoService {
     private static final BigDecimal MONTO_PRO_SOLES = new BigDecimal("39");
     private static final String MONEDA_PERU = "PEN";
 
-    // La llave de acceso vive SOLO en la variable de entorno MP_ACCESS_TOKEN (regla 9).
+    // El token vive solo en la variable de entorno MP_ACCESS_TOKEN.
     @Value("${MP_ACCESS_TOKEN:}")
     private String accessToken;
 
@@ -32,9 +32,9 @@ public class MercadoPagoService {
         MercadoPagoConfig.setAccessToken(accessToken);
 
         PreApprovalAutoRecurringCreateRequest autoRecurring = PreApprovalAutoRecurringCreateRequest.builder()
-                .frequency(1)                    // cada 1...
-                .frequencyType("months")         // ...mes
-                .transactionAmount(MONTO_PRO_SOLES)   // S/39 (regla de negocio, no del examen)
+                .frequency(1)
+                .frequencyType("months")
+                .transactionAmount(MONTO_PRO_SOLES)
                 .currencyId(MONEDA_PERU)
                 .build();
 
@@ -50,7 +50,7 @@ public class MercadoPagoService {
             return new ResultadoPreaprobacion(
                     preapproval.getId(),
                     externalReference,
-                    preapproval.getInitPoint()  // el link donde el usuario paga
+                    preapproval.getInitPoint()
             );
         } catch (MPException | MPApiException e) {
             throw new IllegalStateException("No se pudo crear la preaprobacion en Mercado Pago: " + e.getMessage(), e);

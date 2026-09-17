@@ -13,10 +13,8 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.time.LocalDateTime;
 
-// Sin esto, Spring Security responde 403 (Forbidden) para cualquier request
-// sin autenticar, incluso cuando lo correcto es 401 (Unauthorized: "no dijiste
-// quien eres"). Este componente intercepta ese caso y devuelve el mismo
-// formato de ErrorResponse que usa el resto de la aplicacion.
+// Sin esto Spring Security responde 403 a un request sin autenticar; lo correcto
+// es 401, con el mismo ErrorResponse del resto de la API.
 @Component
 public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
 

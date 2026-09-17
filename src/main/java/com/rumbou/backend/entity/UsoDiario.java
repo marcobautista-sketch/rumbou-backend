@@ -31,7 +31,6 @@ public class UsoDiario extends BaseEntity {
         this.fecha = fecha;
     }
 
-    // getters y setters para usuario, fecha y los 3 contadores (version no necesita setter)
     public Usuario getUsuario() { return usuario; }
     public void setUsuario(Usuario usuario) { this.usuario = usuario; }
 

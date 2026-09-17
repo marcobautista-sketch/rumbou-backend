@@ -6,8 +6,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 
-// Un Logro es una "medalla" definida una sola vez en el catalogo.
-// El valor exacto para desbloquearlo vive en valorRequerido (ej. RACHA_DIAS = 7).
+// Definicion de un logro; el valor para desbloquearlo esta en valorRequerido.
 @Entity
 @Table(name = "logros")
 public class Logro extends BaseEntity {

@@ -9,9 +9,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
-// Los mismos controles que corre ContenidoSeedRunner, pero como test JUnit puro:
-// si alguien edita preguntas.csv a mano y lo deja mal formado, esto falla antes
-// de que falle el seed en produccion.
+// Los controles de ContenidoSeedRunner como test: un preguntas.csv mal formado falla aqui, no en produccion.
 class PreguntasSeedConsistenciaTest {
 
     @Test

@@ -54,9 +54,8 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.FORBIDDEN, ex.getMessage(), request);
     }
 
-    // AccessDeniedException (y su subclase AuthorizationDeniedException, que lanza
-    // @PreAuthorize cuando el rol no alcanza) hay que capturarla explicitamente aqui:
-    // si no, cae en el handler generico de abajo y responde 500 en vez de 403.
+    // Sin este handler, AccessDeniedException (lo que lanza @PreAuthorize) caeria
+    // en el generico y responderia 500 en vez de 403.
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex,
                                                                HttpServletRequest request) {
@@ -78,8 +77,7 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.BAD_REQUEST, "El cuerpo de la solicitud no es un JSON valido", request);
     }
 
-    // 502, no 500: el error viene de un tercero (Gemini, etc), no de un bug nuestro.
-    // No se expone ex.getMessage() porque puede traer el cuerpo crudo de la respuesta del proveedor.
+    // 502: el error viene de un tercero. No se expone ex.getMessage(): puede traer la respuesta cruda del proveedor.
     @ExceptionHandler(ExternalServiceException.class)
     public ResponseEntity<ErrorResponse> handleExternalService(ExternalServiceException ex,
                                                                   HttpServletRequest request) {

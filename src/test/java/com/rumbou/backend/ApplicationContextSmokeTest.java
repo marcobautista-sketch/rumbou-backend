@@ -14,14 +14,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// Prueba de humo: levanta la aplicacion COMPLETA, igual que al ejecutarla de
-// verdad. Los demas tests usan rebanadas (@WebMvcTest, @DataJpaTest) o mocks,
-// asi que ninguno detecta errores de configuracion de beans: el CI puede estar
-// en verde con una aplicacion que no arranca. Ya nos paso una vez con un
-// listener mal anotado, y por eso existe este test.
-//
-// No hereda de AbstractContainerBaseTest porque esa clase es @DataJpaTest,
-// incompatible con @SpringBootTest: necesita su propio contenedor.
+// Prueba de humo: levanta la aplicacion completa. Los tests por rebanada no
+// detectan errores de configuracion de beans. No hereda de AbstractContainerBaseTest
+// (@DataJpaTest) porque es incompatible con @SpringBootTest.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Testcontainers
@@ -49,12 +44,9 @@ class ApplicationContextSmokeTest {
 
     @Test
     void laAplicacionLevantaConTodosSusBeans() {
-        // Si el contexto de Spring no puede construirse, el test falla solo.
     }
 
-    // Estos dos casos usan la cadena de seguridad REAL (SecurityConfig, no un
-    // slice con los filtros apagados): son la unica verificacion automatica de
-    // que /health es publico y de que el resto de la API sigue cerrada.
+    // Cadena de seguridad real: unica verificacion automatica de que /health es publico y el resto exige token.
     @Test
     void elHealthCheckEsPublicoYRespondeOk() throws Exception {
         mockMvc.perform(get("/api/v1/health"))

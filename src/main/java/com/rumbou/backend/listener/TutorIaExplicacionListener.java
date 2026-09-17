@@ -13,11 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
-// @Async porque llama a un servicio externo, AFTER_COMMIT porque necesita que la
-// respuesta incorrecta ya este confirmada en base de datos.
-//
-// No confundir con el tutor PRO (PreguntaService.pedirExplicacionTutorIa): esto
-// es la explicacion estatica, se genera una vez por pregunta y queda gratis para todos.
+// @Async + AFTER_COMMIT: llama a Gemini y necesita la respuesta ya confirmada en BD.
+// Es la explicacion estatica (una vez por pregunta, gratis para todos), no el tutor PRO.
 @Component
 public class TutorIaExplicacionListener {
 
@@ -31,9 +28,7 @@ public class TutorIaExplicacionListener {
         this.geminiClient = geminiClient;
     }
 
-    // REQUIRES_NEW es obligatorio aqui: en AFTER_COMMIT la transaccion original
-    // ya se cerro, asi que para guardar la explicacion hay que abrir una nueva.
-    // Con @Transactional normal, Spring ni siquiera arranca la aplicacion.
+    // REQUIRES_NEW: en AFTER_COMMIT la transaccion original ya se cerro; con @Transactional normal Spring no arranca.
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)

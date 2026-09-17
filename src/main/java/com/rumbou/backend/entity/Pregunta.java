@@ -14,10 +14,7 @@ import jakarta.persistence.Table;
 
 import java.util.List;
 
-// Una pregunta pertenece a un Tema, nunca a una universidad. Asi el mismo
-// banco de preguntas sirve para UNI y UNMSM (ver seccion 3.4 del documento
-// de decisiones). Estructura completa; la generacion con IA y la validacion
-// de calidad las construye Persona A.
+// Pertenece a un Tema, nunca a una universidad: el mismo banco sirve para UNI y UNMSM.
 @Entity
 @Table(name = "preguntas")
 public class Pregunta extends BaseEntity {

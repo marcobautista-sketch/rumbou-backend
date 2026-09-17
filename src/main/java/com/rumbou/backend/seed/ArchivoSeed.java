@@ -10,24 +10,19 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
-// Lee los archivos de src/main/resources/seed/. Vive separado del runner para que
-// el test de consistencia de los archivos use exactamente las mismas reglas de
-// lectura que el seed real, en vez de repetirlas.
-//
-// Formato: UTF-8 y separador "|". Las lineas vacias y las que empiezan con "#" se
-// ignoran, y la primera fila restante es el encabezado.
+// Lector de los archivos de seed (UTF-8, separador "|"; se ignoran las lineas
+// vacias y las que empiezan con "#"; la primera restante es el encabezado).
+// Lo usan el seed real y los tests de consistencia, con las mismas reglas.
 final class ArchivoSeed {
 
     private static final String CARPETA_SEED = "seed/";
     private static final String SEPARADOR = "\\|";
-    // Excel y algunos editores de Windows agregan esta marca invisible al inicio del archivo.
+    // BOM que agregan Excel y algunos editores de Windows.
     private static final String MARCA_BOM = "﻿";
 
     private ArchivoSeed() {
     }
 
-    // Devuelve las filas de datos del archivo y valida que cada una tenga la
-    // cantidad de columnas esperada.
     static List<Fila> leer(String archivo, int columnasEsperadas) {
         ClassPathResource recurso = new ClassPathResource(CARPETA_SEED + archivo);
         List<Fila> filas = new ArrayList<>();
@@ -65,8 +60,7 @@ final class ArchivoSeed {
         return filas;
     }
 
-    // Una fila de un archivo de seed. Guarda de donde salio para que los errores
-    // digan exactamente que archivo y que linea corregir.
+    // Fila de un archivo de seed; recuerda archivo y linea para que los errores apunten al lugar exacto.
     record Fila(String archivo, int numeroLinea, String[] columnas) {
 
         String texto(int indice) {

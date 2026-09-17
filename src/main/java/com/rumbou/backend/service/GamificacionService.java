@@ -17,7 +17,6 @@ import java.time.LocalDateTime;
 @Service
 public class GamificacionService {
 
-    // XP que gana el usuario por cada simulacro terminado.
     private static final int XP_POR_SIMULACRO = 100;
 
     private final UsuarioRepository usuarioRepository;
@@ -54,8 +53,7 @@ public class GamificacionService {
         usuario.setXpSemanal(usuario.getXpSemanal() + XP_POR_SIMULACRO);
     }
 
-    // Funcion pura (sin base de datos): el corazon de la racha.
-    // Tu ultima actividad fue hoy -> no cambia. Ayer -> +1. Antes -> se reinicia.
+    // Racha: hoy no cambia, ayer +1, antes se reinicia.
     public int calcularNuevaRacha(int currentStreak, LocalDate lastActivityDate, LocalDate hoy) {
         if (lastActivityDate == null) {
             return 1;

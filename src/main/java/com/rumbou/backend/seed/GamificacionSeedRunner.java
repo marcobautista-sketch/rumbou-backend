@@ -14,12 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-// Siembra el catalogo de logros desde src/main/resources/seed/logros.csv.
-// Mismo patron del equipo que AcademicoSeedRunner: @Profile("seed"), una sola
-// transaccion, idempotente por clave natural (nombre), sin data.sql.
-// Sin @Order, Spring no garantiza en que orden corren los runners: en una base
-// vacia el seed de preguntas llego a correr antes que el de temas y fallo.
-// Despues del catalogo academico.
+// Siembra el catalogo de logros desde src/main/resources/seed/logros.csv (profile
+// "seed"), idempotente por nombre. @Order(2): despues del catalogo academico.
 @Order(2)
 @Component
 @Profile("seed")

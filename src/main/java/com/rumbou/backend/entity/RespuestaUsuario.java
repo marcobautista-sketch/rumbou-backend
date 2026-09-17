@@ -9,8 +9,7 @@ import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
 
-// M:N con atributos entre Simulacro y Pregunta: cada respuesta lleva su
-// propio puntajeAportado, que puede ser negativo (penalidad).
+// M:N con atributos entre Simulacro y Pregunta; puntajeAportado puede ser negativo (penalidad).
 @Entity
 @Table(name = "respuestas_usuario")
 public class RespuestaUsuario extends BaseEntity {

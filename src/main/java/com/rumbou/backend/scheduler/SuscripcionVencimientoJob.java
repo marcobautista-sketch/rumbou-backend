@@ -12,8 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
 
-// Corre una vez al dia a las 3 a.m. y marca como VENCIDA las suscripciones
-// ACTIVA cuya fechaFin ya paso (seccion 9.5 del documento de decisiones).
+// Cada dia a las 3 a.m. marca VENCIDA toda suscripcion ACTIVA cuya fechaFin ya paso.
 @Component
 public class SuscripcionVencimientoJob {
 

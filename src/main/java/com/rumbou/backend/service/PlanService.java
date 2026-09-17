@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.Optional;
 
-// El "portero del edificio": ningun modulo consulta la suscripcion directamente.
+// Puerta unica de limites: ningun otro modulo consulta la suscripcion directamente.
 @Service
 public class PlanService {
 
@@ -39,9 +39,8 @@ public class PlanService {
                 .orElse(false);
     }
 
-    // El ADMIN no tiene limites de plan: necesita probar todas las funciones
-    // (incluido el tutor de IA) sin pasar por Mercado Pago. Su uso se sigue
-    // registrando en registrarUso, solo se salta la verificacion.
+    // El ADMIN no tiene limites de plan: debe poder probar todo (incluido el tutor
+    // de IA) sin pasar por Mercado Pago. Su uso se sigue registrando.
     public void puedeAcceder(Usuario usuario, Funcionalidad funcionalidad) {
         if (usuario.getRole() == Role.ADMIN) {
             return;
@@ -81,7 +80,6 @@ public class PlanService {
     @Transactional
     public void registrarUso(Usuario usuario, Funcionalidad funcionalidad) {
         LocalDate hoy = LocalDate.now();
-        // Busca la fila de hoy; si no existe, la crea (orElseGet).
         UsoDiario uso = usoDiarioRepository.findByUsuarioIdAndFecha(usuario.getId(), hoy)
                 .orElseGet(() -> usoDiarioRepository.save(new UsoDiario(usuario, hoy)));
         switch (funcionalidad) {

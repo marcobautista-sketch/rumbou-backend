@@ -7,8 +7,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
-// Las reglas de puntaje viven aqui como datos, nunca como constantes en el codigo.
-// El CalificadorService (modulo examen) recibe filas de esta tabla como parametro.
+// Las reglas de puntaje son datos, nunca constantes; CalificadorService las recibe como parametro.
 @Entity
 @Table(name = "esquemas_calificacion")
 public class EsquemaCalificacion extends BaseEntity {

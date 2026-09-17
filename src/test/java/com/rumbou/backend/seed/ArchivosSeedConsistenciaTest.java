@@ -14,10 +14,8 @@ import java.util.stream.Collectors;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
-// JUnit puro, sin Spring ni base de datos: valida que los archivos del seed sean
-// consistentes entre si y con los totales oficiales de cada examen. Si alguien
-// edita un archivo y rompe la matematica del examen, falla este test y no un
-// simulacro. Lee con ArchivoSeed, las mismas reglas de lectura que el seed real.
+// JUnit puro: los archivos del seed deben ser consistentes entre si y con los
+// totales oficiales de cada examen. Lee con ArchivoSeed, como el seed real.
 class ArchivosSeedConsistenciaTest {
 
     private static List<Fila> universidades;
@@ -103,8 +101,7 @@ class ArchivosSeedConsistenciaTest {
         }
     }
 
-    // Hallazgo B de la auditoria: el esquema de puntaje se resuelve por tema al
-    // finalizar un simulacro, asi que un tema no puede estar en dos bloques de la misma area.
+    // El esquema se resuelve por tema al calificar: un tema no puede estar en dos bloques de la misma area.
     @Test
     void ningunTemaSeRepiteDentroDeUnaArea() {
         List<String> temasPorArea = estructura.stream()
@@ -188,8 +185,7 @@ class ArchivosSeedConsistenciaTest {
         }
     }
 
-    // La clave de OfertaAcademica es universidad + carrera + area + proceso:
-    // la misma carrera puede repetirse en la otra universidad o en otro proceso.
+    // Clave de OfertaAcademica: universidad + carrera + area + proceso.
     @Test
     void ningunaOfertaSeRepite() {
         List<String> claves = ofertas.stream()
@@ -199,8 +195,7 @@ class ArchivosSeedConsistenciaTest {
         assertThat(claves).doesNotHaveDuplicates();
     }
 
-    // Atrapa un error de escala facil de cometer: cargar el puntaje de UNI en la
-    // escala vigesimal (13.43) en vez de la escala de 1800 puntos (1209).
+    // Atrapa un error de escala: el puntaje de UNI en vigesimal (13.43) en vez de 1800 puntos (1209).
     @Test
     void cadaPuntajeDeCorteEstaDentroDeLaEscalaDeSuUniversidad() {
         for (Fila oferta : ofertas) {

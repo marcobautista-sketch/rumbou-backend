@@ -57,8 +57,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
         } catch (Exception ex) {
-            // Token invalido o expirado: simplemente no autenticamos.
-            // El endpoint protegido va a responder 401 mas adelante por su cuenta.
+            // Token invalido o expirado: no se autentica y el endpoint respondera 401.
         }
 
         filterChain.doFilter(request, response);

@@ -27,8 +27,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-// JUnit puro con Mockito: verifica que iniciar pasa por PlanService (la puerta
-// unica de limites). El diagnostico se trata como simulacro completo.
+// Iniciar pasa por PlanService; el diagnostico cuenta como simulacro completo.
 class SimulacroServicePlanTest {
 
     private AreaRepository areaRepository;

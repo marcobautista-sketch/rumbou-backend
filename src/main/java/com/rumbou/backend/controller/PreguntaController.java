@@ -74,16 +74,12 @@ public class PreguntaController {
         return ResponseEntity.ok(preguntaService.actualizar(id, request));
     }
 
-    // Aprobar es una operacion mas chica y frecuente que un PUT completo: la usa
-    // sobre todo el panel de revision de preguntas generadas con Gemini.
     @PatchMapping("/{id}/aprobar")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<PreguntaAdminResponse> aprobar(@PathVariable Long id) {
         return ResponseEntity.ok(preguntaService.aprobar(id));
     }
 
-    // Para el panel de revision: aprobar de un jalon todas las preguntas
-    // generadas con Gemini que ya se revisaron para un tema y dificultad.
     @PatchMapping("/aprobar-lote")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<PreguntaAdminResponse>> aprobarLote(@Valid @RequestBody AprobarLoteRequest request) {
@@ -97,8 +93,7 @@ public class PreguntaController {
         return ResponseEntity.noContent().build();
     }
 
-    // Sin @PreAuthorize: no es un tema de rol sino de plan, y eso lo decide
-    // PlanService adentro del servicio, no el controller.
+    // Sin @PreAuthorize: es un limite de plan, y eso lo decide PlanService dentro del servicio.
     @PostMapping("/{id}/tutor-ia")
     public ResponseEntity<TutorIaResponse> tutorIa(@AuthenticationPrincipal Usuario usuario, @PathVariable Long id) {
         return ResponseEntity.ok(preguntaService.pedirExplicacionTutorIa(id, usuario, esAdmin(usuario)));

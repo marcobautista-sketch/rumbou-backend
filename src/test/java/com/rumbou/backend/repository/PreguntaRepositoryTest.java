@@ -23,8 +23,6 @@ class PreguntaRepositoryTest extends AbstractContainerBaseTest {
     private Tema temaAlgebra;
     private Tema temaGeometria;
 
-    // No hay TemaRepository todavia (le toca a Juan Carlos, ver reparto de trabajo),
-    // asi que persistimos el Tema directamente con el EntityManager de prueba.
     @Autowired
     private jakarta.persistence.EntityManager entityManager;
 

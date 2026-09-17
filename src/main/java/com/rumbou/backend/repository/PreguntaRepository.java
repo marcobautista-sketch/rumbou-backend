@@ -14,19 +14,15 @@ import java.util.Optional;
 
 public interface PreguntaRepository extends JpaRepository<Pregunta, Long> {
 
-    // Usado por SimulacroGeneratorService: no tocar la firma sin avisar a Marco.
     List<Pregunta> findByTemaIdAndAprobadaTrue(Long temaId);
 
     // Clave natural del seed de preguntas: (tema, enunciado).
     Optional<Pregunta> findByTemaIdAndEnunciado(Long temaId, String enunciado);
 
-    // Usado por GeneradorPreguntasRunner en modo --todos para saltar un par
-    // tema+dificultad que ya tiene suficientes preguntas (aprobadas o no).
+    // Para que el generador --todos salte los pares tema+dificultad ya completos.
     long countByTemaIdAndDificultad(Long temaId, Dificultad dificultad);
 
-    // Usado por ExportadorPreguntasRunner para volcar el banco a preguntas.csv.
-    // JOIN FETCH: el exportador ordena por tema.nombre, y tema es LAZY. Sin el
-    // fetch, eso dispara un SELECT por pregunta en vez de uno solo.
+    // JOIN FETCH: el exportador ordena por tema.nombre y tema es LAZY; sin el fetch seria un SELECT por pregunta.
     @Query("SELECT p FROM Pregunta p JOIN FETCH p.tema WHERE p.aprobada = true")
     List<Pregunta> findByAprobadaTrueConTema();
 
