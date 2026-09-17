@@ -6,8 +6,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-// Los archivos del seed deben cuadrar con el catalogo que GamificacionService
-// espera. JUnit puro: lee logros.csv con las mismas reglas del runner real.
+// logros.csv debe cuadrar con el catalogo que espera GamificacionService; lee con las reglas del runner real.
 class LogrosSeedConsistenciaTest {
 
     @Test

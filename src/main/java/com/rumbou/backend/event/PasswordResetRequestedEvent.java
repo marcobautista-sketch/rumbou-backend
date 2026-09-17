@@ -1,8 +1,6 @@
 package com.rumbou.backend.event;
 
-// Se publica cuando un usuario pide resetear su contrasena. Lo escucha el
-// modulo de correo (Zoe) para enviar el email con el link/token, via
-// @TransactionalEventListener(phase = AFTER_COMMIT) + @Async.
+// Lo publica AuthService al pedir un reseteo; lo escucha RecuperacionContrasenaCorreoListener.
 public record PasswordResetRequestedEvent(
         Long usuarioId,
         String email,

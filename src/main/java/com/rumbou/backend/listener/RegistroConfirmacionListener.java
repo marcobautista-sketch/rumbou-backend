@@ -9,8 +9,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.util.Map;
 
-// AFTER_COMMIT: el usuario ya esta persistido en BD. @Async: enviar el correo
-// demora (SMTP) y no debe bloquear la respuesta del registro.
+// AFTER_COMMIT: el usuario ya esta en BD. @Async: el SMTP no debe bloquear el registro.
 @Component
 public class RegistroConfirmacionListener {
 

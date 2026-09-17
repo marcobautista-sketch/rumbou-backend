@@ -41,7 +41,6 @@ public class Usuario extends BaseEntity implements UserDetails {
     @Version
     private Long version;
 
-    // Constructor vacio requerido por JPA/Hibernate.
     public Usuario() {
     }
 
@@ -124,9 +123,7 @@ public class Usuario extends BaseEntity implements UserDetails {
         this.xpSemanal = xpSemanal;
     }
 
-    // Los metodos de aqui para abajo son parte del "contrato" que exige
-    // UserDetails de Spring Security, para poder usar Usuario directamente
-    // en el proceso de autenticacion.
+    // Contrato de UserDetails: permite usar Usuario directamente en Spring Security.
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

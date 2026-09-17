@@ -7,17 +7,10 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
-// Define cuantas preguntas de cada Tema entran en el examen de un Area,
-// y bajo que EsquemaCalificacion se califican. El generador de simulacros
-// (modulo examen) recorre estas filas para armar la prueba sin saber
-// a que universidad pertenecen.
-//
-// La restriccion unica (area_id, tema_id) es necesaria porque el esquema de
-// calificacion se resuelve POR TEMA al finalizar un simulacro: si el mismo
-// Tema apareciera en dos bloques de la misma Area, no habria forma de saber
-// con que esquema calificar sus preguntas. Un tema que se evalua en dos
-// bloques distintos debe modelarse como dos Tema distintos (por ejemplo
-// "Habilidad Logico-Matematica" en Habilidades y "Aritmetica" en Conocimientos).
+// Cuantas preguntas de cada Tema entran en un Area y con que EsquemaCalificacion
+// se califican. La restriccion unica (area, tema) existe porque el esquema se
+// resuelve por tema al calificar: un tema evaluado en dos bloques se modela
+// como dos Tema distintos.
 @Entity
 @Table(name = "estructuras_examen",
         uniqueConstraints = @UniqueConstraint(

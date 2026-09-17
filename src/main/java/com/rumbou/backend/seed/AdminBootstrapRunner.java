@@ -9,10 +9,9 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
-// Crea el primer administrador al arrancar, a partir de ADMIN_EMAIL y
-// ADMIN_PASSWORD. Sin esas variables no hace nada, asi que en local y en los
-// tests es inofensivo. Es la unica forma de tener un ADMIN sin entrar a la
-// base de datos a mano; los siguientes se promueven con PATCH /usuarios/{id}/rol.
+// Crea el primer administrador al arrancar a partir de ADMIN_EMAIL y ADMIN_PASSWORD.
+// Sin esas variables no hace nada. Los siguientes se promueven con
+// PATCH /api/v1/usuarios/{id}/rol.
 @Component
 @Order(0)
 public class AdminBootstrapRunner implements ApplicationRunner {

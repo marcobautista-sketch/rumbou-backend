@@ -25,9 +25,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-// JUnit + Mockito puro: prueba el recorrido de --todos (una llamada por tema),
-// el salteo idempotente por par y la tolerancia a fallos, sin llamar a Gemini
-// de verdad. pausaEntreLlamadasMs=0 para que el test no espere.
+// Sin llamar a Gemini: una llamada por tema, salteo idempotente y tolerancia a fallos. Pausa en 0.
 class GeneradorPreguntasRunnerTest {
 
     @Mock
@@ -69,8 +67,7 @@ class GeneradorPreguntasRunnerTest {
         return preguntas;
     }
 
-    // Lo que devuelve Gemini en la llamada por tema: "cantidad" preguntas por
-    // cada una de las tres dificultades.
+    // Respuesta de Gemini por tema: "cantidad" preguntas por dificultad.
     private Map<Dificultad, List<PreguntaGeneradaDto>> lotePorTema(int cantidadPorDificultad) {
         Map<Dificultad, List<PreguntaGeneradaDto>> lote = new EnumMap<>(Dificultad.class);
         for (Dificultad dificultad : Dificultad.values()) {
@@ -79,8 +76,7 @@ class GeneradorPreguntasRunnerTest {
         return lote;
     }
 
-    // El validador en lote devuelve un Optional por pregunta, en el mismo orden:
-    // aqui acepta todas. Los tests que rechazan lo redefinen.
+    // El validador en lote acepta todas; los tests que rechazan lo redefinen.
     private void validadorAceptaTodo() {
         given(validator.validarLote(any())).willAnswer(inv -> {
             List<PreguntaGeneradaDto> lote = inv.getArgument(0);
@@ -99,8 +95,7 @@ class GeneradorPreguntasRunnerTest {
 
         runner.generarTodos(1, true);
 
-        // 2 temas = 2 llamadas de generacion (no 6, una por par) y una de
-        // validacion por dificultad recibida.
+        // 2 temas = 2 llamadas de generacion (no 6) y una validacion por dificultad.
         verify(geminiClient, times(2)).generarPreguntasPorTema(any(), any(), any());
         verify(validator, times(6)).validarLote(any());
         verify(preguntaRepository, times(6)).save(any());
@@ -193,8 +188,7 @@ class GeneradorPreguntasRunnerTest {
 
         runner.generarTodos(2, true);
 
-        // La cuota agotada en la validacion no tira las preguntas ya generadas
-        // (que costaron su propia llamada): quedan para la revision humana.
+        // La cuota agotada al validar no descarta lo ya generado: queda para revision humana.
         verify(preguntaRepository, times(6)).save(any());
     }
 }

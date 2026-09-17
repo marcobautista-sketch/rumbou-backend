@@ -20,24 +20,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-// Script fuera del runtime normal: solo corre con el profile "generar-preguntas".
-// La cuota gratuita de Gemini es de unas 20 llamadas POR DIA por modelo, asi que
-// el numero de llamadas manda sobre todo lo demas. En modo --todos cada TEMA es
-// una llamada de generacion (pide las tres dificultades juntas, ver
-// GeminiClient.generarPreguntasPorTema) y, si no se pasa --sin-validar, una de
-// validacion (resuelve las N preguntas a ciegas, ver GeminiClient.resolverLote).
-// La revision humana con /aprobar-lote sigue siendo obligatoria en ambos casos.
+// Solo corre con el profile "generar-preguntas". Cada tema es una llamada de
+// generacion (las tres dificultades juntas) y, salvo --sin-validar, una de
+// validacion: la cuota de Gemini se mide en llamadas, no en preguntas.
 //
-// Un solo tema (modo original, sin pausa: es una unica llamada de todas formas):
 //   ./mvnw spring-boot:run -Dspring-boot.run.profiles=generar-preguntas
 //      -Dspring-boot.run.arguments="--temaId=1 --dificultad=MEDIA --cantidad=10"
-//
-// Todos los temas de temas.csv, "cantidad" preguntas por dificultad (22 temas =
-// 22 llamadas sin validar, 44 con validacion), con pausa entre llamadas:
 //   ./mvnw spring-boot:run -Dspring-boot.run.profiles=generar-preguntas
-//      -Dspring-boot.run.arguments="--todos --cantidad=5 [--sin-validar]"
+//      -Dspring-boot.run.arguments="--todos --cantidad=12 [--sin-validar]"
 //
-// Guarda todo con aprobada=false, pendiente de revision humana.
+// Todo se guarda con aprobada=false: la revision humana sigue siendo obligatoria.
 @Component
 @Profile("generar-preguntas")
 public class GeneradorPreguntasRunner implements ApplicationRunner {
@@ -78,20 +70,13 @@ public class GeneradorPreguntasRunner implements ApplicationRunner {
         Tema tema = temaRepository.findById(temaId)
                 .orElseThrow(() -> new IllegalArgumentException("No existe un tema con id " + temaId));
 
-        // Sin pausa: es el modo original, para generar un puñado de preguntas a mano.
         Resultado resultado = generar(tema, dificultad, cantidad, false, validarConIa);
         log.info("Generacion terminada. Guardadas (pendientes de revision): {}. Rechazadas: {}",
                 resultado.generadas(), resultado.rechazadas());
     }
 
-    // Recorre todos los temas x las 3 dificultades. Idempotente: si un par ya
-    // tiene "cantidad" o mas preguntas (aprobadas o no), lo salta - asi cortar y
-    // volver a correr el mismo comando no duplica ni vuelve a gastar cuota de
-    // Gemini en lo que ya estaba listo.
-    // Recorre todos los temas. Idempotente por par tema+dificultad: si un par ya
-    // tiene "cantidad" o mas preguntas (aprobadas o no) no se vuelve a pedir, y
-    // si un tema tiene sus tres pares completos no gasta ninguna llamada - asi
-    // cortar y volver a correr el mismo comando no duplica ni gasta cuota de mas.
+    // Idempotente por par tema+dificultad: lo que ya tiene "cantidad" preguntas
+    // no se vuelve a pedir, asi que cortar y relanzar no duplica ni gasta cuota.
     void generarTodos(int cantidad, boolean validarConIa) {
         List<Tema> temas = temaRepository.findAll();
         log.info("Modo --todos: {} temas, cantidad={} por dificultad, validacion con IA: {}",
@@ -120,8 +105,7 @@ public class GeneradorPreguntasRunner implements ApplicationRunner {
             try {
                 generadasPorGemini = geminiClient.generarPreguntasPorTema(tema.getNombre(), tema.getTemario(), faltantes);
             } catch (GeminiException ex) {
-                // No se cuenta como "rechazada": el tema queda incompleto y la
-                // proxima corrida lo vuelve a pedir sola.
+                // No cuenta como rechazada: el tema queda incompleto y la proxima corrida lo repite.
                 log.warn("Error llamando a Gemini para {}, se omite este tema por ahora: {}",
                         tema.getNombre(), ex.getMessage());
                 continue;
@@ -144,9 +128,7 @@ public class GeneradorPreguntasRunner implements ApplicationRunner {
                 totalGeneradas, totalRechazadas, temasOmitidos);
     }
 
-    // Modo --temaId: una sola llamada a Gemini pide las "cantidad" preguntas del
-    // par de una vez (ver GeminiClient.generarPreguntas), y luego se validan y
-    // guardan como en el modo --todos.
+    // Modo --temaId: una sola llamada para el par, sin pausa.
     private Resultado generar(Tema tema, Dificultad dificultad, int cantidad, boolean conPausa,
                               boolean validarConIa) {
         if (conPausa) {
@@ -157,9 +139,7 @@ public class GeneradorPreguntasRunner implements ApplicationRunner {
         try {
             generadasPorGemini = geminiClient.generarPreguntas(tema.getNombre(), tema.getTemario(), dificultad, cantidad);
         } catch (GeminiException ex) {
-            // No se cuenta como "rechazada" (eso es del validador): el par se queda
-            // por debajo de "cantidad" y una proxima corrida lo va a reintentar solo,
-            // gracias al salteo idempotente de generarTodos().
+            // No cuenta como rechazada: el par queda incompleto y la proxima corrida lo reintenta.
             log.warn("Error llamando a Gemini para {} / {}, se omite este par por ahora: {}",
                     tema.getNombre(), dificultad, ex.getMessage());
             return new Resultado(0, 0);
@@ -168,22 +148,19 @@ public class GeneradorPreguntasRunner implements ApplicationRunner {
         return validarYGuardar(tema, dificultad, generadasPorGemini, conPausa, validarConIa);
     }
 
-    // Valida (estructura siempre; con IA en una sola llamada por lote si
-    // validarConIa) y guarda las que pasan, con aprobada=false.
     private Resultado validarYGuardar(Tema tema, Dificultad dificultad, List<PreguntaGeneradaDto> generadasPorGemini,
                                       boolean conPausa, boolean validarConIa) {
         List<Optional<String>> rechazos;
         if (validarConIa) {
-            // Una sola llamada de validacion para todo el lote (no una por
-            // pregunta), con su pausa: es la segunda llamada del par.
+            // Una sola llamada de validacion por lote, no una por pregunta.
             if (conPausa) {
                 pausar();
             }
             try {
                 rechazos = validator.validarLote(generadasPorGemini);
             } catch (GeminiException ex) {
-                // Si la validacion falla por cuota/red no se descarta el lote: se
-                // guarda con la validacion estructural y queda para la revision humana.
+                // Si la validacion falla por cuota o red no se descarta el lote: se guarda
+                // con la validacion estructural y queda para la revision humana.
                 log.warn("No se pudo validar con IA el lote {} / {}, se guarda solo con validacion estructural: {}",
                         tema.getNombre(), dificultad, ex.getMessage());
                 rechazos = generadasPorGemini.stream().map(validator::validarEstructura).toList();
@@ -210,9 +187,7 @@ public class GeneradorPreguntasRunner implements ApplicationRunner {
         return new Resultado(generadas, rechazadas);
     }
 
-    // Pausa entre llamadas para no acercarse al limite por minuto de la capa
-    // gratuita de Gemini. El reintento en 429 (dentro de GeminiClient) sigue
-    // siendo la red de seguridad si aun asi se dispara el limite.
+    // Pausa para no pasar el limite por minuto; el reintento en 429 es la red de seguridad.
     private void pausar() {
         try {
             Thread.sleep(pausaEntreLlamadasMs);

@@ -130,9 +130,8 @@ public class SimulacroService {
         return new ResultadoSimulacroResponse(simulacro.getId(), puntajeTotal, psp, simulacro.getEstado());
     }
 
-    // El mismo tema no puede estar en dos bloques de calificacion del area:
-    // no sabriamos con que esquema calificar sus preguntas. Si el seed del
-    // catalogo lo define asi, avisamos con un error claro en vez de reventar.
+    // Un tema en dos bloques del area no se puede calificar (no se sabria con
+    // que esquema): error claro en vez de reventar.
     private Map<Long, EsquemaCalificacion> mapearEsquemaPorTema(List<EstructuraExamen> estructura) {
         Map<Long, EsquemaCalificacion> esquemaPorTemaId = new HashMap<>();
 
@@ -182,9 +181,8 @@ public class SimulacroService {
         return simulacro;
     }
 
-    // null es valido: significa que el postulante dejo la pregunta en blanco.
-    // El rango valido sale de las alternativas de la propia pregunta, no de
-    // un numero fijo en el codigo.
+    // null = pregunta en blanco. El rango valido sale de las alternativas de la
+    // propia pregunta, no de un numero fijo.
     private void verificarAlternativaValida(Integer alternativaMarcada, Pregunta pregunta) {
         if (alternativaMarcada == null) {
             return;
@@ -215,9 +213,8 @@ public class SimulacroService {
                 simulacro.getFechaInicio(), preguntas);
     }
 
-    // El diagnostico gratuito "una vez" se cobra con el contador del simulacro
-    // completo mensual: no existe Funcionalidad.DIAGNOSTICO (no se agrega un
-    // valor a un enum persistido sin migracion SQL). Trato acordado con el equipo.
+    // El diagnostico gratuito se cobra con el contador del simulacro completo
+    // mensual: no hay Funcionalidad.DIAGNOSTICO (un enum persistido exige migracion).
     private Funcionalidad funcionalidadSegunTipo(TipoSimulacro tipo) {
         return switch (tipo) {
             case POR_TEMA -> Funcionalidad.SIMULACRO_TEMA;

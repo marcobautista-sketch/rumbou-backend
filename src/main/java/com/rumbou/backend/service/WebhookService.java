@@ -29,7 +29,7 @@ public class WebhookService {
             return;
         }
 
-        // IDEMPOTENCIA: si este pago ya se proceso, ignoramos el duplicado.
+        // Idempotencia: un pago ya procesado se ignora.
         if (pagoWebhookRepository.existsByPaymentId(notificacion.paymentId())) {
             return;
         }
@@ -40,7 +40,6 @@ public class WebhookService {
                 notificacion.externalReference());
         pagoWebhookRepository.save(recibo);
 
-        // El "grito" que escucha el listener de la Pieza 5 (despues del commit).
         eventPublisher.publishEvent(new PagoAprobadoEvent(
                 notificacion.paymentId(),
                 notificacion.mercadoPagoPreapprovalId(),

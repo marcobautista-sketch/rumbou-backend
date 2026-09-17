@@ -34,9 +34,7 @@ import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-// JUnit + Mockito, sin contexto de Spring: aqui solo interesa probar la regla de
-// negocio de visibilidad (postulante nunca ve una pregunta sin aprobar), no el
-// cableado HTTP (eso ya lo cubre PreguntaControllerTest).
+// Solo la regla de visibilidad (un postulante nunca ve una pregunta sin aprobar); el HTTP lo cubre PreguntaControllerTest.
 class PreguntaServiceTest {
 
     @Mock
@@ -147,9 +145,7 @@ class PreguntaServiceTest {
         assertThat(pregunta2.isAprobada()).isTrue();
     }
 
-    // El @Transactional del metodo real hace el rollback en produccion; aqui solo
-    // se puede probar que un id inexistente interrumpe el lote con una excepcion,
-    // que es justamente lo que deja que Spring revierta la transaccion completa.
+    // El rollback lo hace @Transactional en produccion; aqui solo se comprueba que un id inexistente corta el lote.
     @Test
     void aprobarLoteFallaSiAlgunIdNoExiste() {
         Pregunta pregunta1 = preguntaConId(1L, false);

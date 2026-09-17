@@ -19,15 +19,8 @@ import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 
-// Vuelca a src/main/resources/seed/preguntas.csv todas las preguntas ya aprobadas
-// en la base local, en el mismo formato que lee ContenidoSeedRunner. Asi el banco
-// de preguntas se genera una sola vez con Gemini (local, con la GEMINI_API_KEY de
-// quien lo corre) y despues se commitea el CSV: produccion lo carga con el
-// profile "seed" sin volver a llamar a la IA.
-//
-// Sobreescribe el archivo completo cada vez que se corre: es un volcado, no un
-// append. El flujo completo es generar-preguntas -> revisar y aprobar (panel admin
-// o /aprobar-lote) -> exportar-preguntas -> commitear el csv.
+// Vuelca las preguntas aprobadas de la base local a src/main/resources/seed/preguntas.csv
+// (el formato que lee ContenidoSeedRunner). Sobreescribe el archivo completo.
 //   ./mvnw spring-boot:run -Dspring-boot.run.profiles=exportar-preguntas
 @Component
 @Profile("exportar-preguntas")
@@ -82,9 +75,7 @@ public class ExportadorPreguntasRunner implements ApplicationRunner {
                 pregunta.getOrigen().name());
     }
 
-    // El formato de seed del equipo es una linea por fila con "|" como separador:
-    // un salto de linea o una barra dentro del texto rompen esa estructura, asi
-    // que se normalizan antes de escribir.
+    // El separador es "|" y cada fila es una linea: se normalizan barras y saltos de linea.
     private String sanear(String texto) {
         if (texto == null) {
             return "";

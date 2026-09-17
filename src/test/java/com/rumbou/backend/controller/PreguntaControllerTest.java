@@ -36,8 +36,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// @WebMvcTest no carga SecurityConfig, asi que @EnableMethodSecurity se agrega
-// aqui aparte para que @PreAuthorize funcione en el test.
+// @WebMvcTest no carga SecurityConfig: @EnableMethodSecurity se agrega aparte para que @PreAuthorize funcione.
 @WebMvcTest(PreguntaController.class)
 @Import(PreguntaControllerTest.MethodSecurityTestConfig.class)
 class PreguntaControllerTest {
@@ -51,8 +50,7 @@ class PreguntaControllerTest {
     @MockBean
     private PreguntaService preguntaService;
 
-    // JwtAuthenticationFilter es un Filter de Servlet, asi que @WebMvcTest lo carga
-    // automaticamente y hay que darle sus dependencias para que pueda construirse.
+    // JwtAuthenticationFilter se instancia igual en el slice: necesita sus dependencias aunque no se ejecute.
     @MockBean
     private JwtService jwtService;
 

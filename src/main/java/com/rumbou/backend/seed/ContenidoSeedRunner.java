@@ -17,17 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-// Carga el banco de preguntas aprobadas desde src/main/resources/seed/preguntas.csv.
-// Mismo patron del equipo que AcademicoSeedRunner/GamificacionSeedRunner:
-// @Profile("seed"), una sola transaccion, idempotente por clave natural, sin data.sql.
-//
-// El archivo lo genera ExportadorPreguntasRunner (profile "exportar-preguntas") a
-// partir de las preguntas ya aprobadas en una base local: asi produccion tiene el
-// banco de preguntas cargado sin volver a llamar a Gemini.
-//   ./mvnw spring-boot:run -Dspring-boot.run.profiles=seed
-// Sin @Order, Spring no garantiza en que orden corren los runners: en una base
-// vacia el seed de preguntas llego a correr antes que el de temas y fallo.
-// Al final: cada pregunta se cuelga de un tema que debe existir ya.
+// Carga el banco de preguntas desde src/main/resources/seed/preguntas.csv (profile
+// "seed"), idempotente por clave natural (tema, enunciado). @Order(3): las
+// preguntas se cuelgan de temas que carga AcademicoSeedRunner.
 @Order(3)
 @Component
 @Profile("seed")
@@ -50,8 +42,7 @@ public class ContenidoSeedRunner implements CommandLineRunner {
         log.info("Seed del banco de preguntas terminado");
     }
 
-    // La clave natural es (tema, enunciado). Todas las preguntas de este archivo
-    // se guardan como aprobadas: si no lo estaban, no deberian haberse exportado.
+    // Todo lo que llega al archivo se guarda como aprobado.
     private void sembrarPreguntas() {
         for (Fila fila : leer("preguntas.csv", 11)) {
             Tema tema = buscarTema(fila, 0);

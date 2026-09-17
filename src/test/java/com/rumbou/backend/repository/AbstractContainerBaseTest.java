@@ -7,14 +7,8 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-// Clase base para tests que necesitan una base de datos real.
-// Levanta un PostgreSQL en Docker solo para la duracion del test,
-// distinto del que usamos para desarrollo local (no se mezclan datos).
-//
-// @AutoConfigureTestDatabase(replace = NONE) es necesario porque, por defecto,
-// @DataJpaTest intenta reemplazar el datasource por una base de datos embebida
-// (H2, Derby) para los tests. Nosotros no queremos eso: queremos usar el
-// PostgreSQL real de TestContainers definido abajo.
+// Base para tests con PostgreSQL real (TestContainers), separado del de desarrollo.
+// replace = NONE evita que @DataJpaTest sustituya el datasource por una base embebida.
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers

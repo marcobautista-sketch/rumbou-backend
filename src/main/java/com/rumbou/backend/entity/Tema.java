@@ -6,8 +6,6 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 
-// Una Pregunta (modulo contenido) pertenece a un Tema, nunca a una universidad.
-// Eso es lo que permite reutilizar el mismo banco de preguntas entre UNI y UNMSM.
 @Entity
 @Table(name = "temas")
 public class Tema extends BaseEntity {
@@ -19,14 +17,8 @@ public class Tema extends BaseEntity {
     @Column(nullable = false)
     private AreaConocimiento areaConocimiento;
 
-    // Lista oficial de subtemas del prospecto de admision. La usa el generador
-    // de preguntas con Gemini (modulo contenido) para acotar el nivel y el
-    // contenido de lo que genera. Es opcional a proposito: el campo existe
-    // desde ya para desbloquear ese generador, y el texto se va completando
-    // despues sin volver a tocar codigo.
-    //
-    // TEXT y no @Lob: en PostgreSQL, @Lob sobre un String mapea al tipo oid
-    // (pensado para binarios) y falla al insertar texto normal.
+    // Temario oficial del prospecto; lo usa el generador de preguntas para acotar
+    // lo que genera. TEXT y no @Lob: en PostgreSQL @Lob sobre String mapea a oid.
     @Column(columnDefinition = "TEXT")
     private String temario;
 
