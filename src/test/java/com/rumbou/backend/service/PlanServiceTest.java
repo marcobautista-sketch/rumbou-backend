@@ -44,6 +44,12 @@ class PlanServiceTest {
         return usuario;
     }
 
+    private Usuario adminConId(long id) {
+        Usuario admin = new Usuario("admin" + id + "@rumbou.com", "hash", "Marco", Role.ADMIN);
+        admin.setId(id);
+        return admin;
+    }
+
     private Suscripcion suscripcionProActiva() {
         Suscripcion s = new Suscripcion(null, Plan.PRO, EstadoSuscripcion.ACTIVA);
         s.setFechaInicio(LocalDate.now().minusMonths(1));
@@ -165,6 +171,38 @@ class PlanServiceTest {
     }
 
     // ---- registrarUso ----
+
+    // ---- ADMIN sin limites ----
+
+    @Test
+    void unAdminSinSuscripcionPuedeUsarElTutorIa() {
+        when(suscripcionRepository.findFirstByUsuarioIdAndEstadoOrderByFechaInicioDesc(
+                anyLong(), any(EstadoSuscripcion.class)))
+                .thenReturn(Optional.empty());
+
+        planService.puedeAcceder(adminConId(1), Funcionalidad.TUTOR_IA);
+
+        org.mockito.Mockito.verifyNoInteractions(usoDiarioRepository);
+    }
+
+    @Test
+    void unAdminNoTieneTopeDeSimulacrosCompletosNiDeTema() {
+        when(usoDiarioRepository.sumSimulacrosCompletosDesde(anyLong(), any(LocalDate.class))).thenReturn(99);
+        when(usoDiarioRepository.sumSimulacrosTemaDesde(anyLong(), any(LocalDate.class))).thenReturn(99);
+
+        planService.puedeAcceder(adminConId(1), Funcionalidad.SIMULACRO_COMPLETO);
+        planService.puedeAcceder(adminConId(1), Funcionalidad.SIMULACRO_TEMA);
+    }
+
+    @Test
+    void unAdminTampocoTieneElTopeDiarioDelTutorIa() {
+        activarPro();
+        when(usoDiarioRepository.sumConsultasTutorIA(anyLong(), any(LocalDate.class))).thenReturn(30);
+
+        assertThatThrownBy(() -> planService.puedeAcceder(usuarioConId(7), Funcionalidad.TUTOR_IA))
+                .isInstanceOf(UnauthorizedException.class);
+        planService.puedeAcceder(adminConId(1), Funcionalidad.TUTOR_IA);
+    }
 
     @Test
     void registrarUsoCreaLaFilaDelDiaSiNoExisteYSuma() {
