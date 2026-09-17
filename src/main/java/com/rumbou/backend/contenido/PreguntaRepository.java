@@ -17,6 +17,10 @@ public interface PreguntaRepository extends JpaRepository<Pregunta, Long> {
     // Clave natural del seed de preguntas: (tema, enunciado).
     Optional<Pregunta> findByTemaIdAndEnunciado(Long temaId, String enunciado);
 
+    // Usado por GeneradorPreguntasRunner en modo --todos para saltar un par
+    // tema+dificultad que ya tiene suficientes preguntas (aprobadas o no).
+    long countByTemaIdAndDificultad(Long temaId, Dificultad dificultad);
+
     // Usado por ExportadorPreguntasRunner para volcar el banco a preguntas.csv.
     // JOIN FETCH: el exportador ordena por tema.nombre, y tema es LAZY. Sin el
     // fetch, eso dispara un SELECT por pregunta en vez de uno solo.
