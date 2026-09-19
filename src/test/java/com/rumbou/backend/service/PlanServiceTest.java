@@ -225,4 +225,42 @@ class PlanServiceTest {
         assertThat(hoy.getConsultasTutorIA()).isEqualTo(1);
         assertThat(hoy.getSimulacrosTema()).isZero();
     }
+
+    // ---- acceso PRO y objetivos (progreso) ----
+
+    @Test
+    void tieneAccesoProEsVerdaderoParaUnUsuarioPro() {
+        activarPro();
+
+        assertThat(planService.tieneAccesoPro(usuarioConId(7))).isTrue();
+    }
+
+    @Test
+    void tieneAccesoProEsFalsoParaUnUsuarioGratuito() {
+        assertThat(planService.tieneAccesoPro(usuarioConId(7))).isFalse();
+    }
+
+    @Test
+    void tieneAccesoProDejaPasarAlAdminSinConsultarSuSuscripcion() {
+        assertThat(planService.tieneAccesoPro(adminConId(1))).isTrue();
+
+        org.mockito.Mockito.verifyNoInteractions(suscripcionRepository);
+    }
+
+    @Test
+    void elPlanGratuitoPermiteUnSoloObjetivoActivo() {
+        assertThat(planService.limiteObjetivosActivos(usuarioConId(7))).isEqualTo(1);
+    }
+
+    @Test
+    void elPlanProPermiteHastaTresObjetivosActivos() {
+        activarPro();
+
+        assertThat(planService.limiteObjetivosActivos(usuarioConId(7))).isEqualTo(3);
+    }
+
+    @Test
+    void unAdminNoTieneTopeDeObjetivosActivos() {
+        assertThat(planService.limiteObjetivosActivos(adminConId(1))).isEqualTo(Integer.MAX_VALUE);
+    }
 }
