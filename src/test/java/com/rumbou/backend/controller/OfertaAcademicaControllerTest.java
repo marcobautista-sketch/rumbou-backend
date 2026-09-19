@@ -41,7 +41,7 @@ class OfertaAcademicaControllerTest {
     }
 
     private OfertaAcademicaResponse sistemasUni() {
-        return new OfertaAcademicaResponse(10L, "UNI", "GENERAL", "General", "Ingenieria de Sistemas",
+        return new OfertaAcademicaResponse(10L, "UNI", 4L, "GENERAL", "General", "Ingenieria de Sistemas",
                 "Facultad de Ingenieria Industrial y de Sistemas", "2026-II", 1209, 31);
     }
 
@@ -52,7 +52,9 @@ class OfertaAcademicaControllerTest {
         mockMvc.perform(get("/api/v1/ofertas-academicas").with(user(postulante())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(10))
-                .andExpect(jsonPath("$[0].puntajeUltimoIngresante").value(1209.0));
+                .andExpect(jsonPath("$[0].puntajeUltimoIngresante").value(1209.0))
+                // Sin areaId el cliente no podria iniciar un simulacro de esta area.
+                .andExpect(jsonPath("$[0].areaId").value(4));
     }
 
     @Test

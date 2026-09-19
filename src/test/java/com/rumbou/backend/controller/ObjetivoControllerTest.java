@@ -56,7 +56,7 @@ class ObjetivoControllerTest {
     }
 
     private ObjetivoResponse objetivo() {
-        return new ObjetivoResponse(1L, 10L, "UNI", "GENERAL", "Ingenieria de Sistemas", "2026-II",
+        return new ObjetivoResponse(1L, 10L, "UNI", 4L, "GENERAL", "Ingenieria de Sistemas", "2026-II",
                 1209, 1330.0, 1.1, EstadoPreparacion.HOLGADO, "Zona de ingreso holgada", LocalDateTime.now());
     }
 
@@ -106,6 +106,7 @@ class ObjetivoControllerTest {
         mockMvc.perform(get("/api/v1/objetivos").with(user(postulante())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].universidad").value("UNI"))
+                .andExpect(jsonPath("$[0].areaId").value(4))
                 .andExpect(jsonPath("$[0].indicePreparacion").value(1.1));
     }
 

@@ -469,6 +469,7 @@
                   "    const ofertas = pm.response.json();",
                   "    if (ofertas.length > 0) {",
                   "        pm.collectionVariables.set('ofertaAcademicaId', ofertas[0].id);",
+                  "        pm.collectionVariables.set('areaId', ofertas[0].areaId);",
                   "    }",
                   "    if (ofertas.length > 1) {",
                   "        pm.collectionVariables.set('ofertaAcademicaIdAlterna', ofertas[1].id);",

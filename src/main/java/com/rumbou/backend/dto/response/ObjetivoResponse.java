@@ -8,6 +8,8 @@ public record ObjetivoResponse(
         Long id,
         Long ofertaAcademicaId,
         String universidad,
+        // Con el areaId el panel puede pedir directamente el historial de PSP de este objetivo.
+        Long areaId,
         String area,
         String carrera,
         String procesoAdmision,
