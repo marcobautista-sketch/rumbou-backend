@@ -198,6 +198,7 @@ public class ProgresoService {
                 objetivo.getId(),
                 oferta.getId(),
                 oferta.getUniversidad().getSiglas(),
+                oferta.getArea().getId(),
                 oferta.getArea().getCodigo(),
                 oferta.getCarrera().getNombre(),
                 oferta.getProcesoAdmision(),

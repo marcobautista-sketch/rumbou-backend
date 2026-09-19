@@ -36,6 +36,7 @@ public class CatalogoService {
         return new OfertaAcademicaResponse(
                 oferta.getId(),
                 oferta.getUniversidad().getSiglas(),
+                oferta.getArea().getId(),
                 oferta.getArea().getCodigo(),
                 oferta.getArea().getNombre(),
                 oferta.getCarrera().getNombre(),
