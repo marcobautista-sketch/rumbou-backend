@@ -1,12 +1,17 @@
 package com.rumbou.backend.service;
 
+import com.rumbou.backend.dto.response.DominioTemaResponse;
 import com.rumbou.backend.dto.response.EstadoPreparacion;
+import com.rumbou.backend.dto.response.HistorialPspResponse;
 import com.rumbou.backend.dto.response.ObjetivoResponse;
 import com.rumbou.backend.entity.Area;
 import com.rumbou.backend.entity.Carrera;
+import com.rumbou.backend.entity.EstadoSimulacro;
 import com.rumbou.backend.entity.ObjetivoUsuario;
 import com.rumbou.backend.entity.OfertaAcademica;
 import com.rumbou.backend.entity.Role;
+import com.rumbou.backend.entity.Simulacro;
+import com.rumbou.backend.entity.TipoSimulacro;
 import com.rumbou.backend.entity.Universidad;
 import com.rumbou.backend.entity.Usuario;
 import com.rumbou.backend.exception.DuplicateResourceException;
@@ -14,6 +19,8 @@ import com.rumbou.backend.exception.ResourceNotFoundException;
 import com.rumbou.backend.exception.UnauthorizedException;
 import com.rumbou.backend.repository.ObjetivoUsuarioRepository;
 import com.rumbou.backend.repository.OfertaAcademicaRepository;
+import com.rumbou.backend.repository.RespuestaUsuarioRepository;
+import com.rumbou.backend.repository.SimulacroRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -31,12 +38,15 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class ProgresoServiceTest {
 
     private ObjetivoUsuarioRepository objetivoUsuarioRepository;
     private OfertaAcademicaRepository ofertaAcademicaRepository;
+    private SimulacroRepository simulacroRepository;
+    private RespuestaUsuarioRepository respuestaUsuarioRepository;
     private PlanService planService;
     private ProgresoService progresoService;
 
@@ -48,8 +58,11 @@ class ProgresoServiceTest {
     void setUp() {
         objetivoUsuarioRepository = mock(ObjetivoUsuarioRepository.class);
         ofertaAcademicaRepository = mock(OfertaAcademicaRepository.class);
+        simulacroRepository = mock(SimulacroRepository.class);
+        respuestaUsuarioRepository = mock(RespuestaUsuarioRepository.class);
         planService = mock(PlanService.class);
-        progresoService = new ProgresoService(objetivoUsuarioRepository, ofertaAcademicaRepository, planService);
+        progresoService = new ProgresoService(objetivoUsuarioRepository, ofertaAcademicaRepository,
+                simulacroRepository, respuestaUsuarioRepository, planService);
 
         postulante = new Usuario("ana@rumbou.com", "hash", "Ana", Role.USER);
         postulante.setId(7L);
@@ -102,7 +115,7 @@ class ProgresoServiceTest {
     // ---- crear objetivos ----
 
     @Test
-    void unObjetivoNuevoQuedaActivoYSinProgresoTodavia() {
+    void unObjetivoNuevoSinSimulacrosPreviosQuedaActivoYSinProgreso() {
         prepararCreacion(Optional.empty(), 0, 1);
 
         ObjetivoResponse respuesta = progresoService.crearObjetivo(postulante, 10L);
@@ -113,6 +126,21 @@ class ProgresoServiceTest {
         assertThat(respuesta.ultimoPsp()).isNull();
         assertThat(respuesta.estado()).isNull();
         verify(objetivoUsuarioRepository).save(any(ObjetivoUsuario.class));
+    }
+
+    @Test
+    void unObjetivoNuevoArrancaConElPspDelUltimoSimulacroDeEsaArea() {
+        prepararCreacion(Optional.empty(), 0, 1);
+        Simulacro ultimo = simulacroFinalizado(1100.0, LocalDateTime.of(2026, 9, 18, 10, 0));
+        when(simulacroRepository.findFirstByUsuarioIdAndAreaIdAndEstadoOrderByFechaFinDesc(
+                7L, 2L, EstadoSimulacro.FINALIZADO)).thenReturn(Optional.of(ultimo));
+
+        ObjetivoResponse respuesta = progresoService.crearObjetivo(postulante, 10L);
+
+        assertThat(respuesta.ultimoPsp()).isEqualTo(1100.0);
+        assertThat(respuesta.indicePreparacion()).isCloseTo(1100.0 / 1209, within(0.0001));
+        assertThat(respuesta.estado()).isEqualTo(EstadoPreparacion.CERCA);
+        assertThat(respuesta.fechaActualizacion()).isEqualTo(ultimo.getFechaFin());
     }
 
     @Test
@@ -239,10 +267,95 @@ class ProgresoServiceTest {
         verify(objetivoUsuarioRepository).saveAll(anyList());
     }
 
+    // ---- funciones PRO: dominio por tema e historico ----
+
+    @Test
+    void elDominioPorTemaEsExclusivoDePro() {
+        when(planService.tieneAccesoPro(postulante)).thenReturn(false);
+
+        assertThatThrownBy(() -> progresoService.dominioPorTema(postulante))
+                .isInstanceOf(UnauthorizedException.class)
+                .hasMessageContaining("PRO");
+        verifyNoInteractions(respuestaUsuarioRepository);
+    }
+
+    @Test
+    void elDominioCuentaLasPreguntasEnBlancoYOrdenaDelTemaMasDebilAlMasFuerte() {
+        when(planService.tieneAccesoPro(postulante)).thenReturn(true);
+        when(respuestaUsuarioRepository.contarRespuestasPorTema(7L, EstadoSimulacro.FINALIZADO))
+                .thenReturn(List.of(conteo(1L, "Algebra", 8, 1, 1), conteo(2L, "Fisica", 3, 4, 3)));
+
+        List<DominioTemaResponse> dominio = progresoService.dominioPorTema(postulante);
+
+        assertThat(dominio).extracting(DominioTemaResponse::tema).containsExactly("Fisica", "Algebra");
+        DominioTemaResponse fisica = dominio.get(0);
+        assertThat(fisica.total()).isEqualTo(10);
+        assertThat(fisica.enBlanco()).isEqualTo(3);
+        assertThat(fisica.porcentajeAciertos()).isEqualTo(30.0);
+        assertThat(dominio.get(1).porcentajeAciertos()).isEqualTo(80.0);
+    }
+
+    @Test
+    void elHistoricoDePspEsExclusivoDePro() {
+        when(planService.tieneAccesoPro(postulante)).thenReturn(false);
+
+        assertThatThrownBy(() -> progresoService.historialPsp(postulante, 2L))
+                .isInstanceOf(UnauthorizedException.class);
+        verifyNoInteractions(simulacroRepository);
+    }
+
+    @Test
+    void elHistoricoDevuelveElPspDeCadaSimulacroFinalizado() {
+        when(planService.tieneAccesoPro(postulante)).thenReturn(true);
+        Simulacro primero = simulacroFinalizado(900.0, LocalDateTime.of(2026, 9, 10, 10, 0));
+        Simulacro segundo = simulacroFinalizado(1100.0, LocalDateTime.of(2026, 9, 18, 10, 0));
+        when(simulacroRepository.findByUsuarioIdAndAreaIdAndEstadoOrderByFechaFinAsc(
+                7L, 2L, EstadoSimulacro.FINALIZADO)).thenReturn(List.of(primero, segundo));
+
+        List<HistorialPspResponse> historial = progresoService.historialPsp(postulante, 2L);
+
+        assertThat(historial).extracting(HistorialPspResponse::psp).containsExactly(900.0, 1100.0);
+        assertThat(historial.get(0).tipo()).isEqualTo(TipoSimulacro.COMPLETO);
+    }
+
     private void prepararCreacion(Optional<ObjetivoUsuario> existente, long activos, int limite) {
         when(ofertaAcademicaRepository.findById(10L)).thenReturn(Optional.of(sistemasUni));
         when(objetivoUsuarioRepository.findByUsuarioIdAndOfertaAcademicaId(7L, 10L)).thenReturn(existente);
         when(objetivoUsuarioRepository.countByUsuarioIdAndActivoTrue(7L)).thenReturn(activos);
         when(planService.limiteObjetivosActivos(postulante)).thenReturn(limite);
+    }
+
+    private Simulacro simulacroFinalizado(double psp, LocalDateTime fechaFin) {
+        Simulacro simulacro = new Simulacro(postulante, areaGeneralUni, TipoSimulacro.COMPLETO, fechaFin.minusHours(3));
+        simulacro.setEstado(EstadoSimulacro.FINALIZADO);
+        simulacro.setPsp(psp);
+        simulacro.setPuntajeObtenido(psp / 2);
+        simulacro.setFechaFin(fechaFin);
+        return simulacro;
+    }
+
+    private RespuestaUsuarioRepository.ConteoPorTema conteo(Long temaId, String tema,
+                                                           long correctas, long incorrectas, long enBlanco) {
+        return new RespuestaUsuarioRepository.ConteoPorTema() {
+            public Long getTemaId() {
+                return temaId;
+            }
+
+            public String getTema() {
+                return tema;
+            }
+
+            public Long getCorrectas() {
+                return correctas;
+            }
+
+            public Long getIncorrectas() {
+                return incorrectas;
+            }
+
+            public Long getEnBlanco() {
+                return enBlanco;
+            }
+        };
     }
 }

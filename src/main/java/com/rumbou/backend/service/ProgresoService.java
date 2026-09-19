@@ -1,7 +1,10 @@
 package com.rumbou.backend.service;
 
+import com.rumbou.backend.dto.response.DominioTemaResponse;
 import com.rumbou.backend.dto.response.EstadoPreparacion;
+import com.rumbou.backend.dto.response.HistorialPspResponse;
 import com.rumbou.backend.dto.response.ObjetivoResponse;
+import com.rumbou.backend.entity.EstadoSimulacro;
 import com.rumbou.backend.entity.ObjetivoUsuario;
 import com.rumbou.backend.entity.OfertaAcademica;
 import com.rumbou.backend.entity.Usuario;
@@ -10,10 +13,13 @@ import com.rumbou.backend.exception.ResourceNotFoundException;
 import com.rumbou.backend.exception.UnauthorizedException;
 import com.rumbou.backend.repository.ObjetivoUsuarioRepository;
 import com.rumbou.backend.repository.OfertaAcademicaRepository;
+import com.rumbou.backend.repository.RespuestaUsuarioRepository;
+import com.rumbou.backend.repository.SimulacroRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,13 +30,19 @@ public class ProgresoService {
 
     private final ObjetivoUsuarioRepository objetivoUsuarioRepository;
     private final OfertaAcademicaRepository ofertaAcademicaRepository;
+    private final SimulacroRepository simulacroRepository;
+    private final RespuestaUsuarioRepository respuestaUsuarioRepository;
     private final PlanService planService;
 
     public ProgresoService(ObjetivoUsuarioRepository objetivoUsuarioRepository,
                            OfertaAcademicaRepository ofertaAcademicaRepository,
+                           SimulacroRepository simulacroRepository,
+                           RespuestaUsuarioRepository respuestaUsuarioRepository,
                            PlanService planService) {
         this.objetivoUsuarioRepository = objetivoUsuarioRepository;
         this.ofertaAcademicaRepository = ofertaAcademicaRepository;
+        this.simulacroRepository = simulacroRepository;
+        this.respuestaUsuarioRepository = respuestaUsuarioRepository;
         this.planService = planService;
     }
 
@@ -61,6 +73,7 @@ public class ProgresoService {
         ObjetivoUsuario objetivo = existente.orElseGet(
                 () -> new ObjetivoUsuario(usuario, oferta, LocalDateTime.now()));
         objetivo.setActivo(true);
+        inicializarConUltimoSimulacro(objetivo, usuario.getId(), oferta);
         objetivoUsuarioRepository.save(objetivo);
 
         return aResponse(objetivo);
@@ -103,6 +116,49 @@ public class ProgresoService {
         objetivoUsuarioRepository.saveAll(objetivos);
     }
 
+    // PRO: ordenado del tema mas debil al mas fuerte, para mostrar primero las zonas de refuerzo.
+    @Transactional(readOnly = true)
+    public List<DominioTemaResponse> dominioPorTema(Usuario usuario) {
+        verificarAccesoPro(usuario, "El dominio por tema es exclusivo del plan PRO");
+
+        return respuestaUsuarioRepository.contarRespuestasPorTema(usuario.getId(), EstadoSimulacro.FINALIZADO)
+                .stream()
+                .map(this::aDominio)
+                .sorted(Comparator.comparingDouble(DominioTemaResponse::porcentajeAciertos))
+                .toList();
+    }
+
+    // PRO: la evolucion del PSP del usuario en un area, del simulacro mas antiguo al mas reciente.
+    @Transactional(readOnly = true)
+    public List<HistorialPspResponse> historialPsp(Usuario usuario, Long areaId) {
+        verificarAccesoPro(usuario, "El historico de PSP es exclusivo del plan PRO");
+
+        return simulacroRepository
+                .findByUsuarioIdAndAreaIdAndEstadoOrderByFechaFinAsc(usuario.getId(), areaId, EstadoSimulacro.FINALIZADO)
+                .stream()
+                .map(simulacro -> new HistorialPspResponse(
+                        simulacro.getId(),
+                        simulacro.getTipo(),
+                        simulacro.getFechaFin(),
+                        simulacro.getPuntajeObtenido(),
+                        simulacro.getPsp()))
+                .toList();
+    }
+
+    // Un objetivo nuevo arranca con el PSP del ultimo simulacro que el usuario ya haya
+    // finalizado en esa area, en vez de quedar vacio hasta el proximo simulacro.
+    private void inicializarConUltimoSimulacro(ObjetivoUsuario objetivo, Long usuarioId, OfertaAcademica oferta) {
+        simulacroRepository
+                .findFirstByUsuarioIdAndAreaIdAndEstadoOrderByFechaFinDesc(
+                        usuarioId, oferta.getArea().getId(), EstadoSimulacro.FINALIZADO)
+                .filter(simulacro -> simulacro.getPsp() != null)
+                .ifPresent(simulacro -> {
+                    objetivo.setUltimoPsp(simulacro.getPsp());
+                    objetivo.setUltimoIp(calcularIp(simulacro.getPsp(), oferta.getPuntajeUltimoIngresante()));
+                    objetivo.setFechaActualizacion(simulacro.getFechaFin());
+                });
+    }
+
     private void verificarLimiteDeObjetivos(Usuario usuario) {
         long activos = objetivoUsuarioRepository.countByUsuarioIdAndActivoTrue(usuario.getId());
         int limite = planService.limiteObjetivosActivos(usuario);
@@ -114,6 +170,23 @@ public class ProgresoService {
         }
         throw new UnauthorizedException("El plan gratuito permite " + limite
                 + " objetivo activo: desactiva el actual o pasate a PRO para tener hasta 3");
+    }
+
+    private void verificarAccesoPro(Usuario usuario, String mensaje) {
+        if (!planService.tieneAccesoPro(usuario)) {
+            throw new UnauthorizedException(mensaje);
+        }
+    }
+
+    private DominioTemaResponse aDominio(RespuestaUsuarioRepository.ConteoPorTema conteo) {
+        long correctas = conteo.getCorrectas();
+        long incorrectas = conteo.getIncorrectas();
+        long enBlanco = conteo.getEnBlanco();
+        long total = correctas + incorrectas + enBlanco;
+        double porcentaje = total == 0 ? 0 : Math.round(correctas * 1000.0 / total) / 10.0;
+
+        return new DominioTemaResponse(conteo.getTemaId(), conteo.getTema(),
+                correctas, incorrectas, enBlanco, total, porcentaje);
     }
 
     private ObjetivoResponse aResponse(ObjetivoUsuario objetivo) {
