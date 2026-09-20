@@ -8,8 +8,10 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
@@ -75,6 +77,17 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleMalformedJson(HttpMessageNotReadableException ex,
                                                                 HttpServletRequest request) {
         return buildResponse(HttpStatus.BAD_REQUEST, "El cuerpo de la solicitud no es un JSON valido", request);
+    }
+
+    // Parametro de URL ausente (?areaId=) o con un tipo que no convierte (?areaId=abc).
+    // Sin este handler ambos casos caerian en el generico y responderian 500 en vez de 400.
+    @ExceptionHandler({MissingServletRequestParameterException.class, MethodArgumentTypeMismatchException.class})
+    public ResponseEntity<ErrorResponse> handleParametroInvalido(Exception ex,
+                                                                    HttpServletRequest request) {
+        String message = ex instanceof MissingServletRequestParameterException missing
+                ? "Falta el parametro requerido: " + missing.getParameterName()
+                : "El parametro " + ((MethodArgumentTypeMismatchException) ex).getName() + " tiene un valor invalido";
+        return buildResponse(HttpStatus.BAD_REQUEST, message, request);
     }
 
     // 502: el error viene de un tercero. No se expone ex.getMessage(): puede traer la respuesta cruda del proveedor.

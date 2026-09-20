@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "RumboU API",
-    "description": "Coleccion de endpoints de RumboU (CS2031 UTEC). Cubre auth/, examen/, contenido/ y suscripcion/.\n\nComo usarla:\n1. La variable baseUrl apunta por defecto a la API desplegada en Railway. Para probar en local, cambia baseUrl por el valor de baseUrlLocal (o corre docker compose up -d && ./mvnw spring-boot:run).\n2. Ejecuta 'Registrar usuario' o 'Login' primero: guardan el token automaticamente en las variables de la coleccion, no hay que copiarlo a mano.\n3. Para los endpoints de ADMIN (crear/editar/aprobar/borrar preguntas), el usuario logueado necesita role=ADMIN en la base de datos (el registro siempre crea USER; cambiarlo a mano en la tabla usuarios).\n4. El flujo de simulacro necesita preguntas aprobadas en el area elegida; si no las hay, responde 400 con un mensaje explicito.",
+    "description": "Coleccion de endpoints de RumboU (CS2031 UTEC). Cubre autenticacion, usuarios, catalogo academico, simulacros, progreso, preguntas y suscripciones.\n\nComo usarla:\n1. La variable baseUrl apunta por defecto a la API desplegada en Railway. Para probar en local, cambia baseUrl por el valor de baseUrlLocal (o corre docker compose up -d && ./mvnw spring-boot:run).\n2. Ejecuta 'Registrar usuario' o 'Login' primero: guardan el token automaticamente en las variables de la coleccion, no hay que copiarlo a mano.\n3. Para los endpoints de ADMIN (crear/editar/aprobar/borrar preguntas), el usuario logueado necesita role=ADMIN en la base de datos (el registro siempre crea USER; cambiarlo a mano en la tabla usuarios).\n4. El flujo de simulacro necesita preguntas aprobadas en el area elegida; si no las hay, responde 400 con un mensaje explicito.\n5. Flujo de progreso: listar ofertas academicas (guarda ofertaAcademicaId), crear el objetivo, finalizar un simulacro del area de esa oferta y volver a listar los objetivos para ver el PSP, el IP y el semaforo actualizados.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -78,6 +78,18 @@
     },
     {
       "key": "usuarioId",
+      "value": ""
+    },
+    {
+      "key": "ofertaAcademicaId",
+      "value": ""
+    },
+    {
+      "key": "ofertaAcademicaIdAlterna",
+      "value": ""
+    },
+    {
+      "key": "objetivoId",
       "value": ""
     }
   ],
@@ -409,6 +421,69 @@
       ]
     },
     {
+      "name": "Catalogo academico",
+      "description": "Consulta del catalogo de ofertas academicas (universidad + carrera + area + proceso de admision) con el puntaje del ultimo ingresante. De aqui sale el ofertaAcademicaId que se usa para crear un objetivo.",
+      "item": [
+        {
+          "name": "Listar ofertas academicas",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/ofertas-academicas?universidad=UNI",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ofertas-academicas"
+              ],
+              "query": [
+                {
+                  "key": "universidad",
+                  "value": "UNI",
+                  "description": "Siglas de la universidad: UNI | UNMSM"
+                },
+                {
+                  "key": "area",
+                  "value": "C",
+                  "description": "Codigo del area: GENERAL (UNI) | A, B, C, D, E (UNMSM)",
+                  "disabled": true
+                },
+                {
+                  "key": "carrera",
+                  "value": "sistemas",
+                  "description": "Coincidencia parcial, sin distinguir mayusculas",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Los tres filtros son opcionales y combinables; sin ninguno devuelve el catalogo completo (70 ofertas del proceso 2026-II). Requiere JWT."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const ofertas = pm.response.json();",
+                  "    if (ofertas.length > 0) {",
+                  "        pm.collectionVariables.set('ofertaAcademicaId', ofertas[0].id);",
+                  "        pm.collectionVariables.set('areaId', ofertas[0].areaId);",
+                  "    }",
+                  "    if (ofertas.length > 1) {",
+                  "        pm.collectionVariables.set('ofertaAcademicaIdAlterna', ofertas[1].id);",
+                  "    }",
+                  "}",
+                  "pm.test('Responde 200 con la lista de ofertas', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Simulacros",
       "item": [
         {
@@ -550,6 +625,213 @@
             },
             "description": "Califica el simulacro, lo cierra, y publica SimulacroFinalizadoEvent y (por cada respuesta incorrecta) RespuestaIncorrectaEvent. Devuelve puntajeObtenido y psp."
           }
+        }
+      ]
+    },
+    {
+      "name": "Progreso",
+      "description": "Objetivos del postulante y panel de avance. Orden sugerido: listar ofertas academicas, crear el objetivo, rendir y finalizar un simulacro del area de esa oferta (carpeta Simulacros) y volver a listar los objetivos para ver el PSP, el IP y el semaforo ya actualizados por SimulacroFinalizadoEvent.",
+      "item": [
+        {
+          "name": "Crear objetivo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/objetivos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "objetivos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ofertaAcademicaId\": {{ofertaAcademicaId}}\n}"
+            },
+            "description": "Marca una carrera como objetivo. Responde 201 con el panel de esa carrera. Si el usuario ya tiene esa misma oferta activa responde 409, si la oferta no existe 404, y si supera el limite de objetivos de su plan responde 403. Si ya rindio simulacros del area, el objetivo nace con su PSP e IP calculados."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set('objetivoId', pm.response.json().id);",
+                  "}",
+                  "pm.test('Responde 201 con el objetivo creado', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear un segundo objetivo (limite del plan gratuito)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/objetivos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "objetivos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ofertaAcademicaId\": {{ofertaAcademicaIdAlterna}}\n}"
+            },
+            "description": "Demuestra el control de planes. Con plan gratuito el segundo objetivo responde 403 e indica el limite alcanzado; con plan PRO se permiten 3 y con rol ADMIN no hay tope. El limite lo decide PlanService, no el controller."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Gratuito: 403 al segundo objetivo. PRO o ADMIN: 201', () => pm.expect([201, 403]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar mis objetivos",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/objetivos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "objetivos"
+              ]
+            },
+            "description": "Devuelve los objetivos activos con el ultimo PSP, el indice de preparacion (IP = PSP / puntaje del ultimo ingresante) y el semaforo: HOLGADO (IP >= 1.10), AJUSTADO (1.00 a 1.09), CERCA (0.85 a 0.99), REFORZAR (< 0.85). El PSP y el IP llegan en null mientras no se haya finalizado un simulacro del area."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Responde 200 con los objetivos activos', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dominio por tema (plan PRO)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/progreso/dominio-temas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "progreso",
+                "dominio-temas"
+              ]
+            },
+            "description": "Correctas, incorrectas, en blanco y porcentaje de aciertos por tema, sobre todos los simulacros finalizados del usuario. Viene ordenado del tema mas debil al mas fuerte, para saber que estudiar. Exclusivo del plan PRO: un usuario gratuito recibe 403. El rol ADMIN pasa el limite."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('PRO o ADMIN: 200. Gratuito: 403', () => pm.expect([200, 403]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Historial de PSP (plan PRO)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/progreso/historial?areaId={{areaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "progreso",
+                "historial"
+              ],
+              "query": [
+                {
+                  "key": "areaId",
+                  "value": "{{areaId}}",
+                  "description": "Obligatorio: area del examen cuyo avance se quiere ver"
+                }
+              ]
+            },
+            "description": "Evolucion cronologica del puntaje simulado (PSP) en un area, un punto por simulacro finalizado. Exclusivo del plan PRO. Sin areaId responde 400 indicando el parametro que falta."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('PRO o ADMIN: 200. Gratuito: 403', () => pm.expect([200, 403]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Desactivar objetivo",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/objetivos/{{objetivoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "objetivos",
+                "{{objetivoId}}"
+              ]
+            },
+            "description": "Libera un cupo de objetivos del plan. No borra la fila: la desactiva, asi que si el usuario vuelve a elegir la misma carrera se reactiva conservando su historial. Responde 204. Un objetivo de otro usuario responde 403 y uno inexistente 404."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Responde 204 sin cuerpo', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
