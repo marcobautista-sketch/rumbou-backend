@@ -29,7 +29,7 @@ Esta es la entrega del backend completo: funcionalidades, seguridad, pruebas, de
 - **GitHub Projects/Issues** para gestionar tareas, con milestones y labels — no solo código, también proceso.
 - **El `README.md` debe incluir además un informe narrativo de 1000-2000 palabras** con esta estructura fija: Portada, Índice, Introducción (contexto + objetivos), Identificación del Problema (descripción + justificación), Descripción de la Solución (funcionalidades + tecnologías), Modelo de Entidades (diagrama + descripción), Manejo de Errores, Medidas de Seguridad (seguridad de datos + prevención de SQLi/XSS/CSRF), Eventos y Asincronía, GitHub & Management, Conclusión (logros + aprendizajes + trabajo futuro), Apéndices (licencia + referencias). Esto convive con las instrucciones técnicas de instalación que ya tiene el README (la rúbrica también las pide, en la sección 9.1).
 
-Estado actual frente a la rúbrica: 17 entidades, 5 eventos con 6 listeners, 8 excepciones propias, 23 DTOs, roles + refresh tokens + correo + admin por variables de entorno, desplegado en Railway. Falta `progreso/` (IP, dominio por tema) y la migración a AWS si llega la cuenta.
+Estado actual frente a la rúbrica: 18 entidades, 5 eventos con 7 listeners, 8 excepciones propias, 28 DTOs, 28 endpoints, roles + refresh tokens + correo + admin por variables de entorno, progreso (objetivos, IP, dominio por tema), desplegado en Railway. Falta la migración a AWS si llega la cuenta.
 
 ---
 
@@ -102,7 +102,7 @@ Cómo se reparte el trabajo ahora que las carpetas son compartidas: **cada perso
 
 | Evento | Publica | Escuchan | Modo |
 |---|---|---|---|
-| `SimulacroFinalizadoEvent` | `SimulacroService` | `GamificacionListener` (y progreso, cuando exista) | síncrono, transaccional |
+| `SimulacroFinalizadoEvent` (lleva el tipo) | `SimulacroService` | `GamificacionListener`, `ProgresoListener` (solo COMPLETO/DIAGNOSTICO mueven el IP) | síncrono, transaccional |
 | `RespuestaIncorrectaEvent` | `SimulacroService` | `TutorIaExplicacionListener` | `@Async` + AFTER_COMMIT |
 | `PagoAprobadoEvent` | `WebhookService` | `SuscripcionActivacionListener`, `PagoAprobadoCorreoListener` | AFTER_COMMIT |
 | `PasswordResetRequestedEvent` | `AuthService` | `RecuperacionContrasenaCorreoListener` | `@Async` + AFTER_COMMIT |
@@ -125,6 +125,7 @@ Entidades principales y la razón de existir de las menos obvias:
 - `Simulacro`, `RespuestaUsuario` — **M:N con atributos**: incluye `puntajeAportado`, que puede ser negativo
 - `Suscripcion`, `UsoDiario` — plan y contadores con `@Version`; `PagoWebhook` — notificaciones de pago ya procesadas (idempotencia)
 - `Logro`, `UsuarioLogro`
+- `ObjetivoUsuario` — carrera objetivo del usuario con su último PSP e IP (se desactiva, no se borra)
 - `PasswordResetToken` — token de un solo uso para recuperar la contraseña
 
 ### Cálculo de puntaje

@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "RumboU API",
-    "description": "Coleccion de endpoints de RumboU (CS2031 UTEC). Cubre autenticacion, usuarios, catalogo academico, simulacros, progreso, preguntas y suscripciones.\n\nComo usarla:\n1. La variable baseUrl apunta por defecto a la API desplegada en Railway. Para probar en local, cambia baseUrl por el valor de baseUrlLocal (o corre docker compose up -d && ./mvnw spring-boot:run).\n2. Ejecuta 'Registrar usuario' o 'Login' primero: guardan el token automaticamente en las variables de la coleccion, no hay que copiarlo a mano.\n3. Para los endpoints de ADMIN (crear/editar/aprobar/borrar preguntas), el usuario logueado necesita role=ADMIN en la base de datos (el registro siempre crea USER; cambiarlo a mano en la tabla usuarios).\n4. El flujo de simulacro necesita preguntas aprobadas en el area elegida; si no las hay, responde 400 con un mensaje explicito.\n5. Flujo de progreso: listar ofertas academicas (guarda ofertaAcademicaId), crear el objetivo, finalizar un simulacro del area de esa oferta y volver a listar los objetivos para ver el PSP, el IP y el semaforo actualizados.",
+    "description": "Coleccion de endpoints de RumboU (CS2031 UTEC). Cubre autenticacion, usuarios, catalogo academico, simulacros, progreso, preguntas y suscripciones. Se puede correr completa, en orden, con \"Run collection\".\n\nComo usarla:\n1. baseUrl apunta a la API desplegada en Railway. Para local, cambia baseUrl por el valor de baseUrlLocal (docker compose up -d && ./mvnw spring-boot:run).\n2. \"Registrar usuario\" crea una cuenta nueva en cada corrida (genera el email solo) y guarda el token; \"Login\" reutiliza ese mismo email. No hay que copiar tokens a mano.\n3. Los requests marcados (ADMIN) necesitan rol ADMIN. Llena las variables adminEmail y adminPassword (las mismas ADMIN_EMAIL / ADMIN_PASSWORD del servidor) y ejecuta \"Login como administrador\": desde ahi todos los requests corren como ADMIN. Sin ese login, los requests ADMIN responden 403 y sus tests lo aceptan como resultado valido.\n4. Los requests marcados (plan PRO) responden 403 con el plan gratuito; el ADMIN pasa todos los limites del plan.\n5. Cada request guarda en variables los ids que necesitan los siguientes (usuarioId, areaId, temaId, simulacroId, preguntaId, ofertaAcademicaId, objetivoId).\n6. \"Crear suscripcion PRO\" y \"Tutor de IA\" dependen de credenciales externas (MP_ACCESS_TOKEN, GEMINI_API_KEY) en el servidor; sin ellas responden 502.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -91,6 +91,18 @@
     {
       "key": "objetivoId",
       "value": ""
+    },
+    {
+      "key": "email",
+      "value": "postulante@rumbou.com"
+    },
+    {
+      "key": "adminEmail",
+      "value": ""
+    },
+    {
+      "key": "adminPassword",
+      "value": ""
     }
   ],
   "item": [
@@ -147,21 +159,28 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"postulante@rumbou.com\",\n  \"password\": \"password123\",\n  \"nombre\": \"Ana\"\n}"
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"password123\",\n  \"nombre\": \"Ana\"\n}"
             },
-            "description": "Crea una cuenta con role=USER. Devuelve access token (15 min) y refresh token (7 dias). Publica UsuarioRegistradoEvent."
+            "description": "Crea una cuenta con role=USER y devuelve access token (15 min) y refresh token (7 dias). El email se genera en cada corrida (variable email) para que la coleccion se pueda repetir sin 409. Publica UsuarioRegistradoEvent (correo de bienvenida asincrono)."
           },
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Email nuevo en cada corrida, para que la coleccion se pueda ejecutar varias veces.",
+                  "pm.collectionVariables.set('email', 'postulante' + Date.now() + '@rumbou.com');"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "if (pm.response.code === 201) {",
-                  "    const body = pm.response.json();",
-                  "    pm.collectionVariables.set('accessToken', body.accessToken);",
-                  "    pm.collectionVariables.set('refreshToken', body.refreshToken);",
-                  "}",
-                  "pm.test('Status es 201', () => pm.response.to.have.status(201));"
+                  "if (pm.response.code === 200 || pm.response.code === 201) { const b = pm.response.json(); pm.collectionVariables.set('accessToken', b.accessToken); pm.collectionVariables.set('refreshToken', b.refreshToken); }",
+                  "pm.test('201 con access y refresh token', () => pm.response.to.have.status(201));"
                 ]
               }
             }
@@ -191,7 +210,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"postulante@rumbou.com\",\n  \"password\": \"password123\"\n}"
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"password123\"\n}"
             },
             "description": "Autentica y devuelve access + refresh token."
           },
@@ -199,13 +218,10 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "if (pm.response.code === 200) {",
-                  "    const body = pm.response.json();",
-                  "    pm.collectionVariables.set('accessToken', body.accessToken);",
-                  "    pm.collectionVariables.set('refreshToken', body.refreshToken);",
-                  "}",
-                  "pm.test('Status es 200', () => pm.response.to.have.status(200));"
+                  "if (pm.response.code === 200 || pm.response.code === 201) { const b = pm.response.json(); pm.collectionVariables.set('accessToken', b.accessToken); pm.collectionVariables.set('refreshToken', b.refreshToken); }",
+                  "pm.test('200 con tokens nuevos', () => pm.response.to.have.status(200));"
                 ]
               }
             }
@@ -243,12 +259,10 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "if (pm.response.code === 200) {",
-                  "    const body = pm.response.json();",
-                  "    pm.collectionVariables.set('accessToken', body.accessToken);",
-                  "    pm.collectionVariables.set('refreshToken', body.refreshToken);",
-                  "}"
+                  "if (pm.response.code === 200 || pm.response.code === 201) { const b = pm.response.json(); pm.collectionVariables.set('accessToken', b.accessToken); pm.collectionVariables.set('refreshToken', b.refreshToken); }",
+                  "pm.test('200 con un access token nuevo', () => pm.response.to.have.status(200));"
                 ]
               }
             }
@@ -278,10 +292,21 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"postulante@rumbou.com\"\n}"
+              "raw": "{\n  \"email\": \"{{email}}\"\n}"
             },
             "description": "Siempre responde 200, exista o no el email (para no revelar que correos estan registrados). Publica PasswordResetRequestedEvent con el token; en local, mientras no exista el servicio de correo, el token se ve en el log de la aplicacion."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 siempre, exista o no el email (no revela cuentas)', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Resetear contrasena",
@@ -310,6 +335,58 @@
               "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"newPassword\": \"nueva-password123\"\n}"
             },
             "description": "El token vale 30 minutos y es de un solo uso. Pegar el valor de {{resetToken}} obtenido del paso anterior."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 con el token del correo; 400/401 si resetToken esta vacio o vencido', () => pm.expect([200, 400, 401]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login como administrador",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) { const b = pm.response.json(); pm.collectionVariables.set('accessToken', b.accessToken); pm.collectionVariables.set('refreshToken', b.refreshToken); }",
+                  "pm.test('200 con adminEmail/adminPassword configurados; 400/401 si estan vacios', () => pm.expect([200, 400, 401]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Mismo endpoint de login, con la cuenta administradora. Llena las variables adminEmail y adminPassword (las mismas ADMIN_EMAIL / ADMIN_PASSWORD con las que arranca el servidor). Guarda el token: a partir de aqui todos los requests corren como ADMIN, que ademas pasa todos los limites del plan. Si las variables estan vacias responde 400/401 y el resto de la coleccion sigue como usuario normal."
           }
         }
       ]
@@ -324,11 +401,10 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "if (pm.response.code === 200) {",
-                  "    pm.collectionVariables.set('usuarioId', pm.response.json().id);",
-                  "}",
-                  "pm.test('Status es 200', () => pm.response.to.have.status(200));"
+                  "if (pm.response.code === 200) { pm.collectionVariables.set('usuarioId', pm.response.json().id); }",
+                  "pm.test('200 con id, email, nombre y rol', () => pm.response.to.have.status(200));"
                 ]
               }
             }
@@ -356,11 +432,10 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "if (pm.response.code === 200) {",
-                  "    pm.collectionVariables.set('usuarioId', pm.response.json().id);",
-                  "}",
-                  "pm.test('Status es 200', () => pm.response.to.have.status(200));"
+                  "if (pm.response.code === 200) { pm.collectionVariables.set('usuarioId', pm.response.json().id); }",
+                  "pm.test('200 como ADMIN; 403 como USER', () => pm.expect([200, 403]).to.include(pm.response.code));"
                 ]
               }
             }
@@ -368,7 +443,7 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/api/v1/usuarios?email=postulante@rumbou.com",
+              "raw": "{{baseUrl}}/api/v1/usuarios?email={{email}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -380,7 +455,7 @@
               "query": [
                 {
                   "key": "email",
-                  "value": "postulante@rumbou.com",
+                  "value": "{{email}}",
                   "description": "Email exacto de la cuenta"
                 }
               ]
@@ -416,7 +491,18 @@
               ]
             },
             "description": "Cambia el rol de la cuenta indicada (USER o ADMIN). Requiere role=ADMIN. Un admin no puede quitarse su propio rol (400), para que el sistema nunca se quede sin administradores. El usuario promovido debe volver a hacer login: el rol viaja dentro del JWT y su token anterior sigue diciendo USER."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 como ADMIN; 403 como USER', () => pm.expect([200, 403]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -517,15 +603,10 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "if (pm.response.code === 200 || pm.response.code === 201) {",
-                  "    const body = pm.response.json();",
-                  "    pm.collectionVariables.set('simulacroId', body.id);",
-                  "    if (body.preguntas && body.preguntas.length > 0) {",
-                  "        pm.collectionVariables.set('respuestaUsuarioId', body.preguntas[0].respuestaUsuarioId);",
-                  "        pm.collectionVariables.set('preguntaId', body.preguntas[0].preguntaId);",
-                  "    }",
-                  "}"
+                  "if (pm.response.code === 201) { const b = pm.response.json(); pm.collectionVariables.set('simulacroId', b.id); if (b.preguntas && b.preguntas.length > 0) { pm.collectionVariables.set('respuestaUsuarioId', b.preguntas[0].respuestaUsuarioId); pm.collectionVariables.set('preguntaId', b.preguntas[0].preguntaId); } }",
+                  "pm.test('201 con las preguntas del tema; 403 si se supero el limite semanal del plan gratuito', () => pm.expect([201, 403]).to.include(pm.response.code));"
                 ]
               }
             }
@@ -537,15 +618,10 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "if (pm.response.code === 200 || pm.response.code === 201) {",
-                  "    const body = pm.response.json();",
-                  "    pm.collectionVariables.set('simulacroId', body.id);",
-                  "    if (body.preguntas && body.preguntas.length > 0) {",
-                  "        pm.collectionVariables.set('respuestaUsuarioId', body.preguntas[0].respuestaUsuarioId);",
-                  "        pm.collectionVariables.set('preguntaId', body.preguntas[0].preguntaId);",
-                  "    }",
-                  "}"
+                  "if (pm.response.code === 201) { const b = pm.response.json(); pm.collectionVariables.set('simulacroId', b.id); if (b.preguntas && b.preguntas.length > 0) { pm.collectionVariables.set('respuestaUsuarioId', b.preguntas[0].respuestaUsuarioId); pm.collectionVariables.set('preguntaId', b.preguntas[0].preguntaId); } }",
+                  "pm.test('201 con el examen completo; 403 si se supero el limite mensual del plan gratuito', () => pm.expect([201, 403]).to.include(pm.response.code));"
                 ]
               }
             }
@@ -604,7 +680,18 @@
               "raw": "{\n  \"preguntaId\": {{preguntaId}},\n  \"alternativaMarcada\": 2\n}"
             },
             "description": "alternativaMarcada es el indice (0 a 4) de la alternativa elegida. Usar null para dejarla en blanco. Solo el dueno del simulacro puede responder, y no si ya esta finalizado."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200; 400 si el simulacro ya se finalizo', () => pm.expect([200, 400]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Finalizar simulacro",
@@ -624,7 +711,18 @@
               ]
             },
             "description": "Califica el simulacro, lo cierra, y publica SimulacroFinalizadoEvent y (por cada respuesta incorrecta) RespuestaIncorrectaEvent. Devuelve puntajeObtenido y psp."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 con puntaje y PSP; 400 si ya estaba finalizado', () => pm.expect([200, 400]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -884,7 +982,18 @@
               ]
             },
             "description": "Todos los filtros son opcionales y combinables. Un usuario normal solo ve preguntas aprobadas; un ADMIN ve todas. Nunca incluye claveCorrecta ni explicacion en este listado."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 con la pagina de preguntas aprobadas', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Obtener pregunta por id",
@@ -902,7 +1011,49 @@
                 "{{preguntaId}}"
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 sin clave ni explicacion para un USER', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tutor de IA (plan PRO)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/preguntas/{{preguntaId}}/tutor-ia",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "preguntas",
+                "{{preguntaId}}",
+                "tutor-ia"
+              ]
+            },
+            "description": "Explicacion personalizada de la pregunta generada con Gemini. Exclusiva del plan PRO (el rol ADMIN tambien puede usarla), con tope de 30 consultas al dia controlado por PlanService (403 si el usuario es gratuito o supero el limite). Requiere GEMINI_API_KEY configurada en el servidor; si el proveedor falla responde 502 sin descontar cupo. Un usuario no-admin solo puede consultar preguntas aprobadas."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Responde 200 (PRO), 403 (sin plan o limite) o 502 (proveedor)', () => pm.expect([200,403,502]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Crear pregunta (ADMIN)",
@@ -929,8 +1080,20 @@
               "mode": "raw",
               "raw": "{\n  \"temaId\": {{temaId}},\n  \"enunciado\": \"¿Cual es la derivada de x^2?\",\n  \"alternativas\": [\"x\", \"2x\", \"x^2\", \"2\", \"0\"],\n  \"claveCorrecta\": 1,\n  \"explicacion\": \"La derivada de x^n es n*x^(n-1).\",\n  \"dificultad\": \"MEDIA\",\n  \"origen\": \"SEMILLA\",\n  \"aprobada\": true\n}"
             },
-            "description": "Requiere role=ADMIN (403 si no). claveCorrecta es el indice 0-4 dentro de alternativas, que debe tener exactamente 5 elementos."
-          }
+            "description": "Requiere role=ADMIN (403 si no). claveCorrecta es el indice 0-4 dentro de alternativas, que debe tener exactamente 5 elementos. El id creado se guarda en preguntaId, asi que Actualizar, Aprobar y Eliminar actuan sobre esta pregunta de prueba y no sobre el banco real."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('preguntaId', pm.response.json().id); }",
+                  "pm.test('201 como ADMIN (guarda preguntaId para editar, aprobar y borrar esa misma pregunta); 403 como USER', () => pm.expect([201, 403]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Actualizar pregunta (ADMIN)",
@@ -959,7 +1122,18 @@
               "raw": "{\n  \"temaId\": {{temaId}},\n  \"enunciado\": \"¿Cual es la derivada de x^2? (editado)\",\n  \"alternativas\": [\"x\", \"2x\", \"x^2\", \"2\", \"0\"],\n  \"claveCorrecta\": 1,\n  \"explicacion\": \"La derivada de x^n es n*x^(n-1).\",\n  \"dificultad\": \"MEDIA\",\n  \"origen\": \"SEMILLA\",\n  \"aprobada\": true\n}"
             },
             "description": "Reemplaza TODOS los campos editables (no es un update parcial). Requiere role=ADMIN."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 como ADMIN; 403 como USER', () => pm.expect([200, 403]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Aprobar pregunta (ADMIN)",
@@ -979,7 +1153,18 @@
               ]
             },
             "description": "Marca aprobada=true. Se usa sobre todo en el panel de revision de preguntas generadas con Gemini (nacen con aprobada=false). Requiere role=ADMIN."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 como ADMIN; 403 como USER', () => pm.expect([200, 403]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Aprobar preguntas en lote (ADMIN)",
@@ -1008,7 +1193,18 @@
               ]
             },
             "description": "Marca aprobada=true en todas las preguntas indicadas en una sola llamada. Pensado para el panel de revision: despues de generar un lote con Gemini (profile generar-preguntas) y leerlo, se aprueban de un jalon. Devuelve la lista de preguntas aprobadas. Requiere role=ADMIN; ids no puede ir vacio (400)."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 como ADMIN; 403 como USER', () => pm.expect([200, 403]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Eliminar pregunta (ADMIN)",
@@ -1027,34 +1223,14 @@
               ]
             },
             "description": "Requiere role=ADMIN. Devuelve 204 sin contenido."
-          }
-        },
-        {
-          "name": "Tutor de IA (plan PRO)",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/preguntas/{{preguntaId}}/tutor-ia",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "preguntas",
-                "{{preguntaId}}",
-                "tutor-ia"
-              ]
-            },
-            "description": "Explicacion personalizada de la pregunta generada con Gemini. Exclusiva del plan PRO (el rol ADMIN tambien puede usarla), con tope de 30 consultas al dia controlado por PlanService (403 si el usuario es gratuito o supero el limite). Requiere GEMINI_API_KEY configurada en el servidor; si el proveedor falla responde 502 sin descontar cupo. Un usuario no-admin solo puede consultar preguntas aprobadas."
           },
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test('Responde 200 (PRO), 403 (sin plan o limite) o 502 (proveedor)', () => pm.expect([200,403,502]).to.include(pm.response.code));"
+                  "pm.test('204 como ADMIN; 403 como USER', () => pm.expect([204, 403]).to.include(pm.response.code));"
                 ]
               }
             }
