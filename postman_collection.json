@@ -802,8 +802,9 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test('Gratuito: 403 al segundo objetivo. PRO o ADMIN: 201', () => pm.expect([201, 403]).to.include(pm.response.code));"
+                  "pm.test('Gratuito: 403 al segundo objetivo. PRO o ADMIN: 201 (409 si ya lo tenia activo de una corrida anterior)', () => pm.expect([201, 403, 409]).to.include(pm.response.code));"
                 ]
               }
             }
