@@ -10,9 +10,6 @@ target/
 application-local.properties
 application-local.yml
 
-### Config local del editor (personal, no se comparte con el equipo) ###
-.claude/settings.local.json
-
 ### STS ###
 .apt_generated
 .classpath
