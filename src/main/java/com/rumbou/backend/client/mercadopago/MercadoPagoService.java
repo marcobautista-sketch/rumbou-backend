@@ -1,6 +1,7 @@
 package com.rumbou.backend.client.mercadopago;
 
 import com.mercadopago.MercadoPagoConfig;
+import com.rumbou.backend.exception.ExternalServiceException;
 import com.mercadopago.client.preapproval.PreApprovalAutoRecurringCreateRequest;
 import com.mercadopago.client.preapproval.PreapprovalClient;
 import com.mercadopago.client.preapproval.PreapprovalCreateRequest;
@@ -27,7 +28,7 @@ public class MercadoPagoService {
 
     public ResultadoPreaprobacion crearPreaprobacion(String externalReference, String payerEmail) {
         if (accessToken.isBlank()) {
-            throw new IllegalStateException("Falta configurar MP_ACCESS_TOKEN");
+            throw new ExternalServiceException("Falta configurar MP_ACCESS_TOKEN");
         }
         MercadoPagoConfig.setAccessToken(accessToken);
 
