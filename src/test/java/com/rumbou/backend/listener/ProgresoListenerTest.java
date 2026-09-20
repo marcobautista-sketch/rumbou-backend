@@ -69,6 +69,28 @@ class ProgresoListenerTest extends AbstractContainerBaseTest {
     }
 
     @Test
+    void unSimulacroPorTemaNoMueveElPspNiElIpDelObjetivo() {
+        ObjetivoUsuario objetivo = persistir(new ObjetivoUsuario(postulante, sistemasUni, LocalDateTime.now()));
+
+        eventPublisher.publishEvent(new SimulacroFinalizadoEvent(99L, postulante.getId(),
+                areaGeneralUni.getId(), TipoSimulacro.POR_TEMA, 200, 1800));
+
+        ObjetivoUsuario recargado = recargar(objetivo);
+        assertThat(recargado.getUltimoPsp()).isNull();
+        assertThat(recargado.getUltimoIp()).isNull();
+    }
+
+    @Test
+    void elDiagnosticoSiActualizaElObjetivo() {
+        ObjetivoUsuario objetivo = persistir(new ObjetivoUsuario(postulante, sistemasUni, LocalDateTime.now()));
+
+        eventPublisher.publishEvent(new SimulacroFinalizadoEvent(99L, postulante.getId(),
+                areaGeneralUni.getId(), TipoSimulacro.DIAGNOSTICO, 1000, 1330));
+
+        assertThat(recargar(objetivo).getUltimoPsp()).isEqualTo(1330);
+    }
+
+    @Test
     void unSimulacroDeOtraAreaNoTocaElObjetivo() {
         ObjetivoUsuario deUnmsm = persistir(new ObjetivoUsuario(postulante, sistemasUnmsm, LocalDateTime.now()));
 

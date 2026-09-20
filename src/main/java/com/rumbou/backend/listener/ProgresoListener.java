@@ -1,5 +1,6 @@
 package com.rumbou.backend.listener;
 
+import com.rumbou.backend.entity.TipoSimulacro;
 import com.rumbou.backend.event.SimulacroFinalizadoEvent;
 import com.rumbou.backend.service.ProgresoService;
 import org.springframework.context.event.EventListener;
@@ -16,8 +17,13 @@ public class ProgresoListener {
         this.progresoService = progresoService;
     }
 
+    // Un simulacro POR_TEMA no mueve el IP: su PSP sale de un solo tema y no
+    // representa el examen completo (10 de 10 en Trigonometria daria IP > 1).
     @EventListener
     public void onSimulacroFinalizado(SimulacroFinalizadoEvent event) {
+        if (event.tipo() == TipoSimulacro.POR_TEMA) {
+            return;
+        }
         progresoService.actualizarTrasSimulacro(event.usuarioId(), event.areaId(), event.psp());
     }
 }
