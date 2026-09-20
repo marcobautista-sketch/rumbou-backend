@@ -149,7 +149,7 @@ El handler cubre también las de Spring: `BadCredentialsException` (401), `Acces
 
 ## 7. Eventos y asincronía
 
-Los módulos no se llaman entre sí: se comunican con eventos (`ApplicationEventPublisher`), lo que permitió avanzar en paralelo y mantiene desacoplados examen, progreso, gamificación, contenido, suscripciones y correo.
+Los módulos no se llaman entre sí: se comunican con eventos (`ApplicationEventPublisher`), lo que permitió avanzar en paralelo y los mantiene desacoplados.
 
 | Evento | Lo publica | Lo escucha | Modo |
 | --- | --- | --- | --- |
@@ -201,7 +201,7 @@ Variables de entorno (con valor por defecto de desarrollo; ninguna credencial re
 
 ### B. Despliegue
 
-La API corre en **Railway** con PostgreSQL gestionado y red privada. El [Dockerfile](Dockerfile) compila el jar en una etapa de build y produce una imagen solo con el runtime de Java 21; cada merge a `main` despliega. La configuración llega por variables de entorno y el seed se corre en producción activando temporalmente `SPRING_PROFILES_ACTIVE=seed`. La misma imagen es portable a AWS (EC2 o ECS + RDS).
+La API corre en **Railway** con PostgreSQL gestionado. El [Dockerfile](Dockerfile) compila el jar en una etapa de build y produce una imagen solo con el runtime de Java 21; cada merge a `main` despliega. La configuración llega por variables de entorno y el seed se corre en producción activando temporalmente `SPRING_PROFILES_ACTIVE=seed`. La misma imagen es portable a AWS (EC2 o ECS + RDS).
 
 ### C. Referencia de la API y colección de Postman
 
@@ -218,7 +218,7 @@ Rutas bajo `/api/v1`, recursos en plural. 🔒 requiere token; 👑 además rol 
 | Preguntas | 🔒 `GET /preguntas` (filtros, paginación) · `GET /preguntas/{id}` · `POST /preguntas/{id}/tutor-ia` (PRO) · 👑 `POST`, `PUT /{id}`, `PATCH /{id}/aprobar`, `PATCH /aprobar-lote`, `DELETE /{id}` |
 | Suscripciones | 🔒 `POST /suscripciones` · `POST /webhooks/mercadopago` (público, idempotente) |
 
-La colección [`postman_collection.json`](postman_collection.json) documenta cada request con descripción, ejemplo y validaciones, y se ejecuta completa en orden: `baseUrl` apunta a producción, el registro genera un email nuevo por corrida, la autorización Bearer está a nivel de colección y los scripts guardan tokens e ids. "Login como administrador" viene cargado con la **cuenta de evaluación** del curso (`evaluador@rumbou.app`, rol `ADMIN` en producción) para revisar los endpoints de administración sin tocar la base de datos.
+La colección [`postman_collection.json`](postman_collection.json) documenta cada request con descripción, ejemplo y validaciones, y se ejecuta completa en orden: `baseUrl` apunta a producción, el registro genera un email nuevo por corrida, la autorización Bearer está a nivel de colección y los scripts guardan tokens e ids. "Login como administrador" trae la **cuenta de evaluación** del curso (`evaluador@rumbou.app`, rol `ADMIN`) para probar los endpoints de administración.
 
 ### D. Licencia
 
