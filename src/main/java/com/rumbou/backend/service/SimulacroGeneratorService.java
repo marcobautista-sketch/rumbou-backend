@@ -39,14 +39,16 @@ public class SimulacroGeneratorService {
     }
 
     @Transactional
-    public Simulacro generar(Usuario usuario, Area area, TipoSimulacro tipo) {
+    public Simulacro generar(Usuario usuario, Area area, TipoSimulacro tipo, Long temaId) {
+        List<EstructuraExamen> estructura = estructuraExamenRepository.findByAreaIdOrderByOrden(area.getId());
+        List<EstructuraExamen> filasDelSimulacro = filtrarSegunTipo(estructura, tipo, temaId);
+
         Simulacro simulacro = new Simulacro(usuario, area, tipo, LocalDateTime.now());
         simulacroRepository.save(simulacro);
 
-        List<EstructuraExamen> estructura = estructuraExamenRepository.findByAreaIdOrderByOrden(area.getId());
         int preguntasAgregadas = 0;
 
-        for (EstructuraExamen fila : estructura) {
+        for (EstructuraExamen fila : filasDelSimulacro) {
             List<Pregunta> disponibles = preguntaRepository.findByTemaIdAndAprobadaTrue(fila.getTema().getId());
             Collections.shuffle(disponibles);
 
@@ -66,5 +68,29 @@ public class SimulacroGeneratorService {
         }
 
         return simulacro;
+    }
+
+    // Que parte del examen entra segun el tipo. POR_TEMA usa solo la fila de su
+    // tema, con la cantidad de preguntas que ese tema tiene en el examen real;
+    // COMPLETO y DIAGNOSTICO usan toda la estructura del area.
+    private List<EstructuraExamen> filtrarSegunTipo(List<EstructuraExamen> estructura,
+                                                     TipoSimulacro tipo,
+                                                     Long temaId) {
+        if (tipo != TipoSimulacro.POR_TEMA) {
+            return estructura;
+        }
+
+        if (temaId == null) {
+            throw new InvalidOperationException("Un simulacro por tema necesita el temaId");
+        }
+
+        List<EstructuraExamen> filasDelTema = estructura.stream()
+                .filter(fila -> fila.getTema().getId().equals(temaId))
+                .toList();
+
+        if (filasDelTema.isEmpty()) {
+            throw new InvalidOperationException("Ese tema no forma parte del examen de esta area");
+        }
+        return filasDelTema;
     }
 }
