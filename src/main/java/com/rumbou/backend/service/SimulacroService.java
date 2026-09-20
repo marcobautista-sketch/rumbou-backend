@@ -72,7 +72,8 @@ public class SimulacroService {
         Funcionalidad funcionalidad = funcionalidadSegunTipo(request.tipo());
         planService.puedeAcceder(usuario, funcionalidad);
 
-        Simulacro simulacro = simulacroGeneratorService.generar(usuario, area, request.tipo());
+        Simulacro simulacro = simulacroGeneratorService.generar(
+                usuario, area, request.tipo(), request.temaId());
         planService.registrarUso(usuario, funcionalidad);
 
         return construirRespuesta(simulacro);
@@ -118,7 +119,8 @@ public class SimulacroService {
         simulacroRepository.save(simulacro);
 
         eventPublisher.publishEvent(new SimulacroFinalizadoEvent(
-                simulacro.getId(), usuario.getId(), simulacro.getArea().getId(), puntajeTotal, psp));
+                simulacro.getId(), usuario.getId(), simulacro.getArea().getId(),
+                simulacro.getTipo(), puntajeTotal, psp));
 
         for (RespuestaUsuario respuesta : respuestas) {
             if (Boolean.FALSE.equals(respuesta.getEsCorrecta())) {

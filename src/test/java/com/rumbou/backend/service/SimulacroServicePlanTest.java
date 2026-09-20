@@ -67,11 +67,11 @@ class SimulacroServicePlanTest {
 
     @Test
     void iniciarPorTemaVerificaLimiteYRegistraUso() {
-        when(simulacroGeneratorService.generar(usuario, area, TipoSimulacro.POR_TEMA))
+        when(simulacroGeneratorService.generar(usuario, area, TipoSimulacro.POR_TEMA, 5L))
                 .thenReturn(new Simulacro(usuario, area, TipoSimulacro.POR_TEMA, LocalDateTime.now()));
 
         simulacroService.iniciar(usuario,
-                new IniciarSimulacroRequest(10L, TipoSimulacro.POR_TEMA));
+                new IniciarSimulacroRequest(10L, TipoSimulacro.POR_TEMA, 5L));
 
         verify(planService).puedeAcceder(usuario, Funcionalidad.SIMULACRO_TEMA);
         verify(planService).registrarUso(usuario, Funcionalidad.SIMULACRO_TEMA);
@@ -79,11 +79,11 @@ class SimulacroServicePlanTest {
 
     @Test
     void iniciarCompletoUsaElContadorDeSimulacroCompleto() {
-        when(simulacroGeneratorService.generar(usuario, area, TipoSimulacro.COMPLETO))
+        when(simulacroGeneratorService.generar(usuario, area, TipoSimulacro.COMPLETO, null))
                 .thenReturn(new Simulacro(usuario, area, TipoSimulacro.COMPLETO, LocalDateTime.now()));
 
         simulacroService.iniciar(usuario,
-                new IniciarSimulacroRequest(10L, TipoSimulacro.COMPLETO));
+                new IniciarSimulacroRequest(10L, TipoSimulacro.COMPLETO, null));
 
         verify(planService).puedeAcceder(usuario, Funcionalidad.SIMULACRO_COMPLETO);
         verify(planService).registrarUso(usuario, Funcionalidad.SIMULACRO_COMPLETO);
@@ -91,14 +91,25 @@ class SimulacroServicePlanTest {
 
     @Test
     void iniciarDiagnosticoSeCobraComoSimulacroCompleto() {
-        when(simulacroGeneratorService.generar(usuario, area, TipoSimulacro.DIAGNOSTICO))
+        when(simulacroGeneratorService.generar(usuario, area, TipoSimulacro.DIAGNOSTICO, null))
                 .thenReturn(new Simulacro(usuario, area, TipoSimulacro.DIAGNOSTICO, LocalDateTime.now()));
 
         simulacroService.iniciar(usuario,
-                new IniciarSimulacroRequest(10L, TipoSimulacro.DIAGNOSTICO));
+                new IniciarSimulacroRequest(10L, TipoSimulacro.DIAGNOSTICO, null));
 
         verify(planService).puedeAcceder(usuario, Funcionalidad.SIMULACRO_COMPLETO);
         verify(planService).registrarUso(usuario, Funcionalidad.SIMULACRO_COMPLETO);
+    }
+
+    @Test
+    void iniciarPorTemaLePasaElTemaIdAlGenerador() {
+        when(simulacroGeneratorService.generar(usuario, area, TipoSimulacro.POR_TEMA, 7L))
+                .thenReturn(new Simulacro(usuario, area, TipoSimulacro.POR_TEMA, LocalDateTime.now()));
+
+        simulacroService.iniciar(usuario,
+                new IniciarSimulacroRequest(10L, TipoSimulacro.POR_TEMA, 7L));
+
+        verify(simulacroGeneratorService).generar(usuario, area, TipoSimulacro.POR_TEMA, 7L);
     }
 
     @Test
@@ -107,7 +118,7 @@ class SimulacroServicePlanTest {
                 .when(planService).puedeAcceder(usuario, Funcionalidad.SIMULACRO_TEMA);
 
         assertThatThrownBy(() -> simulacroService.iniciar(usuario,
-                new IniciarSimulacroRequest(10L, TipoSimulacro.POR_TEMA)))
+                new IniciarSimulacroRequest(10L, TipoSimulacro.POR_TEMA, 5L)))
                 .isInstanceOf(UnauthorizedException.class);
 
         verify(planService, never()).registrarUso(usuario, Funcionalidad.SIMULACRO_TEMA);

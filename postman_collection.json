@@ -487,7 +487,7 @@
       "name": "Simulacros",
       "item": [
         {
-          "name": "Iniciar simulacro",
+          "name": "Iniciar simulacro por tema",
           "request": {
             "method": "POST",
             "header": [
@@ -509,9 +509,9 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"areaId\": {{areaId}},\n  \"tipo\": \"POR_TEMA\"\n}"
+              "raw": "{\n  \"areaId\": {{areaId}},\n  \"tipo\": \"POR_TEMA\",\n  \"temaId\": {{temaId}}\n}"
             },
-            "description": "tipo: DIAGNOSTICO | POR_TEMA | COMPLETO. Requiere que el area tenga EstructuraExamen con preguntas aprobadas, si no responde con un error claro. Requiere JWT."
+            "description": "Practica de un solo tema: entrega la misma cantidad de preguntas que ese tema tiene en el examen real del area (segun EstructuraExamen). temaId es obligatorio cuando el tipo es POR_TEMA; sin el responde 400, y tambien si el tema no forma parte del examen de esa area. Consume el contador de simulacros por tema del plan (3 a la semana en el gratuito). Requiere JWT."
           },
           "event": [
             {
@@ -530,6 +530,51 @@
               }
             }
           ]
+        },
+        {
+          "name": "Iniciar simulacro completo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    const body = pm.response.json();",
+                  "    pm.collectionVariables.set('simulacroId', body.id);",
+                  "    if (body.preguntas && body.preguntas.length > 0) {",
+                  "        pm.collectionVariables.set('respuestaUsuarioId', body.preguntas[0].respuestaUsuarioId);",
+                  "        pm.collectionVariables.set('preguntaId', body.preguntas[0].preguntaId);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"areaId\": {{areaId}},\n  \"tipo\": \"COMPLETO\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/simulacros",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "simulacros"
+              ]
+            },
+            "description": "Examen completo del area: recorre toda la EstructuraExamen (180 preguntas en la UNI, 100 en UNMSM). temaId no se usa en este tipo. DIAGNOSTICO se arma igual que COMPLETO (es el examen completo que se rinde al inicio) y ambos consumen el contador de simulacros completos (1 al mes en el plan gratuito). Requiere JWT."
+          }
         },
         {
           "name": "Responder pregunta",
