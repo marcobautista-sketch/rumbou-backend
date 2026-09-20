@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "RumboU API",
-    "description": "Coleccion de endpoints de RumboU (CS2031 UTEC). Cubre autenticacion, usuarios, catalogo academico, simulacros, progreso, preguntas y suscripciones. Se puede correr completa, en orden, con \"Run collection\".\n\nComo usarla:\n1. baseUrl apunta a la API desplegada en Railway. Para local, cambia baseUrl por el valor de baseUrlLocal (docker compose up -d && ./mvnw spring-boot:run).\n2. \"Registrar usuario\" crea una cuenta nueva en cada corrida (genera el email solo) y guarda el token; \"Login\" reutiliza ese mismo email. No hay que copiar tokens a mano.\n3. Los requests marcados (ADMIN) necesitan rol ADMIN. Llena las variables adminEmail y adminPassword (las mismas ADMIN_EMAIL / ADMIN_PASSWORD del servidor) y ejecuta \"Login como administrador\": desde ahi todos los requests corren como ADMIN. Sin ese login, los requests ADMIN responden 403 y sus tests lo aceptan como resultado valido.\n4. Los requests marcados (plan PRO) responden 403 con el plan gratuito; el ADMIN pasa todos los limites del plan.\n5. Cada request guarda en variables los ids que necesitan los siguientes (usuarioId, areaId, temaId, simulacroId, preguntaId, ofertaAcademicaId, objetivoId).\n6. \"Crear suscripcion PRO\" y \"Tutor de IA\" dependen de credenciales externas (MP_ACCESS_TOKEN, GEMINI_API_KEY) en el servidor; sin ellas responden 502.",
+    "description": "Coleccion de endpoints de RumboU (CS2031 UTEC). Cubre autenticacion, usuarios, catalogo academico, simulacros, progreso, preguntas y suscripciones. Se puede correr completa, en orden, con \"Run collection\".\n\nComo usarla:\n1. baseUrl apunta a la API desplegada en Railway. Para local, cambia baseUrl por el valor de baseUrlLocal (docker compose up -d && ./mvnw spring-boot:run).\n2. \"Registrar usuario\" crea una cuenta nueva en cada corrida (genera el email solo) y guarda el token; \"Login\" reutiliza ese mismo email. No hay que copiar tokens a mano.\n3. Los requests marcados (ADMIN) necesitan rol ADMIN. Ejecuta \"Login como administrador\": usa la cuenta de evaluacion del curso (evaluador@rumbou.app, ya cargada en las variables adminEmail y adminPassword) y desde ahi todos los requests corren como ADMIN. Sin ese login, los requests ADMIN responden 403 y sus tests lo aceptan como resultado valido.\n4. Los requests marcados (plan PRO) responden 403 con el plan gratuito; el ADMIN pasa todos los limites del plan.\n5. Cada request guarda en variables los ids que necesitan los siguientes (usuarioId, areaId, temaId, simulacroId, preguntaId, ofertaAcademicaId, objetivoId).\n6. \"Crear suscripcion PRO\" y \"Tutor de IA\" dependen de credenciales externas (MP_ACCESS_TOKEN, GEMINI_API_KEY) en el servidor; sin ellas responden 502.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -98,11 +98,11 @@
     },
     {
       "key": "adminEmail",
-      "value": ""
+      "value": "evaluador@rumbou.app"
     },
     {
       "key": "adminPassword",
-      "value": ""
+      "value": "RumboU-Evaluador-2026"
     }
   ],
   "item": [
@@ -386,7 +386,7 @@
                 "login"
               ]
             },
-            "description": "Mismo endpoint de login, con la cuenta administradora. Llena las variables adminEmail y adminPassword (las mismas ADMIN_EMAIL / ADMIN_PASSWORD con las que arranca el servidor). Guarda el token: a partir de aqui todos los requests corren como ADMIN, que ademas pasa todos los limites del plan. Si las variables estan vacias responde 400/401 y el resto de la coleccion sigue como usuario normal."
+            "description": "Mismo endpoint de login, con una cuenta administradora. Las variables adminEmail y adminPassword vienen cargadas con la cuenta de evaluacion del curso (evaluador@rumbou.app), que ya tiene rol ADMIN en produccion: basta con ejecutar este request para que el resto de la coleccion corra como ADMIN (que ademas pasa todos los limites del plan). Tambien sirven las credenciales de cualquier otro administrador."
           }
         }
       ]
@@ -802,8 +802,9 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test('Gratuito: 403 al segundo objetivo. PRO o ADMIN: 201', () => pm.expect([201, 403]).to.include(pm.response.code));"
+                  "pm.test('Gratuito: 403 al segundo objetivo. PRO o ADMIN: 201 (409 si ya lo tenia activo de una corrida anterior)', () => pm.expect([201, 403, 409]).to.include(pm.response.code));"
                 ]
               }
             }

@@ -127,7 +127,7 @@ Todos los errores se resuelven en un único `@RestControllerAdvice` (`GlobalExce
 - Reglas de negocio: `InvalidOperationException` (400).
 - Servicios externos: `ExternalServiceException` y `GeminiException` (502).
 
-El mismo handler cubre las de Spring: `BadCredentialsException` (401), `AccessDeniedException` (403, cuando `@PreAuthorize` rechaza el rol), `MethodArgumentNotValidException` (400, detalle de `@Valid`), `HttpMessageNotReadableException` (400, JSON mal formado), parámetros de URL ausentes o inválidos (400), `NoResourceFoundException` (404) y un respaldo genérico (500) que no filtra detalles internos.
+El handler cubre también las de Spring: `BadCredentialsException` (401), `AccessDeniedException` (403, cuando `@PreAuthorize` rechaza el rol), `MethodArgumentNotValidException` (400, detalle de `@Valid`), `HttpMessageNotReadableException` (400, JSON mal formado), parámetros de URL ausentes o inválidos (400), `NoResourceFoundException` (404) y un respaldo genérico (500) que no filtra detalles internos.
 
 ## 6. Medidas de seguridad implementadas
 
@@ -149,7 +149,7 @@ El mismo handler cubre las de Spring: `BadCredentialsException` (401), `AccessDe
 
 ## 7. Eventos y asincronía
 
-Los módulos no se llaman entre sí: se comunican con eventos (`ApplicationEventPublisher`), lo que permitió avanzar en paralelo y mantiene desacoplados examen, progreso, gamificación, contenido, suscripciones y correo.
+Los módulos no se llaman entre sí: se comunican con eventos (`ApplicationEventPublisher`), lo que permitió avanzar en paralelo y los mantiene desacoplados.
 
 | Evento | Lo publica | Lo escucha | Modo |
 | --- | --- | --- | --- |
@@ -197,11 +197,11 @@ La API cubre de punta a punta el flujo del postulante: registrarse, elegir una c
 3. **Aplicación:** `./mvnw spring-boot:run` en `http://localhost:8080`.
 4. **Pruebas:** `./mvnw test` con Docker abierto (Testcontainers).
 
-Variables de entorno (con valor por defecto de desarrollo; ninguna credencial real en el repositorio): `SPRING_DATASOURCE_*`, `JWT_SECRET`, `PORT`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `GEMINI_API_KEY`, `MP_ACCESS_TOKEN` y `MAIL_*`. Sin las de Gemini, Mercado Pago y correo la aplicación arranca igual y esas funciones responden 502. Para ampliar el banco: profile `generar-preguntas`, aprobación por la API y profile `exportar-preguntas`.
+Variables de entorno (con valor por defecto de desarrollo; ninguna credencial real en el repositorio): `SPRING_DATASOURCE_*`, `JWT_SECRET`, `PORT`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `GEMINI_API_KEY`, `MP_ACCESS_TOKEN` y `MAIL_*`. Sin Gemini, Mercado Pago ni correo la aplicación arranca igual y esas funciones responden 502. Para ampliar el banco: profile `generar-preguntas`, aprobación por la API y profile `exportar-preguntas`.
 
 ### B. Despliegue
 
-La API corre en **Railway** con PostgreSQL gestionado y red privada. El [Dockerfile](Dockerfile) compila el jar en una etapa de build y produce una imagen solo con el runtime de Java 21; cada merge a `main` despliega. La configuración llega por variables de entorno y el seed se corre en producción activando temporalmente `SPRING_PROFILES_ACTIVE=seed`. La misma imagen es portable a AWS (EC2 o ECS + RDS).
+La API corre en **Railway** con PostgreSQL gestionado. El [Dockerfile](Dockerfile) compila el jar en una etapa de build y produce una imagen solo con el runtime de Java 21; cada merge a `main` despliega. La configuración llega por variables de entorno y el seed se corre en producción activando temporalmente `SPRING_PROFILES_ACTIVE=seed`. La misma imagen es portable a AWS (EC2 o ECS + RDS).
 
 ### C. Referencia de la API y colección de Postman
 
@@ -218,7 +218,7 @@ Rutas bajo `/api/v1`, recursos en plural. 🔒 requiere token; 👑 además rol 
 | Preguntas | 🔒 `GET /preguntas` (filtros, paginación) · `GET /preguntas/{id}` · `POST /preguntas/{id}/tutor-ia` (PRO) · 👑 `POST`, `PUT /{id}`, `PATCH /{id}/aprobar`, `PATCH /aprobar-lote`, `DELETE /{id}` |
 | Suscripciones | 🔒 `POST /suscripciones` · `POST /webhooks/mercadopago` (público, idempotente) |
 
-La colección [`postman_collection.json`](postman_collection.json) documenta cada request con descripción, ejemplo y validaciones, y se ejecuta completa en orden: `baseUrl` apunta a producción, el registro genera un email nuevo por corrida, la autorización Bearer está a nivel de colección y los scripts guardan tokens e ids. "Login como administrador" usa `adminEmail` y `adminPassword`.
+La colección [`postman_collection.json`](postman_collection.json) documenta cada request con descripción, ejemplo y validaciones, y se ejecuta completa en orden: `baseUrl` apunta a producción, el registro genera un email nuevo por corrida, la autorización Bearer está a nivel de colección y los scripts guardan tokens e ids. "Login como administrador" trae la **cuenta de evaluación** del curso (`evaluador@rumbou.app`, rol `ADMIN`) para probar los endpoints de administración.
 
 ### D. Licencia
 
