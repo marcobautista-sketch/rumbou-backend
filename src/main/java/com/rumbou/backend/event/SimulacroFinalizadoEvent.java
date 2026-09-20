@@ -1,6 +1,6 @@
 package com.rumbou.backend.event;
 
-// Lo publica SimulacroService al calificar; lo escucha GamificacionListener (sincrono, misma transaccion).
+// Lo publica SimulacroService al calificar; lo escuchan GamificacionListener y ProgresoListener (sincronos, misma transaccion).
 public record SimulacroFinalizadoEvent(
         Long simulacroId,
         Long usuarioId,
