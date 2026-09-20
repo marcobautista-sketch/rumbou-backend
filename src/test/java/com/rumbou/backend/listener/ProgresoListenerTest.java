@@ -3,6 +3,7 @@ package com.rumbou.backend.listener;
 import com.rumbou.backend.entity.Area;
 import com.rumbou.backend.entity.Carrera;
 import com.rumbou.backend.entity.ObjetivoUsuario;
+import com.rumbou.backend.entity.TipoSimulacro;
 import com.rumbou.backend.entity.OfertaAcademica;
 import com.rumbou.backend.entity.Role;
 import com.rumbou.backend.entity.Universidad;
@@ -59,7 +60,7 @@ class ProgresoListenerTest extends AbstractContainerBaseTest {
         ObjetivoUsuario objetivo = persistir(new ObjetivoUsuario(postulante, sistemasUni, LocalDateTime.now()));
 
         eventPublisher.publishEvent(new SimulacroFinalizadoEvent(99L, postulante.getId(),
-                areaGeneralUni.getId(), 1000, 1330));
+                areaGeneralUni.getId(), TipoSimulacro.COMPLETO, 1000, 1330));
 
         ObjetivoUsuario actualizado = recargar(objetivo);
         assertThat(actualizado.getUltimoPsp()).isEqualTo(1330);
@@ -72,7 +73,7 @@ class ProgresoListenerTest extends AbstractContainerBaseTest {
         ObjetivoUsuario deUnmsm = persistir(new ObjetivoUsuario(postulante, sistemasUnmsm, LocalDateTime.now()));
 
         eventPublisher.publishEvent(new SimulacroFinalizadoEvent(99L, postulante.getId(),
-                areaGeneralUni.getId(), 1000, 1330));
+                areaGeneralUni.getId(), TipoSimulacro.COMPLETO, 1000, 1330));
 
         assertThat(recargar(deUnmsm).getUltimoPsp()).isNull();
     }
@@ -80,7 +81,7 @@ class ProgresoListenerTest extends AbstractContainerBaseTest {
     @Test
     void unUsuarioSinObjetivosNoRompeLaFinalizacionDelSimulacro() {
         assertThatCode(() -> eventPublisher.publishEvent(new SimulacroFinalizadoEvent(99L, postulante.getId(),
-                areaGeneralUni.getId(), 1000, 1330)))
+                areaGeneralUni.getId(), TipoSimulacro.COMPLETO, 1000, 1330)))
                 .doesNotThrowAnyException();
     }
 
