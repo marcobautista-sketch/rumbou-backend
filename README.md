@@ -1,135 +1,231 @@
-# RumboU - Plataforma de preparación para el examen de admisión
+# RumboU — Plataforma de preparación para el examen de admisión (UNI y UNMSM)
 
-- **Curso:** CS2031 Desarrollo Basado en Plataformas - UTEC, ciclo 2026-2
+- **Curso:** CS2031 Desarrollo Basado en Plataformas — UTEC, ciclo 2026-2
 - **Entrega:** Proyecto 1 (Semana 7)
 - **Integrantes:** Marco Bautista, Fabiana Gomez, Juan Carlos Vergara y Zoe Garrido Cantoni
-- **API en producción:** https://rumbou-backend-production.up.railway.app
-- **Health check:** https://rumbou-backend-production.up.railway.app/api/v1/health
+- **API en producción:** https://rumbou-backend-production.up.railway.app ([health](https://rumbou-backend-production.up.railway.app/api/v1/health))
 - **Colección de Postman:** [`postman_collection.json`](postman_collection.json)
 
-RumboU es una API REST construida con Spring Boot para preparar postulantes a los exámenes de admisión de la UNI y la UNMSM. El proyecto modela las reglas de cada examen como datos configurables: estructura por tema, puntaje por respuesta correcta, penalidad y puntaje de referencia por carrera. Así, el backend puede generar y calificar simulacros sin tener lógica condicionada a una universidad específica.
+## Índice
 
-## Problema y solución
+1. [Introducción](#1-introducción)
+2. [Identificación del problema o necesidad](#2-identificación-del-problema-o-necesidad)
+3. [Descripción de la solución](#3-descripción-de-la-solución)
+4. [Modelo de entidades](#4-modelo-de-entidades)
+5. [Manejo de errores](#5-manejo-de-errores)
+6. [Medidas de seguridad implementadas](#6-medidas-de-seguridad-implementadas)
+7. [Eventos y asincronía](#7-eventos-y-asincronía)
+8. [GitHub y gestión del proyecto](#8-github-y-gestión-del-proyecto)
+9. [Conclusión](#9-conclusión)
+10. [Apéndices](#10-apéndices)
 
-Los postulantes suelen practicar con material genérico, aunque la UNI y la UNMSM tienen estructuras, penalidades y puntajes de ingreso distintos. Esto dificulta estimar cuánto representa un resultado de práctica frente a la carrera elegida. RumboU ofrece un banco de preguntas, simulacros configurados por área, cálculo de puntaje y funcionalidades de progreso, gamificación y suscripción.
+## 1. Introducción
 
-El flujo principal es: una persona se registra, inicia sesión, elige un área y crea un simulacro; responde las preguntas y lo finaliza. El sistema califica las respuestas usando el esquema correspondiente, registra el resultado y publica eventos para actualizar racha, XP, logros y explicaciones de preguntas falladas. Los usuarios administradores pueden gestionar el banco de preguntas y las cuentas.
+### Contexto
 
-## Tecnologías
+En el Perú, el ingreso a universidades públicas como la UNI y la UNMSM se decide en un examen de admisión muy competitivo. Cada universidad, e incluso cada área, tiene su propia estructura de prueba, su penalidad por respuesta incorrecta y un puntaje de corte por carrera que cambia en cada proceso. Prepararse bien exige practicar con las reglas exactas del examen real y saber qué tan lejos se está del puntaje de ingreso.
 
-| Área | Tecnologías |
-| --- | --- |
-| Backend | Java 21, Spring Boot 3.3.5, Maven |
-| Persistencia | Spring Data JPA, Hibernate y PostgreSQL 16 |
-| Seguridad | Spring Security, JWT y BCrypt |
-| Validación y web | Bean Validation, Spring Web y MockMvc |
-| Integraciones | Google Gemini, Mercado Pago, JavaMailSender y Thymeleaf |
-| Calidad | JUnit 5, Mockito, Testcontainers y GitHub Actions |
-| Contenedores y entrega | Docker, Docker Compose, Railway y Postman |
+RumboU es una API REST en Spring Boot que sirve de backend a una plataforma de preparación para estos exámenes (UNI, área General; UNMSM, áreas B y C). No incluye frontend: se demuestra desde la colección de Postman.
 
-## Arquitectura, DTOs y patrones
+### Objetivos
 
-La aplicación sigue una arquitectura por capas. Los controladores reciben HTTP y devuelven respuestas REST; los servicios contienen las reglas de negocio y las transacciones; los repositorios resuelven la persistencia mediante Spring Data JPA. Las entidades nunca se exponen directamente en la API.
+- Rendir simulacros que repliquen el examen real de cada universidad y área: mismas preguntas por tema, mismo acierto y penalidad.
+- Traducir el puntaje simulado en una medida de avance: el Puntaje Simulado Proyectado (PSP) y el Índice de Progreso (IP) respecto al último ingresante de la carrera objetivo.
+- Mantener un banco de preguntas propio, generado con IA y revisado por una persona.
+- Incentivar la constancia con racha, XP y logros.
+- Sostener el servicio con un modelo freemium: plan gratuito con límites y plan PRO.
+
+## 2. Identificación del problema o necesidad
+
+### Descripción del problema
+
+Los postulantes se preparan con material genérico que no refleja la estructura de puntaje de su universidad: una misma pregunta vale y penaliza distinto en la UNI y en la UNMSM. Tampoco hay una forma clara de traducir un puntaje simulado a "qué tan cerca estoy de ingresar a mi carrera", porque eso depende del puntaje del último ingresante, que cambia cada proceso.
+
+### Justificación
+
+Una preparación de calidad suele estar limitada a quienes pueden pagar una academia. Modelar las reglas de cada examen como datos configurables, y no como código, permite llegar a más personas y hace que agregar otra universidad sea un cambio de datos, no de arquitectura. Esa es la regla central del proyecto: ningún puntaje, penalidad ni corte de admisión vive en el código.
+
+## 3. Descripción de la solución
+
+### Funcionalidades implementadas
+
+- **Autenticación y roles:** registro, login, JWT con el rol embebido, refresh tokens, recuperación de contraseña de un solo uso y administración de roles `USER`/`ADMIN`.
+- **Motor de simulacros:** `COMPLETO` y `DIAGNOSTICO` arman el examen entero del área; `POR_TEMA`, solo las preguntas de un tema con la cantidad del examen real. Califica con la penalidad del esquema y calcula el PSP.
+- **Progreso:** carreras objetivo con PSP, IP y semáforo (holgado, ajustado, cerca, reforzar), dominio por tema e historial de PSP.
+- **Banco de preguntas:** CRUD por rol, filtros paginados y generación con Gemini con validación automática y aprobación humana. **792 preguntas aprobadas** (36 por tema en 22 temas): alcanzan para los exámenes completos de la UNI (180) y la UNMSM (100).
+- **Catálogo académico:** universidades, áreas, esquemas, temas, estructura del examen, 51 carreras y 70 ofertas con puntaje de ingreso, cargados desde CSV con un seed idempotente.
+- **Suscripción PRO:** `PlanService` como puerta única de límites, pago por Mercado Pago, webhook idempotente, activación por evento y job diario de vencimientos.
+- **Tutor de IA** (PRO, con tope diario) y explicación estática por pregunta fallada; **gamificación** con racha, XP y logros; **correo** de registro, recuperación y pago con plantillas Thymeleaf asíncronas.
+- **Despliegue continuo:** contenedor Docker en Railway con PostgreSQL en la nube; cada merge a `main` despliega.
+
+### Tecnologías utilizadas
+
+Java 21, Spring Boot 3.3.5 y Maven · Spring Data JPA, Hibernate y PostgreSQL 16 · Spring Security con JWT (access y refresh) y BCrypt · Google Gemini, Mercado Pago y JavaMailSender + Thymeleaf · JUnit 5, Mockito, MockMvc, Testcontainers y GitHub Actions · Docker, Railway y Postman.
+
+### Arquitectura y patrones
+
+El código está organizado **por capas**; una petición las atraviesa en orden.
 
 ```text
-controller/  ->  service/  ->  repository/  ->  entity/
-                    |
-                    +-> event/ y listener/
-                    +-> client/ (Gemini y Mercado Pago)
+controller/ (28 endpoints) -> service/ -> repository/ -> entity/ (18)   |   event/ (5) + listener/ (7)
+dto/ (13 request, 15 response) · exception/ (8 + handler) · security/ · client/ · seed/ · scheduler/
 ```
 
-Los DTOs separan los contratos de entrada y salida. Por ejemplo, `PreguntaResponse` no devuelve la alternativa correcta para un postulante, mientras `PreguntaAdminResponse` sí puede hacerlo para la gestión administrativa. Los request DTOs declaran reglas como `@NotBlank`, `@Email`, `@Size`, `@Min`, `@Max` y `@NotNull`; los controladores aplican `@Valid` antes de entrar a la lógica de negocio. Los mapeos se realizan en los servicios, donde se resuelven las relaciones necesarias y se evita recibir o devolver entidades JPA.
+Patrones: inyección por constructor; Repository con Spring Data; **DTOs especializados por caso de uso** (`PreguntaResponse` oculta la clave al postulante, `PreguntaAdminResponse` la incluye), de modo que ningún endpoint recibe ni devuelve entidades; Bean Validation con `@Valid`; arquitectura dirigida por eventos; y un **motor de calificación dirigido por datos**: `CalificadorService` recibe el esquema como parámetro y no tiene un condicional por universidad.
 
-Se aplican inyección de dependencias por constructor, Repository con Spring Data, DTOs por caso de uso, validación declarativa y arquitectura dirigida por eventos. `CalificadorService` es un ejemplo del enfoque dirigido por datos: recibe el esquema de calificación de un área y calcula el resultado sin condicionales por universidad.
+## 4. Modelo de entidades
 
-## Modelo de entidades
-
-El modelo contiene 17 entidades JPA y enums persistidos con `EnumType.STRING`, para que los datos permanezcan legibles y no dependan del orden de los valores en código. Las entidades heredan los campos comunes de `BaseEntity`; las restricciones relevantes se expresan con anotaciones JPA y constraints de base de datos. Las operaciones concurrentes sensibles, como el avance de usuario y los contadores de uso, usan `@Version` para bloqueo optimista.
+### Diagrama
 
 ```mermaid
 erDiagram
-    Usuario ||--o{ Simulacro : rinde
-    Usuario ||--o{ Suscripcion : tiene
-    Usuario ||--o{ UsuarioLogro : desbloquea
     Usuario ||--o{ PasswordResetToken : solicita
+    Usuario ||--o{ Simulacro : rinde
+    Usuario ||--o{ ObjetivoUsuario : persigue
+    Usuario ||--o{ Suscripcion : tiene
+    Usuario ||--o{ UsoDiario : registra
+    Usuario ||--o{ UsuarioLogro : desbloquea
     Universidad ||--o{ Area : tiene
+    Universidad ||--o{ EsquemaCalificacion : define
     Universidad ||--o{ OfertaAcademica : ofrece
-    Carrera ||--o{ OfertaAcademica : participa
-    Area ||--o{ EstructuraExamen : define
-    Area ||--o{ Simulacro : selecciona
-    Tema ||--o{ Pregunta : clasifica
+    Carrera ||--o{ OfertaAcademica : "se ofrece en"
+    Area ||--o{ OfertaAcademica : "corresponde a"
+    Area ||--o{ EstructuraExamen : compone
+    Area ||--o{ Simulacro : "es rendida en"
+    OfertaAcademica ||--o{ ObjetivoUsuario : "es meta de"
+    EsquemaCalificacion ||--o{ EstructuraExamen : califica
     Tema ||--o{ EstructuraExamen : agrupa
+    Tema ||--o{ Pregunta : clasifica
     Simulacro ||--o{ RespuestaUsuario : contiene
     Pregunta ||--o{ RespuestaUsuario : responde
     Logro ||--o{ UsuarioLogro : otorga
 ```
 
-| Grupo | Entidades principales | Responsabilidad |
+### Descripción
+
+Son 18 entidades JPA con `id` heredado de `BaseEntity`; los enums se persisten como texto (`EnumType.STRING`). `PagoWebhook` no se relaciona con otras: registra los pagos ya procesados.
+
+| Grupo | Entidades | Qué representan |
 | --- | --- | --- |
-| Autenticación | `Usuario`, `PasswordResetToken` | Cuenta, roles y recuperación de contraseña |
-| Académico | `Universidad`, `Area`, `Carrera`, `OfertaAcademica`, `EsquemaCalificacion`, `Tema`, `EstructuraExamen` | Reglas y catálogo de admisión |
-| Examen | `Pregunta`, `Simulacro`, `RespuestaUsuario` | Banco, intento y calificación |
-| Suscripción | `Suscripcion`, `UsoDiario`, `PagoWebhook` | Plan, límites e idempotencia de pagos |
-| Gamificación | `Logro`, `UsuarioLogro` | XP, racha y logros desbloqueados |
+| Autenticación | `Usuario`, `PasswordResetToken` | Cuenta con rol, racha y XP (`@Version`); token de un solo uso para recuperar la contraseña |
+| Académico | `Universidad`, `Area`, `Carrera`, `OfertaAcademica`, `EsquemaCalificacion`, `Tema`, `EstructuraExamen` | Catálogo y reglas del examen como datos: temas por área, cantidad de preguntas, acierto, penalidad y máximo |
+| Contenido | `Pregunta` | Pertenece a un tema, no a una universidad: el mismo banco sirve para ambas |
+| Examen | `Simulacro`, `RespuestaUsuario` | El intento y cada respuesta con su puntaje aportado, que puede ser negativo |
+| Progreso | `ObjetivoUsuario` | Carrera objetivo con el último PSP e IP; se desactiva, no se borra |
+| Suscripción | `Suscripcion`, `UsoDiario`, `PagoWebhook` | Plan, contadores diarios (`@Version`) y pagos ya procesados (idempotencia) |
+| Gamificación | `Logro`, `UsuarioLogro` | Catálogo de logros y cuáles desbloqueó cada usuario |
 
-`OfertaAcademica` representa la relación entre universidad, carrera y área, añadiendo el puntaje del último ingresante. `RespuestaUsuario` vincula un simulacro con una pregunta y conserva el puntaje aportado, incluso cuando es negativo por penalidad. Esta separación permite que las relaciones M:N tengan atributos propios y que el historial de resultados sea reproducible.
+`OfertaAcademica` (universidad + carrera + área + proceso, con el puntaje del último ingresante) y `RespuestaUsuario` son relaciones M:N con atributos propios.
 
-## Seguridad y manejo de errores
+## 5. Manejo de errores
 
-La API es stateless. Las contraseñas se almacenan con `BCryptPasswordEncoder` y los tokens JWT usan una clave HMAC obtenida desde `JWT_SECRET`. El access token expira en 15 minutos y el refresh token en 7 días. Las credenciales, claves de integración y datos de PostgreSQL se cargan mediante variables de entorno; no se versionan secretos reales.
+Todos los errores se resuelven en un único `@RestControllerAdvice` (`GlobalExceptionHandler`), sin `try/catch` en los controllers. La respuesta siempre es un `ErrorResponse` (`timestamp`, `status`, `error`, `message`, `path`). Excepciones propias, por categoría:
 
-El registro público crea únicamente cuentas `USER`. Los endpoints de administración usan `@PreAuthorize("hasRole('ADMIN')")` y `@EnableMethodSecurity`; el cambio de rol está limitado a administradores y una cuenta no puede quitarse su propio rol. La recuperación de contraseña emplea tokens de un solo uso con vencimiento de 30 minutos y responde de la misma manera aunque el correo no exista, evitando enumeración de cuentas.
+- Recurso: `ResourceNotFoundException` (404), `DuplicateResourceException` (409).
+- Autenticación: `InvalidCredentialsException`, `InvalidTokenException` (401).
+- Autorización y límites de plan: `UnauthorizedException` (403).
+- Reglas de negocio: `InvalidOperationException` (400).
+- Servicios externos: `ExternalServiceException` y `GeminiException` (502).
 
-Las consultas usan Spring Data JPA e Hibernate con parámetros, evitando SQL construido por concatenación. La API no renderiza HTML de entrada de usuarios y valida los requests. CSRF está deshabilitado porque no se usan cookies ni sesiones, sino el header `Authorization: Bearer <token>`. CORS está centralizado en `SecurityConfig`; antes de una publicación pública con frontend debe restringirse al dominio autorizado.
+El mismo handler cubre las de Spring: `BadCredentialsException` (401), `AccessDeniedException` (403, cuando `@PreAuthorize` rechaza el rol), `MethodArgumentNotValidException` (400, detalle de `@Valid`), `HttpMessageNotReadableException` (400, JSON mal formado), parámetros de URL ausentes o inválidos (400), `NoResourceFoundException` (404) y un respaldo genérico (500) que no filtra detalles internos.
 
-`GlobalExceptionHandler`, anotado con `@RestControllerAdvice`, centraliza las respuestas de error. Todas siguen el contrato `timestamp`, `status`, `error`, `message` y `path`. Maneja errores de validación, JSON inválido, acceso denegado y excepciones propias como `ResourceNotFoundException` (404), `DuplicateResourceException` (409), `InvalidCredentialsException` e `InvalidTokenException` (401), `UnauthorizedException` (403), `InvalidOperationException` (400) y `ExternalServiceException`/`GeminiException` (502). Un error no controlado devuelve 500 sin filtrar detalles internos.
+## 6. Medidas de seguridad implementadas
 
-## Eventos, asincronía y correo
+### Seguridad de datos
 
-La comunicación entre módulos se realiza con `ApplicationEventPublisher`, evitando que un servicio dependa directamente de otro. Los eventos de dominio principales son `SimulacroFinalizadoEvent`, `RespuestaIncorrectaEvent`, `PagoAprobadoEvent`, `PasswordResetRequestedEvent` y `UsuarioRegistradoEvent`.
+- **Contraseñas** hasheadas con `BCryptPasswordEncoder`; ningún DTO de respuesta incluye el hash.
+- **JWT stateless:** access token de 15 minutos y refresh token de 7 días, firmados con una clave HMAC que viene de `JWT_SECRET`. El rol vive en la base de datos y viaja dentro del token.
+- **Autorización por método:** `@PreAuthorize("hasRole('ADMIN')")` con `@EnableMethodSecurity` sobre gestión de preguntas, búsqueda de usuarios y cambio de roles. Los límites del plan se verifican en `PlanService`; el `ADMIN` los pasa todos.
+- **Administradores controlados:** el registro público solo crea `USER`; el primer `ADMIN` nace de `ADMIN_EMAIL`/`ADMIN_PASSWORD` al arrancar, solo un administrador promueve a otros y ninguno se quita su propio rol.
+- **Recuperación de contraseña:** token de un solo uso, 30 minutos de vigencia, invalida los anteriores; el endpoint responde igual exista o no el correo.
+- **Secretos fuera del repositorio:** base de datos, JWT, Gemini, Mercado Pago y SMTP vienen de variables de entorno.
 
-Los listeners de correo y Gemini se ejecutan con `@Async` sobre el executor configurado en `AsyncConfig`, por lo que el usuario no espera una llamada SMTP o de IA para recibir la respuesta HTTP. Los eventos que necesitan datos ya confirmados usan `@TransactionalEventListener(phase = AFTER_COMMIT)`. El listener de suscripción activa el plan tras el webhook idempotente de Mercado Pago; otro listener envía el correo de confirmación. Un job programado revisa diariamente las suscripciones vencidas.
+### Prevención de vulnerabilidades
 
-## API REST y Postman
+- **Inyección SQL:** todas las consultas pasan por Spring Data JPA / Hibernate con parámetros; ninguna se concatena.
+- **XSS:** la API solo devuelve JSON y nunca renderiza HTML con datos del usuario; toda entrada pasa por Bean Validation.
+- **CSRF:** desactivado porque la API es stateless y no usa cookies; la autenticación es por header `Authorization: Bearer`.
+- **CORS:** explícito en `SecurityConfig`; abierto en desarrollo, a restringir al dominio del cliente antes de un uso público.
 
-Todas las rutas están versionadas bajo `/api/v1`, usan sustantivos en plural y devuelven códigos HTTP coherentes. `GET /api/v1/health` es público; el resto se protege según el rol y la operación. Las listas de preguntas aceptan filtros y paginación, con un límite de tamaño para evitar respuestas excesivas.
+## 7. Eventos y asincronía
 
-| Recurso | Operaciones destacadas |
-| --- | --- |
-| `auth` | Registro, login, refresh token y recuperación de contraseña |
-| `usuarios` | Perfil propio, búsqueda y cambio de rol para `ADMIN` |
-| `preguntas` | Listado paginado, consulta, CRUD y aprobación administrativa |
-| `simulacros` | Crear, responder y finalizar simulacros |
-| `suscripciones` | Crear preaprobación de pago para plan PRO |
-| `webhooks/mercadopago` | Recibir y procesar pagos de forma idempotente |
+Los módulos no se llaman entre sí: se comunican con eventos (`ApplicationEventPublisher`), lo que permitió avanzar en paralelo y mantiene desacoplados examen, progreso, gamificación, contenido, suscripciones y correo.
 
-La colección [`postman_collection.json`](postman_collection.json), ubicada en la raíz, incluye variables para producción y local (`baseUrl` y `baseUrlLocal`), autenticación Bearer a nivel de colección, ejemplos de requests y scripts que guardan tokens e identificadores necesarios para seguir el flujo. Puede importarse directamente en Postman.
+| Evento | Lo publica | Lo escucha | Modo |
+| --- | --- | --- | --- |
+| `SimulacroFinalizadoEvent` | `SimulacroService` | `GamificacionListener` (racha, XP, logros), `ProgresoListener` (PSP e IP) | Síncrono, misma transacción |
+| `RespuestaIncorrectaEvent` | `SimulacroService` | `TutorIaExplicacionListener` (cachea una explicación) | `@Async` + `AFTER_COMMIT` |
+| `PagoAprobadoEvent` | `WebhookService` | `SuscripcionActivacionListener`, `PagoAprobadoCorreoListener` | `AFTER_COMMIT` |
+| `PasswordResetRequestedEvent` | `AuthService` | `RecuperacionContrasenaCorreoListener` (correo) | `@Async` + `AFTER_COMMIT` |
+| `UsuarioRegistradoEvent` | `AuthService` | `RegistroConfirmacionListener` (correo) | `@Async` + `AFTER_COMMIT` |
 
-## Calidad y trabajo colaborativo
+Los oyentes que llaman a un tercero (Gemini, SMTP) son `@Async` sobre un pool propio, así la respuesta HTTP no espera. Los que dependen de datos recién escritos usan `AFTER_COMMIT` y, si escriben, abren su propia transacción con `REQUIRES_NEW`, porque en esa fase la original ya se cerró. `SuscripcionVencimientoJob` (`@Scheduled`, 3 a.m.) vence las suscripciones cuya fecha de fin pasó.
 
-El repositorio incluye 25 clases de prueba con JUnit 5, Mockito, MockMvc y Testcontainers: pruebas unitarias, de capa web, de persistencia/seed contra PostgreSQL y una prueba de humo del contexto de Spring. El workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) ejecuta `./mvnw -B verify` en cada push y pull request hacia `main`.
+## 8. GitHub y gestión del proyecto
 
-El equipo trabajó con ramas por funcionalidad (`feat/`, `fix/`, `refactor/` y `chore/`) y pull requests integrados a `main`. Las issues y labels separan los módulos de autenticación, examen, contenido, catálogo académico, suscripción, gamificación, correo, seed, despliegue y documentación. Esta trazabilidad permite relacionar las tareas con cambios concretos del repositorio.
+- **Flujo de trabajo:** `main` protegida, una rama por funcionalidad y merge solo por pull request: 35 integrados, todos con el CI en verde.
+- **Integración continua:** [`.github/workflows/ci.yml`](.github/workflows/ci.yml) ejecuta `mvnw verify` en cada push y pull request: 223 pruebas en 34 clases (unitarias, `@WebMvcTest`, repositorio y seed contra PostgreSQL real con Testcontainers, y una prueba de humo que levanta la aplicación completa).
+- **Issues, labels y milestone:** más de 20 issues en el milestone "Entrega Semana 7", con labels por módulo (`auth`, `examen`, `contenido`, `academico`, `progreso`, `suscripcion`, `gamificacion`, `correo`, `seed`, `deployment`), por tipo (`rubrica`, `bug`, `seguridad`, `testing`, `documentation`) y de proceso (`Permiso común`, `Coordinar con Marco`). Los avisos y decisiones de diseño se discutieron en issues.
+- **Reparto:** Marco (autenticación, examen, banco de preguntas), Juan Carlos (catálogo académico, progreso), Zoe (suscripción, gamificación, correo) y Fabiana (contenido, primera etapa). Cada persona responde por sus clases.
 
-## Instalación y ejecución local
+## 9. Conclusión
+
+### Logros
+
+La API cubre de punta a punta el flujo del postulante: registrarse, elegir una carrera objetivo, rendir un simulacro con la estructura y calificación reales de su universidad, ver su PSP e IP, acumular racha y XP, y pasar a PRO para usar el tutor de IA. El banco tiene 792 preguntas aprobadas por una persona, las 223 pruebas corren en cada pull request y el sistema está desplegado con base de datos en la nube.
+
+### Aprendizajes
+
+- Modelar las reglas del examen como datos permitió soportar dos universidades sin un condicional por universidad.
+- `@TransactionalEventListener(AFTER_COMMIT)` no se combina con `@Transactional` por defecto; la solución (`REQUIRES_NEW`) quedó documentada en el código.
+- Un CI en verde no garantiza que la aplicación arranque: los tests por rebanada no cargan el contexto completo; una prueba de humo con `@SpringBootTest` cerró ese hueco.
+- Probar de punta a punta contra la base real destapó lo que los mocks no ven: un simulacro por tema que devolvía el examen completo y una consulta JPQL que fallaba con un parámetro nulo.
+
+### Trabajo futuro
+
+- Migrar a AWS (EC2 + RDS) con la misma imagen Docker y restringir CORS al dominio del frontend.
+- Sumar universidades como cambio de datos y ampliar la gamificación con ligas semanales.
+
+## 10. Apéndices
+
+### A. Instalación y ejecución local
 
 **Requisitos:** Java 21, Docker Desktop y el Maven Wrapper incluido.
 
-1. Levantar PostgreSQL: `docker compose up -d`. El contenedor publica el puerto `5433` para no interferir con instalaciones locales en el 5432.
-2. Cargar el catálogo y las preguntas: `./mvnw spring-boot:run "-Dspring-boot.run.profiles=seed"`. El seed lee `src/main/resources/seed/`, es idempotente y carga universidades, áreas, esquemas, temas, carreras, ofertas, logros y preguntas.
-3. Ejecutar la API: `./mvnw spring-boot:run`. Queda disponible en `http://localhost:8080`.
-4. Ejecutar pruebas: `./mvnw test` con Docker Desktop abierto para Testcontainers.
+1. **Base de datos:** `docker compose up -d` levanta PostgreSQL en el puerto **5433** (no el 5432, para no chocar con instalaciones nativas).
+2. **Datos:** `./mvnw spring-boot:run "-Dspring-boot.run.profiles=seed"` carga desde `src/main/resources/seed/` todo el catálogo y las 792 preguntas. Es idempotente.
+3. **Aplicación:** `./mvnw spring-boot:run` en `http://localhost:8080`.
+4. **Pruebas:** `./mvnw test` con Docker abierto (Testcontainers).
 
-Las variables de producción son `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `GEMINI_API_KEY`, `MP_ACCESS_TOKEN`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME` y `MAIL_PASSWORD`. `PORT` es inyectada por la plataforma de despliegue. Las funciones de Gemini, Mercado Pago y correo pueden permanecer sin configurar durante el desarrollo local; al invocarlas sin credenciales, la API responde con un error 502 controlado.
+Variables de entorno (con valor por defecto de desarrollo; ninguna credencial real en el repositorio): `SPRING_DATASOURCE_*`, `JWT_SECRET`, `PORT`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `GEMINI_API_KEY`, `MP_ACCESS_TOKEN` y `MAIL_*`. Sin las de Gemini, Mercado Pago y correo la aplicación arranca igual y esas funciones responden 502. Para ampliar el banco: profile `generar-preguntas`, aprobación por la API y profile `exportar-preguntas`.
 
-## Despliegue
+### B. Despliegue
 
-La API está desplegada en Railway con PostgreSQL gestionado y red privada entre servicios. El [Dockerfile](Dockerfile) construye el JAR en una etapa de build y ejecuta una imagen final con Java 21. Cada merge a `main` produce un nuevo despliegue; la configuración se entrega mediante variables de entorno. La disponibilidad puede verificarse en el health check público indicado al inicio de este documento.
+La API corre en **Railway** con PostgreSQL gestionado y red privada. El [Dockerfile](Dockerfile) compila el jar en una etapa de build y produce una imagen solo con el runtime de Java 21; cada merge a `main` despliega. La configuración llega por variables de entorno y el seed se corre en producción activando temporalmente `SPRING_PROFILES_ACTIVE=seed`. La misma imagen es portable a AWS (EC2 o ECS + RDS).
 
-El contenedor es portable a AWS: la migración prevista es ejecutar la misma imagen en EC2 o ECS y usar RDS para PostgreSQL, manteniendo las variables de entorno. Esa migración queda como trabajo futuro para cumplir un despliegue AWS administrado.
+### C. Referencia de la API y colección de Postman
 
-## Alcance y siguientes pasos
+Rutas bajo `/api/v1`, recursos en plural. 🔒 requiere token; 👑 además rol `ADMIN`.
 
-El backend implementa autenticación, simulacros, banco de preguntas, seguridad por roles, eventos, correo, suscripción y despliegue continuo. El siguiente incremento es completar el índice de progreso y dominio por tema, agregar sus endpoints de panel, restringir CORS al dominio del frontend y migrar la infraestructura a AWS.
+| Recurso | Endpoints |
+| --- | --- |
+| Sistema | `GET /health` (público) |
+| Autenticación | `POST /auth/register`, `/auth/login`, `/auth/refresh`, `/auth/forgot-password`, `/auth/reset-password` |
+| Usuarios | 🔒 `GET /usuarios/me` · 👑 `GET /usuarios?email=` · 👑 `PATCH /usuarios/{id}/rol` |
+| Catálogo | 🔒 `GET /ofertas-academicas?universidad=&area=&carrera=` |
+| Simulacros | 🔒 `POST /simulacros` (`COMPLETO`, `DIAGNOSTICO` o `POR_TEMA` + `temaId`) · `POST /simulacros/{id}/respuestas` · `POST /simulacros/{id}/finalizar` |
+| Progreso | 🔒 `POST /objetivos` · `GET /objetivos` · `DELETE /objetivos/{id}` · `GET /progreso/dominio-temas` (PRO) · `GET /progreso/historial?areaId=` (PRO) |
+| Preguntas | 🔒 `GET /preguntas` (filtros, paginación) · `GET /preguntas/{id}` · `POST /preguntas/{id}/tutor-ia` (PRO) · 👑 `POST`, `PUT /{id}`, `PATCH /{id}/aprobar`, `PATCH /aprobar-lote`, `DELETE /{id}` |
+| Suscripciones | 🔒 `POST /suscripciones` · `POST /webhooks/mercadopago` (público, idempotente) |
 
-Proyecto académico para CS2031 Desarrollo Basado en Plataformas - UTEC.
+La colección [`postman_collection.json`](postman_collection.json) documenta cada request con descripción, ejemplo y validaciones, y se ejecuta completa en orden: `baseUrl` apunta a producción, el registro genera un email nuevo por corrida, la autorización Bearer está a nivel de colección y los scripts guardan tokens e ids. "Login como administrador" usa `adminEmail` y `adminPassword`.
+
+### D. Licencia
+
+Proyecto académico para el curso CS2031 Desarrollo Basado en Plataformas (UTEC); su uso está restringido al contexto del curso y no cuenta con licencia de código abierto.
+
+### E. Referencias
+
+- Spring Boot, Security y Data JPA — [spring.io](https://spring.io/projects) · Testcontainers — [testcontainers.com](https://testcontainers.com)
+- API de Gemini — [ai.google.dev/gemini-api/docs](https://ai.google.dev/gemini-api/docs) · Mercado Pago — [mercadopago.com.pe/developers](https://www.mercadopago.com.pe/developers)
+- Prospectos de admisión de la UNI y la UNMSM (estructura del examen, esquemas de calificación y puntajes por carrera).
