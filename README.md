@@ -4,7 +4,7 @@
 - **Entrega:** Proyecto 1 (Semana 7)
 - **Integrantes:** Marco Bautista, Fabiana Gomez, Juan Carlos Vergara y Zoe Garrido Cantoni
 - **API en producción:** https://rumbou-backend-production.up.railway.app ([health](https://rumbou-backend-production.up.railway.app/api/v1/health))
-- **Colección de Postman:** [`postman_collection.json`](postman_collection.json)
+- **Colección de Postman:** [`postman_collection.json`](postman_collection.json) · **Guía de uso:** [`GUIA-DE-USO.md`](GUIA-DE-USO.md)
 
 ## Índice
 
