@@ -17,7 +17,7 @@
   "variable": [
     {
       "key": "baseUrl",
-      "value": "https://rumbou-backend-production.up.railway.app",
+      "value": "http://184.194.122.22",
       "type": "string",
       "description": "API desplegada en Railway. Para local, usar el valor de baseUrlLocal."
     },
