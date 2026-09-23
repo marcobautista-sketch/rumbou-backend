@@ -19,7 +19,7 @@ Esta guía explica cómo probar RumboU de punta a punta con la colección [`post
 
 | Qué | Dónde |
 |---|---|
-| API en producción | `https://rumbou-backend-production.up.railway.app` |
+| API en producción (AWS) | `http://184.194.122.22` |
 | Health check (sin token) | `GET /api/v1/health` → `{"status":"ok", ...}` |
 | API local | `http://localhost:8080` (ver instalación en el README, apéndice A) |
 
@@ -68,7 +68,7 @@ El rol vive en la base de datos **y dentro del token**. Por eso, si a un usuario
 
 ### Recuperar la contraseña
 
-`POST /auth/forgot-password` responde `200` **siempre**, exista o no el correo (para no revelar qué cuentas están registradas), y dispara un correo con un token de un solo uso que vence a los 30 minutos. `POST /auth/reset-password` recibe ese token y la contraseña nueva. En el despliegue actual el correo no sale (la plataforma bloquea SMTP), así que "Resetear contraseña" responde `400`/`401` en la colección; el flujo está cubierto por los tests automáticos.
+`POST /auth/forgot-password` responde `200` **siempre**, exista o no el correo (para no revelar qué cuentas están registradas), y dispara un correo con un token de un solo uso que vence a los 30 minutos. `POST /auth/reset-password` recibe ese token y la contraseña nueva. En el despliegue de AWS el correo **sí se envía** (Gmail por SMTP): al registrarse llega el de bienvenida y al pedir la recuperación llega el del token. En la colección, "Resetear contraseña" responde `400` porque usa un token de ejemplo; para probarlo de verdad, copia el token del correo en la variable `resetToken` y vuelve a ejecutar ese request.
 
 ---
 
