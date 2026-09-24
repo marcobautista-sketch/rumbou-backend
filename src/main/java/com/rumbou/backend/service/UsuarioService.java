@@ -5,7 +5,9 @@ import com.rumbou.backend.entity.Role;
 import com.rumbou.backend.entity.Usuario;
 import com.rumbou.backend.exception.InvalidOperationException;
 import com.rumbou.backend.exception.ResourceNotFoundException;
+import com.rumbou.backend.mapper.UsuarioMapper;
 import com.rumbou.backend.repository.UsuarioRepository;
+import com.rumbou.backend.security.CurrentUserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -19,32 +21,40 @@ public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
+    private final CurrentUserService currentUserService;
 
-    public UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder) {
+    public UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder,
+                          CurrentUserService currentUserService) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
+        this.currentUserService = currentUserService;
+    }
+
+    public UsuarioResponse obtenerPerfil() {
+        return UsuarioMapper.toResponse(currentUserService.getUsuario());
     }
 
     @Transactional(readOnly = true)
     public UsuarioResponse buscarPorEmail(String email) {
-        Usuario usuario = usuarioRepository.findByEmail(email)
+        Usuario usuario = usuarioRepository.findByEmailIgnoreCase(email.trim())
                 .orElseThrow(() -> new ResourceNotFoundException("No existe el usuario con email " + email));
-        return UsuarioResponse.de(usuario);
+        return UsuarioMapper.toResponse(usuario);
     }
 
     // Un admin no puede quitarse su propio rol: si fuera el unico, el sistema
     // se quedaria sin administradores y nadie podria volver a asignar uno.
     @Transactional
-    public UsuarioResponse cambiarRol(Long id, Role nuevoRol, Usuario solicitante) {
+    public UsuarioResponse cambiarRol(Long id, Role nuevoRol) {
+        Long solicitanteId = currentUserService.getUsuarioId();
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("No existe el usuario con id " + id));
 
-        if (usuario.getId().equals(solicitante.getId()) && nuevoRol != Role.ADMIN) {
+        if (usuario.getId().equals(solicitanteId) && nuevoRol != Role.ADMIN) {
             throw new InvalidOperationException("No puedes quitarte tu propio rol de administrador");
         }
 
         usuario.setRole(nuevoRol);
-        return UsuarioResponse.de(usuarioRepository.save(usuario));
+        return UsuarioMapper.toResponse(usuarioRepository.save(usuario));
     }
 
     // Si la cuenta existe solo se promueve (su contrasena se respeta); si no,

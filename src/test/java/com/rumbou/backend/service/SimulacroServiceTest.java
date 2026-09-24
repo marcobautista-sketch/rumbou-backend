@@ -19,11 +19,12 @@ import com.rumbou.backend.entity.Usuario;
 import com.rumbou.backend.event.RespuestaIncorrectaEvent;
 import com.rumbou.backend.event.SimulacroFinalizadoEvent;
 import com.rumbou.backend.exception.InvalidOperationException;
-import com.rumbou.backend.exception.UnauthorizedException;
+import com.rumbou.backend.exception.ForbiddenException;
 import com.rumbou.backend.repository.AreaRepository;
 import com.rumbou.backend.repository.EstructuraExamenRepository;
 import com.rumbou.backend.repository.RespuestaUsuarioRepository;
 import com.rumbou.backend.repository.SimulacroRepository;
+import com.rumbou.backend.security.CurrentUserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -46,6 +47,7 @@ class SimulacroServiceTest {
     private EstructuraExamenRepository estructuraExamenRepository;
     private ApplicationEventPublisher eventPublisher;
     private SimulacroService simulacroService;
+    private CurrentUserService currentUserService;
 
     private Usuario usuario;
     private Universidad universidad;
@@ -53,6 +55,7 @@ class SimulacroServiceTest {
 
     @BeforeEach
     void setUp() {
+        currentUserService = mock(CurrentUserService.class);
         simulacroRepository = mock(SimulacroRepository.class);
         respuestaUsuarioRepository = mock(RespuestaUsuarioRepository.class);
         estructuraExamenRepository = mock(EstructuraExamenRepository.class);
@@ -66,11 +69,14 @@ class SimulacroServiceTest {
                 mock(SimulacroGeneratorService.class),
                 new CalificadorService(),
                 eventPublisher,
-                mock(PlanService.class)
+                mock(PlanService.class),
+                currentUserService
         );
 
         usuario = new Usuario("postulante@rumbou.com", "hash", "Ana", Role.USER);
         usuario.setId(1L);
+        when(currentUserService.getUsuario()).thenReturn(usuario);
+        when(currentUserService.getUsuarioId()).thenReturn(1L);
 
         universidad = new Universidad("Universidad de prueba", "UDP", 2000, 100);
         universidad.setId(1L);
@@ -122,7 +128,7 @@ class SimulacroServiceTest {
         when(estructuraExamenRepository.findByAreaIdOrderByOrden(10L))
                 .thenReturn(List.of(new EstructuraExamen(area, esquema, matematica, 2, 1)));
 
-        var resultado = simulacroService.finalizar(usuario, 100L);
+        var resultado = simulacroService.finalizar(100L);
 
         // 1 acierto (+20) y 1 error (-1.125)
         assertThat(resultado.puntajeObtenido()).isEqualTo(18.875);
@@ -141,7 +147,7 @@ class SimulacroServiceTest {
         when(respuestaUsuarioRepository.findBySimulacroIdAndPreguntaId(100L, 1L))
                 .thenReturn(Optional.of(respuesta(1L, simulacro, preguntaDe5Alternativas, null)));
 
-        assertThatThrownBy(() -> simulacroService.responder(usuario, 100L,
+        assertThatThrownBy(() -> simulacroService.responder(100L,
                 new ResponderPreguntaRequest(1L, 9)))
                 .isInstanceOf(InvalidOperationException.class);
     }
@@ -154,7 +160,7 @@ class SimulacroServiceTest {
         when(simulacroRepository.findById(100L)).thenReturn(Optional.of(simulacro));
         when(respuestaUsuarioRepository.findBySimulacroIdAndPreguntaId(100L, 1L)).thenReturn(Optional.of(respuesta));
 
-        simulacroService.responder(usuario, 100L, new ResponderPreguntaRequest(1L, null));
+        simulacroService.responder(100L, new ResponderPreguntaRequest(1L, null));
 
         assertThat(respuesta.getAlternativaMarcada()).isNull();
     }
@@ -165,7 +171,7 @@ class SimulacroServiceTest {
         simulacro.setEstado(EstadoSimulacro.FINALIZADO);
         when(simulacroRepository.findById(100L)).thenReturn(Optional.of(simulacro));
 
-        assertThatThrownBy(() -> simulacroService.finalizar(usuario, 100L))
+        assertThatThrownBy(() -> simulacroService.finalizar(100L))
                 .isInstanceOf(InvalidOperationException.class);
     }
 
@@ -174,9 +180,10 @@ class SimulacroServiceTest {
         Usuario otro = new Usuario("otro@rumbou.com", "hash", "Beto", Role.USER);
         otro.setId(2L);
         when(simulacroRepository.findById(100L)).thenReturn(Optional.of(simulacroEnCurso()));
+        when(currentUserService.getUsuarioId()).thenReturn(otro.getId());
 
-        assertThatThrownBy(() -> simulacroService.finalizar(otro, 100L))
-                .isInstanceOf(UnauthorizedException.class);
+        assertThatThrownBy(() -> simulacroService.finalizar(100L))
+                .isInstanceOf(ForbiddenException.class);
     }
 
     // El seed puede poner el mismo Tema en dos bloques de un area; antes reventaba con IllegalStateException (500).
@@ -195,7 +202,7 @@ class SimulacroServiceTest {
                 new EstructuraExamen(area, conocimientos, matematica, 1, 2)
         ));
 
-        assertThatThrownBy(() -> simulacroService.finalizar(usuario, 100L))
+        assertThatThrownBy(() -> simulacroService.finalizar(100L))
                 .isInstanceOf(InvalidOperationException.class)
                 .hasMessageContaining("mismo tema");
     }
@@ -214,8 +221,49 @@ class SimulacroServiceTest {
         when(estructuraExamenRepository.findByAreaIdOrderByOrden(10L))
                 .thenReturn(List.of(new EstructuraExamen(area, esquema, matematica, 1, 1)));
 
-        assertThatThrownBy(() -> simulacroService.finalizar(usuario, 100L))
+        assertThatThrownBy(() -> simulacroService.finalizar(100L))
                 .isInstanceOf(InvalidOperationException.class)
                 .hasMessageContaining("esquema");
+    }
+
+    @Test
+    void elDetalleDeUnSimulacroEnCursoNoRevelaLaClave() {
+        Simulacro simulacro = simulacroEnCurso();
+        Pregunta pregunta = pregunta(1L, tema(1L, "Matematica"), 2);
+        when(simulacroRepository.findById(100L)).thenReturn(Optional.of(simulacro));
+        when(respuestaUsuarioRepository.findBySimulacroId(100L))
+                .thenReturn(List.of(respuesta(1L, simulacro, pregunta, 3)));
+
+        var detalle = simulacroService.obtener(100L);
+
+        assertThat(detalle.preguntas()).hasSize(1);
+        assertThat(detalle.preguntas().get(0).alternativaMarcada()).isEqualTo(3);
+        assertThat(detalle.preguntas().get(0).claveCorrecta()).isNull();
+        assertThat(detalle.preguntas().get(0).explicacion()).isNull();
+    }
+
+    @Test
+    void elDetalleDeUnSimulacroFinalizadoIncluyeLaCorreccion() {
+        Simulacro simulacro = simulacroEnCurso();
+        simulacro.setEstado(EstadoSimulacro.FINALIZADO);
+        Pregunta pregunta = pregunta(1L, tema(1L, "Matematica"), 2);
+        RespuestaUsuario respuesta = respuesta(1L, simulacro, pregunta, 3);
+        respuesta.setEsCorrecta(false);
+        when(simulacroRepository.findById(100L)).thenReturn(Optional.of(simulacro));
+        when(respuestaUsuarioRepository.findBySimulacroId(100L)).thenReturn(List.of(respuesta));
+
+        var detalle = simulacroService.obtener(100L);
+
+        assertThat(detalle.preguntas().get(0).claveCorrecta()).isEqualTo(2);
+        assertThat(detalle.preguntas().get(0).esCorrecta()).isFalse();
+    }
+
+    @Test
+    void noSePuedeVerElDetalleDeUnSimulacroAjeno() {
+        when(simulacroRepository.findById(100L)).thenReturn(Optional.of(simulacroEnCurso()));
+        when(currentUserService.getUsuarioId()).thenReturn(2L);
+
+        assertThatThrownBy(() -> simulacroService.obtener(100L))
+                .isInstanceOf(ForbiddenException.class);
     }
 }

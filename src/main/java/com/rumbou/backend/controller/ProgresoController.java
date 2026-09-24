@@ -2,10 +2,8 @@ package com.rumbou.backend.controller;
 
 import com.rumbou.backend.dto.response.DominioTemaResponse;
 import com.rumbou.backend.dto.response.HistorialPspResponse;
-import com.rumbou.backend.entity.Usuario;
 import com.rumbou.backend.service.ProgresoService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -26,13 +24,12 @@ public class ProgresoController {
     }
 
     @GetMapping("/dominio-temas")
-    public ResponseEntity<List<DominioTemaResponse>> dominioPorTema(@AuthenticationPrincipal Usuario usuario) {
-        return ResponseEntity.ok(progresoService.dominioPorTema(usuario));
+    public ResponseEntity<List<DominioTemaResponse>> dominioPorTema() {
+        return ResponseEntity.ok(progresoService.dominioPorTema());
     }
 
     @GetMapping("/historial")
-    public ResponseEntity<List<HistorialPspResponse>> historial(@AuthenticationPrincipal Usuario usuario,
-                                                                @RequestParam Long areaId) {
-        return ResponseEntity.ok(progresoService.historialPsp(usuario, areaId));
+    public ResponseEntity<List<HistorialPspResponse>> historial(@RequestParam Long areaId) {
+        return ResponseEntity.ok(progresoService.historialPsp(areaId));
     }
 }

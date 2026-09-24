@@ -2,6 +2,7 @@ package com.rumbou.backend.controller;
 
 import com.rumbou.backend.dto.response.HealthResponse;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -21,7 +22,7 @@ public class HealthController {
     }
 
     @GetMapping
-    public HealthResponse health() {
-        return new HealthResponse("ok", nombreServicio, Instant.now());
+    public ResponseEntity<HealthResponse> health() {
+        return ResponseEntity.ok(new HealthResponse("ok", nombreServicio, Instant.now()));
     }
 }

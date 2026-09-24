@@ -9,19 +9,23 @@ import com.rumbou.backend.entity.Usuario;
 import com.rumbou.backend.event.PasswordResetRequestedEvent;
 import com.rumbou.backend.event.UsuarioRegistradoEvent;
 import com.rumbou.backend.exception.DuplicateResourceException;
+import com.rumbou.backend.exception.InvalidCredentialsException;
 import com.rumbou.backend.exception.InvalidTokenException;
 import com.rumbou.backend.repository.PasswordResetTokenRepository;
 import com.rumbou.backend.repository.UsuarioRepository;
 import com.rumbou.backend.security.JwtService;
+import io.jsonwebtoken.JwtException;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -52,12 +56,13 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        if (usuarioRepository.existsByEmail(request.email())) {
+        String email = normalizarEmail(request.email());
+        if (usuarioRepository.existsByEmailIgnoreCase(email)) {
             throw new DuplicateResourceException("Ya existe una cuenta con ese email");
         }
 
         Usuario usuario = new Usuario(
-                request.email(),
+                email,
                 passwordEncoder.encode(request.password()),
                 request.nombre(),
                 Role.USER
@@ -77,11 +82,14 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.email(), request.password())
-        );
+        String email = normalizarEmail(request.email());
+        try {
+            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email, request.password()));
+        } catch (AuthenticationException ex) {
+            throw new InvalidCredentialsException("Credenciales invalidas");
+        }
 
-        Usuario usuario = usuarioRepository.findByEmail(request.email())
+        Usuario usuario = usuarioRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new IllegalStateException("Usuario autenticado pero no encontrado"));
 
         return new AuthResponse(
@@ -91,17 +99,9 @@ public class AuthService {
     }
 
     public AuthResponse refresh(String refreshToken) {
-        if (!jwtService.isRefreshToken(refreshToken)) {
-            throw new InvalidTokenException("El token proporcionado no es un refresh token valido");
-        }
+        String email = extraerEmailDeRefreshToken(refreshToken);
 
-        String email = jwtService.extractEmail(refreshToken);
-
-        if (!jwtService.isTokenValid(refreshToken, email)) {
-            throw new InvalidTokenException("El refresh token es invalido o expiro");
-        }
-
-        Usuario usuario = usuarioRepository.findByEmail(email)
+        Usuario usuario = usuarioRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new InvalidTokenException("El usuario del token ya no existe"));
 
         return new AuthResponse(
@@ -114,7 +114,7 @@ public class AuthService {
     // averiguar que correos estan registrados.
     @Transactional
     public void forgotPassword(String email) {
-        usuarioRepository.findByEmail(email).ifPresent(usuario -> {
+        usuarioRepository.findByEmailIgnoreCase(normalizarEmail(email)).ifPresent(usuario -> {
             // Un reseteo nuevo invalida los anteriores para no dejar tokens vivos de mas.
             invalidarTokensVigentesDe(usuario);
 
@@ -130,6 +130,26 @@ public class AuthService {
                     token
             ));
         });
+    }
+
+    // Firma mala, token expirado o malformado: todo es un 401, nunca un 500.
+    private String extraerEmailDeRefreshToken(String refreshToken) {
+        try {
+            if (!jwtService.isRefreshToken(refreshToken)) {
+                throw new InvalidTokenException("El token proporcionado no es un refresh token valido");
+            }
+            String email = jwtService.extractEmail(refreshToken);
+            if (!jwtService.isTokenValid(refreshToken, email)) {
+                throw new InvalidTokenException("El refresh token es invalido o expiro");
+            }
+            return email;
+        } catch (JwtException | IllegalArgumentException ex) {
+            throw new InvalidTokenException("El refresh token es invalido o expiro");
+        }
+    }
+
+    private String normalizarEmail(String email) {
+        return email.trim().toLowerCase(Locale.ROOT);
     }
 
     private void invalidarTokensVigentesDe(Usuario usuario) {

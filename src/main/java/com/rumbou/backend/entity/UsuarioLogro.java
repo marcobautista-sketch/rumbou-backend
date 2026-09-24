@@ -14,8 +14,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "usuarios_logros",
         uniqueConstraints = @UniqueConstraint(columnNames = {"usuario_id", "logro_id"}))
-public class
-UsuarioLogro extends BaseEntity {
+public class UsuarioLogro extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", nullable = false)

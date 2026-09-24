@@ -3,6 +3,7 @@ package com.rumbou.backend.entity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -11,7 +12,10 @@ import java.time.LocalDateTime;
 
 // M:N con atributos entre Simulacro y Pregunta; puntajeAportado puede ser negativo (penalidad).
 @Entity
-@Table(name = "respuestas_usuario")
+@Table(name = "respuestas_usuario", indexes = {
+        @Index(name = "idx_respuesta_simulacro", columnList = "simulacro_id"),
+        @Index(name = "idx_respuesta_pregunta", columnList = "pregunta_id")
+})
 public class RespuestaUsuario extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)

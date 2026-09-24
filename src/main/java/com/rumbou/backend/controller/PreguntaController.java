@@ -8,17 +8,13 @@ import com.rumbou.backend.dto.response.PreguntaResponse;
 import com.rumbou.backend.dto.response.TutorIaResponse;
 import com.rumbou.backend.entity.Dificultad;
 import com.rumbou.backend.entity.OrigenPregunta;
-import com.rumbou.backend.entity.Role;
-import com.rumbou.backend.entity.Usuario;
 import com.rumbou.backend.service.PreguntaService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -36,8 +32,6 @@ import java.util.List;
 @RequestMapping("/api/v1/preguntas")
 public class PreguntaController {
 
-    private static final int TAMANO_PAGINA_MAXIMO = 50;
-
     private final PreguntaService preguntaService;
 
     public PreguntaController(PreguntaService preguntaService) {
@@ -45,20 +39,17 @@ public class PreguntaController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<PreguntaResponse>> listar(@AuthenticationPrincipal Usuario usuario,
-                                                            @RequestParam(required = false) Long temaId,
+    public ResponseEntity<Page<PreguntaResponse>> listar(@RequestParam(required = false) Long temaId,
                                                             @RequestParam(required = false) Dificultad dificultad,
                                                             @RequestParam(required = false) OrigenPregunta origen,
                                                             @RequestParam(required = false) Boolean aprobada,
                                                             Pageable pageable) {
-        Pageable pageableLimitado = limitarTamano(pageable);
-        return ResponseEntity.ok(preguntaService.buscar(
-                temaId, dificultad, origen, aprobada, pageableLimitado, esAdmin(usuario)));
+        return ResponseEntity.ok(preguntaService.buscar(temaId, dificultad, origen, aprobada, pageable));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<PreguntaResponse> obtener(@AuthenticationPrincipal Usuario usuario, @PathVariable Long id) {
-        return ResponseEntity.ok(preguntaService.obtener(id, esAdmin(usuario)));
+    public ResponseEntity<PreguntaResponse> obtener(@PathVariable Long id) {
+        return ResponseEntity.ok(preguntaService.obtener(id));
     }
 
     @PostMapping
@@ -95,18 +86,7 @@ public class PreguntaController {
 
     // Sin @PreAuthorize: es un limite de plan, y eso lo decide PlanService dentro del servicio.
     @PostMapping("/{id}/tutor-ia")
-    public ResponseEntity<TutorIaResponse> tutorIa(@AuthenticationPrincipal Usuario usuario, @PathVariable Long id) {
-        return ResponseEntity.ok(preguntaService.pedirExplicacionTutorIa(id, usuario, esAdmin(usuario)));
-    }
-
-    private boolean esAdmin(Usuario usuario) {
-        return usuario.getRole() == Role.ADMIN;
-    }
-
-    private Pageable limitarTamano(Pageable pageable) {
-        if (pageable.getPageSize() <= TAMANO_PAGINA_MAXIMO) {
-            return pageable;
-        }
-        return PageRequest.of(pageable.getPageNumber(), TAMANO_PAGINA_MAXIMO, pageable.getSort());
+    public ResponseEntity<TutorIaResponse> tutorIa(@PathVariable Long id) {
+        return ResponseEntity.ok(preguntaService.pedirExplicacionTutorIa(id));
     }
 }

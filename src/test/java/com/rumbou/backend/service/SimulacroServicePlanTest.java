@@ -8,11 +8,12 @@ import com.rumbou.backend.entity.Simulacro;
 import com.rumbou.backend.entity.TipoSimulacro;
 import com.rumbou.backend.entity.Universidad;
 import com.rumbou.backend.entity.Usuario;
-import com.rumbou.backend.exception.UnauthorizedException;
+import com.rumbou.backend.exception.ForbiddenException;
 import com.rumbou.backend.repository.AreaRepository;
 import com.rumbou.backend.repository.EstructuraExamenRepository;
 import com.rumbou.backend.repository.RespuestaUsuarioRepository;
 import com.rumbou.backend.repository.SimulacroRepository;
+import com.rumbou.backend.security.CurrentUserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -34,12 +35,14 @@ class SimulacroServicePlanTest {
     private SimulacroGeneratorService simulacroGeneratorService;
     private PlanService planService;
     private SimulacroService simulacroService;
+    private CurrentUserService currentUserService;
 
     private Usuario usuario;
     private Area area;
 
     @BeforeEach
     void setUp() {
+        currentUserService = mock(CurrentUserService.class);
         areaRepository = mock(AreaRepository.class);
         simulacroGeneratorService = mock(SimulacroGeneratorService.class);
         planService = mock(PlanService.class);
@@ -52,11 +55,14 @@ class SimulacroServicePlanTest {
                 simulacroGeneratorService,
                 new CalificadorService(),
                 mock(ApplicationEventPublisher.class),
-                planService
+                planService,
+                currentUserService
         );
 
         usuario = new Usuario("postulante@rumbou.com", "hash", "Ana", Role.USER);
         usuario.setId(1L);
+        when(currentUserService.getUsuario()).thenReturn(usuario);
+        when(currentUserService.getUsuarioId()).thenReturn(1L);
 
         Universidad universidad = new Universidad("Universidad de prueba", "UDP", 2000, 100);
         area = new Area(universidad, "A", "Area de prueba");
@@ -70,8 +76,7 @@ class SimulacroServicePlanTest {
         when(simulacroGeneratorService.generar(usuario, area, TipoSimulacro.POR_TEMA, 5L))
                 .thenReturn(new Simulacro(usuario, area, TipoSimulacro.POR_TEMA, LocalDateTime.now()));
 
-        simulacroService.iniciar(usuario,
-                new IniciarSimulacroRequest(10L, TipoSimulacro.POR_TEMA, 5L));
+        simulacroService.iniciar(new IniciarSimulacroRequest(10L, TipoSimulacro.POR_TEMA, 5L));
 
         verify(planService).puedeAcceder(usuario, Funcionalidad.SIMULACRO_TEMA);
         verify(planService).registrarUso(usuario, Funcionalidad.SIMULACRO_TEMA);
@@ -82,8 +87,7 @@ class SimulacroServicePlanTest {
         when(simulacroGeneratorService.generar(usuario, area, TipoSimulacro.COMPLETO, null))
                 .thenReturn(new Simulacro(usuario, area, TipoSimulacro.COMPLETO, LocalDateTime.now()));
 
-        simulacroService.iniciar(usuario,
-                new IniciarSimulacroRequest(10L, TipoSimulacro.COMPLETO, null));
+        simulacroService.iniciar(new IniciarSimulacroRequest(10L, TipoSimulacro.COMPLETO, null));
 
         verify(planService).puedeAcceder(usuario, Funcionalidad.SIMULACRO_COMPLETO);
         verify(planService).registrarUso(usuario, Funcionalidad.SIMULACRO_COMPLETO);
@@ -94,8 +98,7 @@ class SimulacroServicePlanTest {
         when(simulacroGeneratorService.generar(usuario, area, TipoSimulacro.DIAGNOSTICO, null))
                 .thenReturn(new Simulacro(usuario, area, TipoSimulacro.DIAGNOSTICO, LocalDateTime.now()));
 
-        simulacroService.iniciar(usuario,
-                new IniciarSimulacroRequest(10L, TipoSimulacro.DIAGNOSTICO, null));
+        simulacroService.iniciar(new IniciarSimulacroRequest(10L, TipoSimulacro.DIAGNOSTICO, null));
 
         verify(planService).puedeAcceder(usuario, Funcionalidad.SIMULACRO_COMPLETO);
         verify(planService).registrarUso(usuario, Funcionalidad.SIMULACRO_COMPLETO);
@@ -106,20 +109,18 @@ class SimulacroServicePlanTest {
         when(simulacroGeneratorService.generar(usuario, area, TipoSimulacro.POR_TEMA, 7L))
                 .thenReturn(new Simulacro(usuario, area, TipoSimulacro.POR_TEMA, LocalDateTime.now()));
 
-        simulacroService.iniciar(usuario,
-                new IniciarSimulacroRequest(10L, TipoSimulacro.POR_TEMA, 7L));
+        simulacroService.iniciar(new IniciarSimulacroRequest(10L, TipoSimulacro.POR_TEMA, 7L));
 
         verify(simulacroGeneratorService).generar(usuario, area, TipoSimulacro.POR_TEMA, 7L);
     }
 
     @Test
     void iniciarFallaCon403SiElPlanNoAlcanzaYNoRegistraUso() {
-        doThrow(new UnauthorizedException("Limite alcanzado"))
+        doThrow(new ForbiddenException("Limite alcanzado"))
                 .when(planService).puedeAcceder(usuario, Funcionalidad.SIMULACRO_TEMA);
 
-        assertThatThrownBy(() -> simulacroService.iniciar(usuario,
-                new IniciarSimulacroRequest(10L, TipoSimulacro.POR_TEMA, 5L)))
-                .isInstanceOf(UnauthorizedException.class);
+        assertThatThrownBy(() -> simulacroService.iniciar(new IniciarSimulacroRequest(10L, TipoSimulacro.POR_TEMA, 5L)))
+                .isInstanceOf(ForbiddenException.class);
 
         verify(planService, never()).registrarUso(usuario, Funcionalidad.SIMULACRO_TEMA);
     }

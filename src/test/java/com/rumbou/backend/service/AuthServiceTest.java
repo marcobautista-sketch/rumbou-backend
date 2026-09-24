@@ -37,6 +37,10 @@ class AuthServiceTest {
     private PasswordEncoder passwordEncoder;
     private ApplicationEventPublisher eventPublisher;
     private AuthService authService;
+    private JwtService jwtService;
+    private AuthenticationManager authenticationManager;
+
+    private static final String SECRETO = "secreto-de-prueba-con-mas-de-32-bytes-1234567890";
 
     @BeforeEach
     void setUp() {
@@ -44,20 +48,27 @@ class AuthServiceTest {
         passwordResetTokenRepository = mock(PasswordResetTokenRepository.class);
         passwordEncoder = mock(PasswordEncoder.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
+        jwtService = new JwtService(SECRETO, 900_000, 604_800_000);
+        authenticationManager = mock(AuthenticationManager.class);
+        when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> {
+            Usuario guardado = invocation.getArgument(0);
+            guardado.setId(1L);
+            return guardado;
+        });
 
         authService = new AuthService(
                 usuarioRepository,
                 passwordResetTokenRepository,
                 passwordEncoder,
-                mock(JwtService.class),
-                mock(AuthenticationManager.class),
+                jwtService,
+                authenticationManager,
                 eventPublisher
         );
     }
 
     @Test
     void registerPublicaUsuarioRegistradoEventAlCrearLaCuenta() {
-        when(usuarioRepository.existsByEmail("nueva@rumbou.com")).thenReturn(false);
+        when(usuarioRepository.existsByEmailIgnoreCase("nueva@rumbou.com")).thenReturn(false);
         when(passwordEncoder.encode("password123")).thenReturn("hash");
 
         authService.register(new RegisterRequest("nueva@rumbou.com", "password123", "Ana"));
@@ -67,7 +78,7 @@ class AuthServiceTest {
 
     @Test
     void registerNoPublicaEventoSiElEmailYaExiste() {
-        when(usuarioRepository.existsByEmail("existente@rumbou.com")).thenReturn(true);
+        when(usuarioRepository.existsByEmailIgnoreCase("existente@rumbou.com")).thenReturn(true);
 
         assertThatThrownBy(() -> authService.register(new RegisterRequest("existente@rumbou.com", "password123", "Ana")))
                 .isInstanceOf(DuplicateResourceException.class);
@@ -78,7 +89,7 @@ class AuthServiceTest {
     @Test
     void forgotPasswordGeneraUnTokenYPublicaElEventoSiElUsuarioExiste() {
         Usuario usuario = new Usuario("postulante@rumbou.com", "hash", "Ana", Role.USER);
-        when(usuarioRepository.findByEmail("postulante@rumbou.com")).thenReturn(Optional.of(usuario));
+        when(usuarioRepository.findByEmailIgnoreCase("postulante@rumbou.com")).thenReturn(Optional.of(usuario));
 
         authService.forgotPassword("postulante@rumbou.com");
 
@@ -91,7 +102,7 @@ class AuthServiceTest {
         Usuario usuario = new Usuario("postulante@rumbou.com", "hash", "Ana", Role.USER);
         usuario.setId(7L);
         PasswordResetToken anterior = new PasswordResetToken(usuario, "token-anterior", LocalDateTime.now().plusMinutes(10));
-        when(usuarioRepository.findByEmail("postulante@rumbou.com")).thenReturn(Optional.of(usuario));
+        when(usuarioRepository.findByEmailIgnoreCase("postulante@rumbou.com")).thenReturn(Optional.of(usuario));
         when(passwordResetTokenRepository.findByUsuarioIdAndUsadoFalse(7L)).thenReturn(List.of(anterior));
 
         authService.forgotPassword("postulante@rumbou.com");
@@ -102,7 +113,7 @@ class AuthServiceTest {
 
     @Test
     void forgotPasswordNoHaceNadaSiElEmailNoExiste() {
-        when(usuarioRepository.findByEmail(anyString())).thenReturn(Optional.empty());
+        when(usuarioRepository.findByEmailIgnoreCase(anyString())).thenReturn(Optional.empty());
 
         authService.forgotPassword("nadie@rumbou.com");
 
@@ -152,5 +163,55 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> authService.resetPassword("token-usado", "nueva-contrasena"))
                 .isInstanceOf(InvalidTokenException.class);
+    }
+
+    @Test
+    void registerGuardaElEmailEnMinusculasYSinEspacios() {
+        when(usuarioRepository.existsByEmailIgnoreCase("nueva@rumbou.com")).thenReturn(false);
+        when(passwordEncoder.encode("Password123")).thenReturn("hash");
+
+        authService.register(new RegisterRequest("  Nueva@Rumbou.com ", "Password123", "Ana"));
+
+        org.mockito.ArgumentCaptor<Usuario> captor = org.mockito.ArgumentCaptor.forClass(Usuario.class);
+        verify(usuarioRepository).save(captor.capture());
+        assertThat(captor.getValue().getEmail()).isEqualTo("nueva@rumbou.com");
+    }
+
+    @Test
+    void loginConCredencialesInvalidasLanzaInvalidCredentialsException() {
+        when(authenticationManager.authenticate(any()))
+                .thenThrow(new org.springframework.security.authentication.BadCredentialsException("mal"));
+
+        assertThatThrownBy(() -> authService.login(
+                new com.rumbou.backend.dto.request.LoginRequest("postulante@rumbou.com", "incorrecta")))
+                .isInstanceOf(com.rumbou.backend.exception.InvalidCredentialsException.class);
+    }
+
+    @Test
+    void refreshConUnTokenMalformadoLanzaInvalidTokenYNoUn500() {
+        assertThatThrownBy(() -> authService.refresh("esto-no-es-un-jwt"))
+                .isInstanceOf(InvalidTokenException.class);
+    }
+
+    @Test
+    void refreshNoAceptaUnAccessToken() {
+        Usuario usuario = new Usuario("postulante@rumbou.com", "hash", "Ana", Role.USER);
+        usuario.setId(7L);
+        String accessToken = jwtService.generateAccessToken(usuario);
+
+        assertThatThrownBy(() -> authService.refresh(accessToken))
+                .isInstanceOf(InvalidTokenException.class);
+    }
+
+    @Test
+    void refreshConUnRefreshTokenValidoDevuelveTokensNuevos() {
+        Usuario usuario = new Usuario("postulante@rumbou.com", "hash", "Ana", Role.USER);
+        usuario.setId(7L);
+        when(usuarioRepository.findByEmailIgnoreCase("postulante@rumbou.com")).thenReturn(Optional.of(usuario));
+
+        var respuesta = authService.refresh(jwtService.generateRefreshToken(usuario));
+
+        assertThat(respuesta.accessToken()).isNotBlank();
+        assertThat(jwtService.isRefreshToken(respuesta.accessToken())).isFalse();
     }
 }

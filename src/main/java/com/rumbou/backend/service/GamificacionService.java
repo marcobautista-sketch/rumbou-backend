@@ -1,13 +1,16 @@
 package com.rumbou.backend.service;
 
+import com.rumbou.backend.dto.response.GamificacionResponse;
 import com.rumbou.backend.entity.Logro;
 import com.rumbou.backend.entity.TipoLogro;
 import com.rumbou.backend.entity.Usuario;
 import com.rumbou.backend.entity.UsuarioLogro;
 import com.rumbou.backend.exception.ResourceNotFoundException;
+import com.rumbou.backend.mapper.UsuarioMapper;
 import com.rumbou.backend.repository.LogroRepository;
 import com.rumbou.backend.repository.UsuarioLogroRepository;
 import com.rumbou.backend.repository.UsuarioRepository;
+import com.rumbou.backend.security.CurrentUserService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,13 +25,24 @@ public class GamificacionService {
     private final UsuarioRepository usuarioRepository;
     private final LogroRepository logroRepository;
     private final UsuarioLogroRepository usuarioLogroRepository;
+    private final CurrentUserService currentUserService;
 
     public GamificacionService(UsuarioRepository usuarioRepository,
                                LogroRepository logroRepository,
-                               UsuarioLogroRepository usuarioLogroRepository) {
+                               UsuarioLogroRepository usuarioLogroRepository,
+                               CurrentUserService currentUserService) {
         this.usuarioRepository = usuarioRepository;
         this.logroRepository = logroRepository;
         this.usuarioLogroRepository = usuarioLogroRepository;
+        this.currentUserService = currentUserService;
+    }
+
+    // XP, racha y logros del usuario autenticado.
+    @Transactional(readOnly = true)
+    public GamificacionResponse obtenerResumen() {
+        Usuario usuario = currentUserService.getUsuario();
+        return UsuarioMapper.toGamificacionResponse(
+                usuario, usuarioLogroRepository.findByUsuarioIdConLogro(usuario.getId()));
     }
 
     @Transactional

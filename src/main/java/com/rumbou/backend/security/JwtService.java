@@ -17,6 +17,8 @@ public class JwtService {
 
     private static final String CLAIM_TYPE = "type";
     private static final String TYPE_REFRESH = "refresh";
+    private static final String CLAIM_USER_ID = "userId";
+    private static final String CLAIM_ROLE = "role";
 
     private final SecretKey signingKey;
     private final long accessTokenExpirationMs;
@@ -32,14 +34,14 @@ public class JwtService {
 
     public String generateAccessToken(Usuario usuario) {
         return buildToken(usuario, accessTokenExpirationMs, Map.of(
-                "userId", usuario.getId(),
-                "role", usuario.getRole().name()
+                CLAIM_USER_ID, usuario.getId(),
+                CLAIM_ROLE, usuario.getRole().name()
         ));
     }
 
     public String generateRefreshToken(Usuario usuario) {
         return buildToken(usuario, refreshTokenExpirationMs, Map.of(
-                "userId", usuario.getId(),
+                CLAIM_USER_ID, usuario.getId(),
                 CLAIM_TYPE, TYPE_REFRESH
         ));
     }
@@ -61,8 +63,21 @@ public class JwtService {
         return extractAllClaims(token).getSubject();
     }
 
+    public Long extractUserId(String token) {
+        return extractAllClaims(token).get(CLAIM_USER_ID, Long.class);
+    }
+
+    public String extractRole(String token) {
+        return extractAllClaims(token).get(CLAIM_ROLE, String.class);
+    }
+
     public boolean isRefreshToken(String token) {
         return TYPE_REFRESH.equals(extractAllClaims(token).get(CLAIM_TYPE, String.class));
+    }
+
+    // Solo un access token autentica requests: el refresh token sirve unicamente en /auth/refresh.
+    public boolean isAccessTokenValid(String token, String expectedEmail) {
+        return !isRefreshToken(token) && isTokenValid(token, expectedEmail);
     }
 
     public boolean isTokenValid(String token, String expectedEmail) {

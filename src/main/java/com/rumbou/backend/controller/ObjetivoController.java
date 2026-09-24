@@ -2,12 +2,10 @@ package com.rumbou.backend.controller;
 
 import com.rumbou.backend.dto.request.CrearObjetivoRequest;
 import com.rumbou.backend.dto.response.ObjetivoResponse;
-import com.rumbou.backend.entity.Usuario;
 import com.rumbou.backend.service.ProgresoService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,22 +29,21 @@ public class ObjetivoController {
     }
 
     @PostMapping
-    public ResponseEntity<ObjetivoResponse> crear(@AuthenticationPrincipal Usuario usuario,
-                                                  @Valid @RequestBody CrearObjetivoRequest request) {
-        ObjetivoResponse objetivo = progresoService.crearObjetivo(usuario, request.ofertaAcademicaId());
-        return ResponseEntity.status(HttpStatus.CREATED).body(objetivo);
+    public ResponseEntity<ObjetivoResponse> crear(@Valid @RequestBody CrearObjetivoRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(progresoService.crearObjetivo(request.ofertaAcademicaId()));
     }
 
     // El panel: con plan PRO puede traer hasta 3 objetivos y sirve para comparar universidades.
     @GetMapping
-    public ResponseEntity<List<ObjetivoResponse>> listar(@AuthenticationPrincipal Usuario usuario) {
-        return ResponseEntity.ok(progresoService.listarObjetivos(usuario));
+    public ResponseEntity<List<ObjetivoResponse>> listar() {
+        return ResponseEntity.ok(progresoService.listarObjetivos());
     }
 
     // Desactiva, no borra: si el postulante vuelve a elegir esa carrera se reutiliza la misma fila.
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> desactivar(@AuthenticationPrincipal Usuario usuario, @PathVariable Long id) {
-        progresoService.desactivarObjetivo(usuario, id);
+    public ResponseEntity<Void> desactivar(@PathVariable Long id) {
+        progresoService.desactivarObjetivo(id);
         return ResponseEntity.noContent().build();
     }
 }

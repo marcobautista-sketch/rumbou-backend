@@ -4,6 +4,7 @@ import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -43,7 +44,7 @@ public class EmailService {
 
             mailSender.send(mime);
             log.info("Correo '{}' enviado a {}", asunto, destinatario);
-        } catch (MessagingException e) {
+        } catch (MessagingException | MailException e) {
             log.warn("No se pudo enviar el correo '{}' a {}: {}", asunto, destinatario, e.getMessage());
         }
     }

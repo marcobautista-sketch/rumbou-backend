@@ -5,7 +5,7 @@ import jakarta.persistence.*;
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "suscripciones")
+@Table(name = "suscripciones", indexes = @Index(name = "idx_suscripcion_usuario_estado", columnList = "usuario_id, estado"))
 public class Suscripcion extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)

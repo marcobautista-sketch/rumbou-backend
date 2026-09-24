@@ -11,6 +11,8 @@ import java.util.Optional;
 
 public interface RespuestaUsuarioRepository extends JpaRepository<RespuestaUsuario, Long> {
 
+    boolean existsByPreguntaId(Long preguntaId);
+
     List<RespuestaUsuario> findBySimulacroId(Long simulacroId);
 
     Optional<RespuestaUsuario> findBySimulacroIdAndPreguntaId(Long simulacroId, Long preguntaId);
