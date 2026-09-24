@@ -21,6 +21,7 @@ import com.rumbou.backend.repository.PreguntaRepository;
 import com.rumbou.backend.repository.RespuestaUsuarioRepository;
 import com.rumbou.backend.security.CurrentUserService;
 import com.rumbou.backend.repository.TemaRepository;
+import com.rumbou.backend.service.impl.PreguntaServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -58,12 +59,12 @@ class PreguntaServiceTest {
     @Mock
     private CurrentUserService currentUserService;
 
-    private PreguntaService preguntaService;
+    private PreguntaServiceImpl preguntaService;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        preguntaService = new PreguntaService(preguntaRepository, temaRepository, respuestaUsuarioRepository,
+        preguntaService = new PreguntaServiceImpl(preguntaRepository, temaRepository, respuestaUsuarioRepository,
                 geminiClient, planService, currentUserService);
     }
 
@@ -84,7 +85,7 @@ class PreguntaServiceTest {
 
     @Test
     void unAdminPuedeVerUnaPreguntaSinAprobar() {
-        given(currentUserService.esAdmin()).willReturn(true);
+        given(currentUserService.puedeRevisarPreguntas()).willReturn(true);
         given(preguntaRepository.findById(1L)).willReturn(Optional.of(preguntaConId(1L, false)));
 
         PreguntaResponse respuesta = preguntaService.obtener(1L);
@@ -122,7 +123,7 @@ class PreguntaServiceTest {
 
     @Test
     void unAdminBuscaConElFiltroQuePida() {
-        given(currentUserService.esAdmin()).willReturn(true);
+        given(currentUserService.puedeRevisarPreguntas()).willReturn(true);
         given(preguntaRepository.buscar(any(), any(), any(), org.mockito.ArgumentMatchers.isNull(), any()))
                 .willReturn(org.springframework.data.domain.Page.empty());
 
@@ -232,7 +233,7 @@ class PreguntaServiceTest {
 
     @Test
     void unAdminSiPuedePedirleAlTutorIaUnaPreguntaSinAprobar() {
-        given(currentUserService.esAdmin()).willReturn(true);
+        given(currentUserService.puedeRevisarPreguntas()).willReturn(true);
         Pregunta pregunta = preguntaConId(1L, false);
         Usuario usuario = usuarioConId(10L);
         given(currentUserService.getUsuario()).willReturn(usuario);
@@ -264,5 +265,15 @@ class PreguntaServiceTest {
         preguntaService.eliminar(1L);
 
         verify(preguntaRepository).delete(pregunta);
+    }
+
+    @Test
+    void unRevisorVeLasPreguntasSinAprobarQueDebeRevisar() {
+        given(currentUserService.puedeRevisarPreguntas()).willReturn(true);
+        given(preguntaRepository.findById(1L)).willReturn(Optional.of(preguntaConId(1L, false)));
+
+        PreguntaResponse respuesta = preguntaService.obtener(1L);
+
+        assertThat(respuesta.id()).isEqualTo(1L);
     }
 }

@@ -11,6 +11,7 @@ import com.rumbou.backend.exception.InvalidTokenException;
 import com.rumbou.backend.repository.PasswordResetTokenRepository;
 import com.rumbou.backend.repository.UsuarioRepository;
 import com.rumbou.backend.security.JwtService;
+import com.rumbou.backend.service.impl.AuthServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -36,7 +37,7 @@ class AuthServiceTest {
     private PasswordResetTokenRepository passwordResetTokenRepository;
     private PasswordEncoder passwordEncoder;
     private ApplicationEventPublisher eventPublisher;
-    private AuthService authService;
+    private AuthServiceImpl authService;
     private JwtService jwtService;
     private AuthenticationManager authenticationManager;
 
@@ -56,7 +57,7 @@ class AuthServiceTest {
             return guardado;
         });
 
-        authService = new AuthService(
+        authService = new AuthServiceImpl(
                 usuarioRepository,
                 passwordResetTokenRepository,
                 passwordEncoder,

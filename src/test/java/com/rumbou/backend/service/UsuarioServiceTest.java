@@ -7,6 +7,7 @@ import com.rumbou.backend.exception.InvalidOperationException;
 import com.rumbou.backend.exception.ResourceNotFoundException;
 import com.rumbou.backend.repository.UsuarioRepository;
 import com.rumbou.backend.security.CurrentUserService;
+import com.rumbou.backend.service.impl.UsuarioServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -26,7 +27,7 @@ class UsuarioServiceTest {
 
     private UsuarioRepository usuarioRepository;
     private PasswordEncoder passwordEncoder;
-    private UsuarioService usuarioService;
+    private UsuarioServiceImpl usuarioService;
     private CurrentUserService currentUserService;
 
     @BeforeEach
@@ -34,7 +35,7 @@ class UsuarioServiceTest {
         usuarioRepository = mock(UsuarioRepository.class);
         passwordEncoder = mock(PasswordEncoder.class);
         currentUserService = mock(CurrentUserService.class);
-        usuarioService = new UsuarioService(usuarioRepository, passwordEncoder, currentUserService);
+        usuarioService = new UsuarioServiceImpl(usuarioRepository, passwordEncoder, currentUserService);
         when(currentUserService.getUsuarioId()).thenReturn(1L);
 
         when(usuarioRepository.save(any(Usuario.class))).thenAnswer(inv -> inv.getArgument(0));

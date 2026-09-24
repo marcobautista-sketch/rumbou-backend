@@ -229,4 +229,43 @@ class PreguntaControllerTest {
                         .content(objectMapper.writeValueAsString(invalido)))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    void unRevisorPuedeAprobarUnaPregunta() throws Exception {
+        given(preguntaService.aprobar(1L)).willReturn(
+                new PreguntaAdminResponse(1L, 1L, "Algebra", "¿Cuanto es 2 + 2?",
+                        List.of("1", "2", "3", "4", "5"), 3, "2 + 2 = 4", Dificultad.FACIL, OrigenPregunta.IA_APROBADA, true));
+
+        mockMvc.perform(patch("/api/v1/preguntas/1/aprobar")
+                        .with(user(usuarioConRol(Role.REVIEWER)))
+                        .with(csrf()))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void unRevisorPuedeAprobarPreguntasEnLote() throws Exception {
+        given(preguntaService.aprobarLote(any())).willReturn(List.of());
+
+        mockMvc.perform(patch("/api/v1/preguntas/aprobar-lote")
+                        .with(user(usuarioConRol(Role.REVIEWER)))
+                        .with(csrf())
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(new AprobarLoteRequest(List.of(1L)))))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void unRevisorNoPuedeCrearNiBorrarPreguntas() throws Exception {
+        mockMvc.perform(post("/api/v1/preguntas")
+                        .with(user(usuarioConRol(Role.REVIEWER)))
+                        .with(csrf())
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(requestValido())))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/v1/preguntas/1")
+                        .with(user(usuarioConRol(Role.REVIEWER)))
+                        .with(csrf()))
+                .andExpect(status().isForbidden());
+    }
 }

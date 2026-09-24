@@ -574,7 +574,7 @@
                 "rol"
               ]
             },
-            "description": "Cambia el rol de la cuenta indicada (USER o ADMIN). Requiere role=ADMIN. Un admin no puede quitarse su propio rol (400), para que el sistema nunca se quede sin administradores. El usuario promovido debe volver a hacer login: el rol viaja dentro del JWT y su token anterior sigue diciendo USER."
+            "description": "Cambia el rol de la cuenta indicada (USER o ADMIN). Requiere role=ADMIN. Un admin no puede quitarse su propio rol (400), para que el sistema nunca se quede sin administradores. El usuario promovido debe volver a hacer login: el rol viaja dentro del JWT y su token anterior sigue diciendo USER.\n\nRoles validos: USER, REVIEWER y ADMIN."
           },
           "event": [
             {
@@ -1345,7 +1345,7 @@
           ]
         },
         {
-          "name": "Aprobar pregunta (ADMIN)",
+          "name": "Aprobar pregunta (ADMIN o REVIEWER)",
           "request": {
             "method": "PATCH",
             "url": {
@@ -1361,7 +1361,7 @@
                 "aprobar"
               ]
             },
-            "description": "Marca aprobada=true. Se usa sobre todo en el panel de revision de preguntas generadas con Gemini (nacen con aprobada=false). Requiere role=ADMIN."
+            "description": "Marca aprobada=true. Se usa sobre todo en el panel de revision de preguntas generadas con Gemini (nacen con aprobada=false). Requiere role=ADMIN.\n\nTambien lo puede hacer un REVIEWER: el rol que revisa las preguntas generadas por IA sin administrar el sistema."
           },
           "event": [
             {
@@ -1376,7 +1376,7 @@
           ]
         },
         {
-          "name": "Aprobar preguntas en lote (ADMIN)",
+          "name": "Aprobar preguntas en lote (ADMIN o REVIEWER)",
           "request": {
             "method": "PATCH",
             "header": [
@@ -1401,7 +1401,7 @@
                 "aprobar-lote"
               ]
             },
-            "description": "Marca aprobada=true en todas las preguntas indicadas en una sola llamada. Pensado para el panel de revision: despues de generar un lote con Gemini (profile generar-preguntas) y leerlo, se aprueban de un jalon. Devuelve la lista de preguntas aprobadas. Requiere role=ADMIN; ids no puede ir vacio (400)."
+            "description": "Marca aprobada=true en todas las preguntas indicadas en una sola llamada. Pensado para el panel de revision: despues de generar un lote con Gemini (profile generar-preguntas) y leerlo, se aprueban de un jalon. Devuelve la lista de preguntas aprobadas. Requiere role=ADMIN; ids no puede ir vacio (400).\n\nTambien lo puede hacer un REVIEWER: el rol que revisa las preguntas generadas por IA sin administrar el sistema."
           },
           "event": [
             {
