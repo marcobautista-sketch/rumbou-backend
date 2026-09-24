@@ -20,8 +20,11 @@ public class MercadoPagoService {
     private static final String MONEDA_PERU = "PEN";
 
     // El token vive solo en la variable de entorno MP_ACCESS_TOKEN.
-    @Value("${MP_ACCESS_TOKEN:}")
-    private String accessToken;
+    private final String accessToken;
+
+    public MercadoPagoService(@Value("${mercadopago.access-token}") String accessToken) {
+        this.accessToken = accessToken;
+    }
 
     public record ResultadoPreaprobacion(String preapprovalId, String externalReference, String initPoint) {
     }
@@ -54,7 +57,7 @@ public class MercadoPagoService {
                     preapproval.getInitPoint()
             );
         } catch (MPException | MPApiException e) {
-            throw new IllegalStateException("No se pudo crear la preaprobacion en Mercado Pago: " + e.getMessage(), e);
+            throw new ExternalServiceException("No se pudo crear la preaprobacion en Mercado Pago: " + e.getMessage(), e);
         }
     }
 }

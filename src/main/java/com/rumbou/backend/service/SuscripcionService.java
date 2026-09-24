@@ -9,23 +9,30 @@ import com.rumbou.backend.entity.Usuario;
 import com.rumbou.backend.event.PagoAprobadoEvent;
 import com.rumbou.backend.exception.DuplicateResourceException;
 import com.rumbou.backend.exception.ResourceNotFoundException;
+import com.rumbou.backend.mapper.SuscripcionMapper;
 import com.rumbou.backend.repository.SuscripcionRepository;
+import com.rumbou.backend.security.CurrentUserService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.Optional;
 
 @Service
 public class SuscripcionService {
 
     private final SuscripcionRepository suscripcionRepository;
     private final MercadoPagoService mercadoPagoService;
+    private final PlanService planService;
+    private final CurrentUserService currentUserService;
 
     public SuscripcionService(SuscripcionRepository suscripcionRepository,
-                              MercadoPagoService mercadoPagoService) {
+                              MercadoPagoService mercadoPagoService,
+                              PlanService planService,
+                              CurrentUserService currentUserService) {
         this.suscripcionRepository = suscripcionRepository;
         this.mercadoPagoService = mercadoPagoService;
+        this.planService = planService;
+        this.currentUserService = currentUserService;
     }
 
     @Transactional
@@ -46,11 +53,9 @@ public class SuscripcionService {
     }
 
     @Transactional
-    public SuscripcionResponse crear(Usuario usuario) {
-        Optional<Suscripcion> vigente = suscripcionRepository
-                .findFirstByUsuarioIdAndEstadoOrderByFechaInicioDesc(usuario.getId(), EstadoSuscripcion.ACTIVA);
-        if (vigente.isPresent() && (vigente.get().getFechaFin() == null
-                || !vigente.get().getFechaFin().isBefore(LocalDate.now()))) {
+    public SuscripcionResponse crear() {
+        Usuario usuario = currentUserService.getUsuario();
+        if (planService.esPro(usuario.getId())) {
             throw new DuplicateResourceException("Ya tienes una suscripcion PRO vigente");
         }
 
@@ -63,8 +68,14 @@ public class SuscripcionService {
         nueva.setMercadoPagoPreapprovalId(resultado.preapprovalId());
         suscripcionRepository.save(nueva);
 
-        return new SuscripcionResponse(
-                nueva.getId(), nueva.getPlan().name(), nueva.getEstado().name(),
-                nueva.getFechaInicio(), nueva.getFechaFin(), resultado.initPoint());
+        return SuscripcionMapper.toResponse(nueva, resultado.initPoint());
+    }
+
+    // La suscripcion mas reciente del usuario: asi el cliente sabe si su pago ya se confirmo.
+    @Transactional(readOnly = true)
+    public SuscripcionResponse obtenerActual() {
+        return suscripcionRepository.findFirstByUsuarioIdOrderByIdDesc(currentUserService.getUsuarioId())
+                .map(suscripcion -> SuscripcionMapper.toResponse(suscripcion, null))
+                .orElseThrow(() -> new ResourceNotFoundException("Todavia no tienes ninguna suscripcion"));
     }
 }

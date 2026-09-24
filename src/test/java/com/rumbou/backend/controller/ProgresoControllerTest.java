@@ -5,7 +5,7 @@ import com.rumbou.backend.dto.response.HistorialPspResponse;
 import com.rumbou.backend.entity.Role;
 import com.rumbou.backend.entity.TipoSimulacro;
 import com.rumbou.backend.entity.Usuario;
-import com.rumbou.backend.exception.UnauthorizedException;
+import com.rumbou.backend.exception.ForbiddenException;
 import com.rumbou.backend.security.JwtService;
 import com.rumbou.backend.service.ProgresoService;
 import org.junit.jupiter.api.Test;
@@ -48,7 +48,7 @@ class ProgresoControllerTest {
 
     @Test
     void elDominioPorTemaDevuelveLosConteosYElPorcentaje() throws Exception {
-        given(progresoService.dominioPorTema(any()))
+        given(progresoService.dominioPorTema())
                 .willReturn(List.of(new DominioTemaResponse(1L, "Fisica", 3, 4, 3, 10, 30.0)));
 
         mockMvc.perform(get("/api/v1/progreso/dominio-temas").with(user(postulante())))
@@ -60,8 +60,8 @@ class ProgresoControllerTest {
 
     @Test
     void unUsuarioGratuitoRecibe403EnElDominioPorTema() throws Exception {
-        willThrow(new UnauthorizedException("El dominio por tema es exclusivo del plan PRO"))
-                .given(progresoService).dominioPorTema(any());
+        willThrow(new ForbiddenException("El dominio por tema es exclusivo del plan PRO"))
+                .given(progresoService).dominioPorTema();
 
         mockMvc.perform(get("/api/v1/progreso/dominio-temas").with(user(postulante())))
                 .andExpect(status().isForbidden())
@@ -70,7 +70,7 @@ class ProgresoControllerTest {
 
     @Test
     void elHistorialDevuelveElPspDeCadaSimulacro() throws Exception {
-        given(progresoService.historialPsp(any(), eq(2L))).willReturn(List.of(
+        given(progresoService.historialPsp(2L)).willReturn(List.of(
                 new HistorialPspResponse(1L, TipoSimulacro.COMPLETO, LocalDateTime.now(), 500.0, 900.0),
                 new HistorialPspResponse(2L, TipoSimulacro.COMPLETO, LocalDateTime.now(), 620.0, 1100.0)));
 

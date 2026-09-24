@@ -1,19 +1,33 @@
 package com.rumbou.backend.entity;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
-@Table(name = "simulacros")
+@Table(name = "simulacros", indexes = {
+        @Index(name = "idx_simulacro_usuario", columnList = "usuario_id"),
+        @Index(name = "idx_simulacro_usuario_area_estado", columnList = "usuario_id, area_id, estado")
+})
 public class Simulacro extends BaseEntity {
+
+    // Las respuestas son parte del simulacro: se guardan y se borran con el.
+    @OneToMany(mappedBy = "simulacro", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("id ASC")
+    private List<RespuestaUsuario> respuestas = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", nullable = false)
@@ -50,6 +64,10 @@ public class Simulacro extends BaseEntity {
         this.tipo = tipo;
         this.fechaInicio = fechaInicio;
         this.estado = EstadoSimulacro.EN_CURSO;
+    }
+
+    public List<RespuestaUsuario> getRespuestas() {
+        return respuestas;
     }
 
     public Usuario getUsuario() {

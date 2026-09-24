@@ -6,7 +6,7 @@ import com.rumbou.backend.dto.response.EstadoPreparacion;
 import com.rumbou.backend.dto.response.ObjetivoResponse;
 import com.rumbou.backend.entity.Role;
 import com.rumbou.backend.entity.Usuario;
-import com.rumbou.backend.exception.UnauthorizedException;
+import com.rumbou.backend.exception.ForbiddenException;
 import com.rumbou.backend.security.JwtService;
 import com.rumbou.backend.service.ProgresoService;
 import org.junit.jupiter.api.Test;
@@ -62,7 +62,7 @@ class ObjetivoControllerTest {
 
     @Test
     void crearUnObjetivoDevuelve201YElPanelDeEsaCarrera() throws Exception {
-        given(progresoService.crearObjetivo(any(), eq(10L))).willReturn(objetivo());
+        given(progresoService.crearObjetivo(10L)).willReturn(objetivo());
 
         mockMvc.perform(post("/api/v1/objetivos")
                         .with(user(postulante()))
@@ -87,8 +87,8 @@ class ObjetivoControllerTest {
 
     @Test
     void alSuperarElLimiteDelPlanResponde403() throws Exception {
-        willThrow(new UnauthorizedException("El plan gratuito permite 1 objetivo activo"))
-                .given(progresoService).crearObjetivo(any(), eq(10L));
+        willThrow(new ForbiddenException("El plan gratuito permite 1 objetivo activo"))
+                .given(progresoService).crearObjetivo(10L);
 
         mockMvc.perform(post("/api/v1/objetivos")
                         .with(user(postulante()))
@@ -101,7 +101,7 @@ class ObjetivoControllerTest {
 
     @Test
     void listarDevuelveLosObjetivosActivosDelUsuario() throws Exception {
-        given(progresoService.listarObjetivos(any())).willReturn(List.of(objetivo()));
+        given(progresoService.listarObjetivos()).willReturn(List.of(objetivo()));
 
         mockMvc.perform(get("/api/v1/objetivos").with(user(postulante())))
                 .andExpect(status().isOk())
@@ -117,6 +117,6 @@ class ObjetivoControllerTest {
                         .with(csrf()))
                 .andExpect(status().isNoContent());
 
-        verify(progresoService).desactivarObjetivo(any(), eq(1L));
+        verify(progresoService).desactivarObjetivo(1L);
     }
 }
