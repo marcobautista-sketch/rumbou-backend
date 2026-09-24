@@ -1,5 +1,6 @@
 package com.rumbou.backend.service;
 
+import com.rumbou.backend.client.mercadopago.WebhookSignatureValidator;
 import com.rumbou.backend.dto.request.WebhookNotificationRequest;
 import com.rumbou.backend.entity.PagoWebhook;
 import com.rumbou.backend.event.PagoAprobadoEvent;
@@ -25,7 +26,7 @@ class WebhookServiceTest {
     void setUp() {
         pagoWebhookRepository = mock(PagoWebhookRepository.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
-        webhookService = new WebhookService(pagoWebhookRepository, eventPublisher);
+        webhookService = new WebhookService(pagoWebhookRepository, eventPublisher, new WebhookSignatureValidator(""));
     }
 
     @Test
@@ -33,7 +34,7 @@ class WebhookServiceTest {
         WebhookNotificationRequest notificacion =
                 new WebhookNotificationRequest("payment.pending", 1L, "preapp-1", "usuario-1");
 
-        webhookService.procesar(notificacion);
+        webhookService.procesar(notificacion, null, null);
 
         verify(pagoWebhookRepository, never()).save(any());
         verify(eventPublisher, never()).publishEvent(any());
@@ -45,7 +46,7 @@ class WebhookServiceTest {
         WebhookNotificationRequest notificacion =
                 new WebhookNotificationRequest("payment.approved", 500L, "preapp-500", "usuario-5");
 
-        webhookService.procesar(notificacion);
+        webhookService.procesar(notificacion, null, null);
 
         verify(pagoWebhookRepository).save(any(PagoWebhook.class));
         verify(eventPublisher).publishEvent(any(PagoAprobadoEvent.class));
@@ -57,7 +58,7 @@ class WebhookServiceTest {
         WebhookNotificationRequest notificacion =
                 new WebhookNotificationRequest("payment.approved", 500L, "preapp-500", "usuario-5");
 
-        webhookService.procesar(notificacion);
+        webhookService.procesar(notificacion, null, null);
 
         verify(pagoWebhookRepository, never()).save(any());
         verify(eventPublisher, never()).publishEvent(any());

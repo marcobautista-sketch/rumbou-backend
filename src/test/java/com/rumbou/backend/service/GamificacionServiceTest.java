@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class GamificacionServiceTest {
 
-    private final GamificacionService gamificacionService = new GamificacionService(null, null, null);
+    private final GamificacionService gamificacionService = new GamificacionService(null, null, null, null);
 
     static Stream<Arguments> casosDeRacha() {
         LocalDate hoy = LocalDate.of(2026, 9, 13);

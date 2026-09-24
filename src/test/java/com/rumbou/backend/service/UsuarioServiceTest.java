@@ -6,6 +6,7 @@ import com.rumbou.backend.entity.Usuario;
 import com.rumbou.backend.exception.InvalidOperationException;
 import com.rumbou.backend.exception.ResourceNotFoundException;
 import com.rumbou.backend.repository.UsuarioRepository;
+import com.rumbou.backend.security.CurrentUserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -26,12 +27,15 @@ class UsuarioServiceTest {
     private UsuarioRepository usuarioRepository;
     private PasswordEncoder passwordEncoder;
     private UsuarioService usuarioService;
+    private CurrentUserService currentUserService;
 
     @BeforeEach
     void setUp() {
         usuarioRepository = mock(UsuarioRepository.class);
         passwordEncoder = mock(PasswordEncoder.class);
-        usuarioService = new UsuarioService(usuarioRepository, passwordEncoder);
+        currentUserService = mock(CurrentUserService.class);
+        usuarioService = new UsuarioService(usuarioRepository, passwordEncoder, currentUserService);
+        when(currentUserService.getUsuarioId()).thenReturn(1L);
 
         when(usuarioRepository.save(any(Usuario.class))).thenAnswer(inv -> inv.getArgument(0));
     }
@@ -48,7 +52,7 @@ class UsuarioServiceTest {
         Usuario postulante = usuario(2L, "ana@rumbou.com", Role.USER);
         when(usuarioRepository.findById(2L)).thenReturn(Optional.of(postulante));
 
-        UsuarioResponse respuesta = usuarioService.cambiarRol(2L, Role.ADMIN, admin);
+        UsuarioResponse respuesta = usuarioService.cambiarRol(2L, Role.ADMIN);
 
         assertThat(respuesta.role()).isEqualTo(Role.ADMIN);
         assertThat(postulante.getRole()).isEqualTo(Role.ADMIN);
@@ -59,7 +63,7 @@ class UsuarioServiceTest {
     void cambiarRolLanza404SiElUsuarioNoExiste() {
         when(usuarioRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> usuarioService.cambiarRol(99L, Role.ADMIN, usuario(1L, "admin@rumbou.com", Role.ADMIN)))
+        assertThatThrownBy(() -> usuarioService.cambiarRol(99L, Role.ADMIN))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
@@ -68,7 +72,7 @@ class UsuarioServiceTest {
         Usuario admin = usuario(1L, "admin@rumbou.com", Role.ADMIN);
         when(usuarioRepository.findById(1L)).thenReturn(Optional.of(admin));
 
-        assertThatThrownBy(() -> usuarioService.cambiarRol(1L, Role.USER, admin))
+        assertThatThrownBy(() -> usuarioService.cambiarRol(1L, Role.USER))
                 .isInstanceOf(InvalidOperationException.class);
 
         assertThat(admin.getRole()).isEqualTo(Role.ADMIN);
@@ -81,7 +85,7 @@ class UsuarioServiceTest {
         Usuario otroAdmin = usuario(2L, "otro@rumbou.com", Role.ADMIN);
         when(usuarioRepository.findById(2L)).thenReturn(Optional.of(otroAdmin));
 
-        UsuarioResponse respuesta = usuarioService.cambiarRol(2L, Role.USER, admin);
+        UsuarioResponse respuesta = usuarioService.cambiarRol(2L, Role.USER);
 
         assertThat(respuesta.role()).isEqualTo(Role.USER);
     }

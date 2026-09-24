@@ -10,6 +10,7 @@ import com.rumbou.backend.entity.Usuario;
 import com.rumbou.backend.event.PagoAprobadoEvent;
 import com.rumbou.backend.exception.ResourceNotFoundException;
 import com.rumbou.backend.repository.SuscripcionRepository;
+import com.rumbou.backend.security.CurrentUserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -30,6 +31,9 @@ class SuscripcionServiceTest {
     private SuscripcionRepository suscripcionRepository;
     private SuscripcionService suscripcionService;
     private MercadoPagoService mercadoPagoService;
+    private PlanService planService;
+    private CurrentUserService currentUserService;
+
     private Usuario usuarioConId(long id) {
         Usuario usuario = new Usuario("postulante" + id + "@rumbou.com", "hash", "Ana", Role.USER);
         usuario.setId(id);
@@ -40,7 +44,9 @@ class SuscripcionServiceTest {
     void setUp() {
         suscripcionRepository = mock(SuscripcionRepository.class);
         mercadoPagoService = mock(MercadoPagoService.class);
-        suscripcionService = new SuscripcionService(suscripcionRepository, mercadoPagoService);
+        planService = mock(PlanService.class);
+        currentUserService = mock(CurrentUserService.class);
+        suscripcionService = new SuscripcionService(suscripcionRepository, mercadoPagoService, planService, currentUserService);
     }
 
     @Test
@@ -92,7 +98,9 @@ class SuscripcionServiceTest {
         when(suscripcionRepository.findFirstByUsuarioIdAndEstadoOrderByFechaInicioDesc(
                 anyLong(), any(EstadoSuscripcion.class))).thenReturn(Optional.empty());
 
-        SuscripcionResponse respuesta = suscripcionService.crear(usuario);
+        when(currentUserService.getUsuario()).thenReturn(usuario);
+
+        SuscripcionResponse respuesta = suscripcionService.crear();
 
         assertThat(respuesta.plan()).isEqualTo("PRO");
         assertThat(respuesta.estado()).isEqualTo("PENDIENTE");

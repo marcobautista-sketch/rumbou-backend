@@ -7,6 +7,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OrderColumn;
@@ -16,7 +17,7 @@ import java.util.List;
 
 // Pertenece a un Tema, nunca a una universidad: el mismo banco sirve para UNI y UNMSM.
 @Entity
-@Table(name = "preguntas")
+@Table(name = "preguntas", indexes = @Index(name = "idx_pregunta_tema_aprobada", columnList = "tema_id, aprobada"))
 public class Pregunta extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)

@@ -6,7 +6,7 @@ import com.rumbou.backend.entity.Role;
 import com.rumbou.backend.entity.Suscripcion;
 import com.rumbou.backend.entity.UsoDiario;
 import com.rumbou.backend.entity.Usuario;
-import com.rumbou.backend.exception.UnauthorizedException;
+import com.rumbou.backend.exception.PlanLimitExceededException;
 import com.rumbou.backend.repository.SuscripcionRepository;
 import com.rumbou.backend.repository.UsoDiarioRepository;
 import org.springframework.stereotype.Service;
@@ -66,11 +66,11 @@ public class PlanService {
         switch (funcionalidad) {
             case TUTOR_IA -> {
                 if (!pro) {
-                    throw new UnauthorizedException("El tutor de IA es exclusivo del plan PRO");
+                    throw new PlanLimitExceededException("El tutor de IA es exclusivo del plan PRO");
                 }
                 int usadas = usoDiarioRepository.sumConsultasTutorIA(usuario.getId(), LocalDate.now());
                 if (usadas >= PRO_CONSULTAS_TUTOR_IA_DIARIO) {
-                    throw new UnauthorizedException("Limite alcanzado: 30 consultas al tutor de IA al dia");
+                    throw new PlanLimitExceededException("Limite alcanzado: 30 consultas al tutor de IA al dia");
                 }
             }
             case SIMULACRO_TEMA -> {
@@ -78,7 +78,7 @@ public class PlanService {
                     int usados = usoDiarioRepository.sumSimulacrosTemaDesde(
                             usuario.getId(), LocalDate.now().minusDays(6));
                     if (usados >= GRATUITO_SIMULACROS_TEMA_SEMANAL) {
-                        throw new UnauthorizedException("Limite alcanzado: 3 simulacros de tema a la semana");
+                        throw new PlanLimitExceededException("Limite alcanzado: 3 simulacros de tema a la semana");
                     }
                 }
             }
@@ -87,7 +87,7 @@ public class PlanService {
                     int usados = usoDiarioRepository.sumSimulacrosCompletosDesde(
                             usuario.getId(), LocalDate.now().minusMonths(1));
                     if (usados >= GRATUITO_SIMULACROS_COMPLETOS_MENSUAL) {
-                        throw new UnauthorizedException("Limite alcanzado: 1 simulacro completo al mes");
+                        throw new PlanLimitExceededException("Limite alcanzado: 1 simulacro completo al mes");
                     }
                 }
             }

@@ -6,6 +6,9 @@ import com.rumbou.backend.entity.Usuario;
 import com.rumbou.backend.exception.InvalidOperationException;
 import com.rumbou.backend.exception.ResourceNotFoundException;
 import com.rumbou.backend.security.JwtService;
+import com.rumbou.backend.dto.response.GamificacionResponse;
+import com.rumbou.backend.dto.response.LogroResponse;
+import com.rumbou.backend.service.GamificacionService;
 import com.rumbou.backend.service.UsuarioService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +45,9 @@ class UsuarioControllerTest {
     private UsuarioService usuarioService;
 
     @MockBean
+    private GamificacionService gamificacionService;
+
+    @MockBean
     private JwtService jwtService;
 
     @MockBean
@@ -60,6 +66,9 @@ class UsuarioControllerTest {
 
     @Test
     void meDevuelveLosDatosDelUsuarioDelToken() throws Exception {
+        given(usuarioService.obtenerPerfil())
+                .willReturn(new UsuarioResponse(7L, "postulante@rumbou.com", "Ana", Role.USER));
+
         mockMvc.perform(get("/api/v1/usuarios/me").with(user(usuarioConRol(7L, Role.USER))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(7))
@@ -83,12 +92,12 @@ class UsuarioControllerTest {
                         .content("{\"role\":\"ADMIN\"}"))
                 .andExpect(status().isForbidden());
 
-        verify(usuarioService, never()).cambiarRol(any(), any(), any());
+        verify(usuarioService, never()).cambiarRol(any(), any());
     }
 
     @Test
     void unAdminPuedePromoverAOtroUsuario() throws Exception {
-        given(usuarioService.cambiarRol(eq(2L), eq(Role.ADMIN), any()))
+        given(usuarioService.cambiarRol(eq(2L), eq(Role.ADMIN)))
                 .willReturn(new UsuarioResponse(2L, "ana@rumbou.com", "Ana", Role.ADMIN));
 
         mockMvc.perform(patch("/api/v1/usuarios/2/rol")
@@ -112,7 +121,7 @@ class UsuarioControllerTest {
 
     @Test
     void quitarseElPropioRolResponde400() throws Exception {
-        given(usuarioService.cambiarRol(eq(1L), eq(Role.USER), any()))
+        given(usuarioService.cambiarRol(eq(1L), eq(Role.USER)))
                 .willThrow(new InvalidOperationException("No puedes quitarte tu propio rol de administrador"));
 
         mockMvc.perform(patch("/api/v1/usuarios/1/rol")
@@ -149,5 +158,18 @@ class UsuarioControllerTest {
         mockMvc.perform(get("/api/v1/usuarios").param("email", "ana@rumbou.com")
                         .with(user(usuarioConRol(1L, Role.USER))))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void gamificacionDevuelveXpRachaYLogrosDelUsuario() throws Exception {
+        given(gamificacionService.obtenerResumen()).willReturn(new GamificacionResponse(
+                300, 100, 2, 4, java.time.LocalDate.of(2026, 9, 24),
+                java.util.List.of(new LogroResponse(1L, "Primer simulacro", "Terminaste tu primer simulacro",
+                        java.time.LocalDateTime.of(2026, 9, 20, 10, 0)))));
+
+        mockMvc.perform(get("/api/v1/usuarios/me/gamificacion").with(user(usuarioConRol(7L, Role.USER))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.xpTotal").value(300))
+                .andExpect(jsonPath("$.logros[0].nombre").value("Primer simulacro"));
     }
 }

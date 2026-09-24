@@ -13,6 +13,9 @@ public interface SuscripcionRepository extends JpaRepository<Suscripcion, Long> 
     Optional<Suscripcion> findFirstByUsuarioIdAndEstadoOrderByFechaInicioDesc(
             Long usuarioId, EstadoSuscripcion estado);
 
+    // La suscripcion mas reciente del usuario, en cualquier estado.
+    Optional<Suscripcion> findFirstByUsuarioIdOrderByIdDesc(Long usuarioId);
+
     Optional<Suscripcion> findFirstByMercadoPagoPreapprovalId(String mercadoPagoPreapprovalId);
 
     List<Suscripcion> findByEstadoAndFechaFinBefore(EstadoSuscripcion estado, LocalDate fecha);

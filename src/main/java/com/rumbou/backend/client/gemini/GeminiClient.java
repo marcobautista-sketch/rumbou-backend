@@ -46,13 +46,14 @@ public class GeminiClient {
 
     // Configurable (GEMINI_MODEL): Google retira modelos y no todas las keys ven los mismos.
     public GeminiClient(@Value("${gemini.api-key:}") String apiKey,
-                        @Value("${gemini.model:gemini-3.6-flash}") String model) {
+                        @Value("${gemini.model:gemini-3.6-flash}") String model,
+                        ObjectMapper objectMapper) {
         this.apiKey = apiKey;
         this.url = API_BASE + model + ":generateContent";
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(20))
                 .build();
-        this.objectMapper = new ObjectMapper();
+        this.objectMapper = objectMapper;
     }
 
     // Las "cantidad" preguntas del par en una sola llamada; minItems/maxItems fijan el tamano.

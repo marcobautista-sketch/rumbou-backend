@@ -1,16 +1,21 @@
 package com.rumbou.backend.entity;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -18,13 +23,18 @@ import java.util.List;
 @Table(name = "usuarios")
 public class Usuario extends BaseEntity implements UserDetails {
 
-    @Column(nullable = false, unique = true)
+    @NotBlank
+    @Size(max = 254)
+    @Column(nullable = false, unique = true, length = 254)
     private String email;
 
-    @Column(nullable = false)
+    @NotBlank
+    @Column(nullable = false, length = 100)
     private String passwordHash;
 
-    @Column(nullable = false)
+    @NotBlank
+    @Size(max = 100)
+    @Column(nullable = false, length = 100)
     private String nombre;
 
     @Enumerated(EnumType.STRING)
@@ -40,6 +50,13 @@ public class Usuario extends BaseEntity implements UserDetails {
 
     @Version
     private Long version;
+
+    // Los logros y los tokens de reseteo no existen sin su usuario: se borran con el.
+    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<UsuarioLogro> logros = new ArrayList<>();
+
+    @OneToMany(mappedBy = "usuario", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<PasswordResetToken> passwordResetTokens = new ArrayList<>();
 
     public Usuario() {
     }
@@ -57,6 +74,10 @@ public class Usuario extends BaseEntity implements UserDetails {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public List<UsuarioLogro> getLogros() {
+        return logros;
     }
 
     public String getPasswordHash() {

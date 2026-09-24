@@ -3,6 +3,7 @@ package com.rumbou.backend.entity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -18,7 +19,8 @@ import java.time.LocalDateTime;
 // volver a elegirlo reutiliza la misma fila.
 @Entity
 @Table(name = "objetivos_usuario",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"usuario_id", "oferta_academica_id"}))
+        uniqueConstraints = @UniqueConstraint(columnNames = {"usuario_id", "oferta_academica_id"}),
+        indexes = @Index(name = "idx_objetivo_usuario_activo", columnList = "usuario_id, activo"))
 public class ObjetivoUsuario extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)

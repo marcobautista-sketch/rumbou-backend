@@ -2,6 +2,7 @@ package com.rumbou.backend.listener;
 
 import com.rumbou.backend.event.PasswordResetRequestedEvent;
 import com.rumbou.backend.service.EmailService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
@@ -12,12 +13,13 @@ import java.util.Map;
 @Component
 public class RecuperacionContrasenaCorreoListener {
 
-    private static final String URL_BASE = "https://rumbou.edu.pe/recuperar";
-
     private final EmailService emailService;
+    private final String urlCambio;
 
-    public RecuperacionContrasenaCorreoListener(EmailService emailService) {
+    public RecuperacionContrasenaCorreoListener(EmailService emailService,
+                                                @Value("${app.frontend.reset-password-url}") String urlCambio) {
         this.emailService = emailService;
+        this.urlCambio = urlCambio;
     }
 
     @Async
@@ -28,6 +30,6 @@ public class RecuperacionContrasenaCorreoListener {
                 "Recupera tu contrasena",
                 "recuperacion-contrasena",
                 Map.of("nombre", evento.nombre(),
-                        "urlCambio", URL_BASE + "?token=" + evento.token()));
+                        "urlCambio", urlCambio + "?token=" + evento.token()));
     }
 }

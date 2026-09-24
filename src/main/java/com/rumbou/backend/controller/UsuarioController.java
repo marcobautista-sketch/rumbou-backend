@@ -1,13 +1,13 @@
 package com.rumbou.backend.controller;
 
 import com.rumbou.backend.dto.request.CambiarRolRequest;
+import com.rumbou.backend.dto.response.GamificacionResponse;
 import com.rumbou.backend.dto.response.UsuarioResponse;
-import com.rumbou.backend.entity.Usuario;
+import com.rumbou.backend.service.GamificacionService;
 import com.rumbou.backend.service.UsuarioService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,14 +21,21 @@ import org.springframework.web.bind.annotation.RestController;
 public class UsuarioController {
 
     private final UsuarioService usuarioService;
+    private final GamificacionService gamificacionService;
 
-    public UsuarioController(UsuarioService usuarioService) {
+    public UsuarioController(UsuarioService usuarioService, GamificacionService gamificacionService) {
         this.usuarioService = usuarioService;
+        this.gamificacionService = gamificacionService;
     }
 
     @GetMapping("/me")
-    public ResponseEntity<UsuarioResponse> me(@AuthenticationPrincipal Usuario usuario) {
-        return ResponseEntity.ok(UsuarioResponse.de(usuario));
+    public ResponseEntity<UsuarioResponse> me() {
+        return ResponseEntity.ok(usuarioService.obtenerPerfil());
+    }
+
+    @GetMapping("/me/gamificacion")
+    public ResponseEntity<GamificacionResponse> gamificacion() {
+        return ResponseEntity.ok(gamificacionService.obtenerResumen());
     }
 
     // Para que un admin ubique el id de la cuenta que quiere promover.
@@ -41,8 +48,7 @@ public class UsuarioController {
     @PatchMapping("/{id}/rol")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UsuarioResponse> cambiarRol(@PathVariable Long id,
-                                                      @Valid @RequestBody CambiarRolRequest request,
-                                                      @AuthenticationPrincipal Usuario solicitante) {
-        return ResponseEntity.ok(usuarioService.cambiarRol(id, request.role(), solicitante));
+                                                      @Valid @RequestBody CambiarRolRequest request) {
+        return ResponseEntity.ok(usuarioService.cambiarRol(id, request.role()));
     }
 }
