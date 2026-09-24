@@ -1,5 +1,6 @@
 package com.rumbou.backend.service;
 
+import com.rumbou.backend.service.impl.GamificacionServiceImpl;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -11,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class GamificacionServiceTest {
 
-    private final GamificacionService gamificacionService = new GamificacionService(null, null, null, null);
+    private final GamificacionServiceImpl gamificacionService = new GamificacionServiceImpl(null, null, null, null);
 
     static Stream<Arguments> casosDeRacha() {
         LocalDate hoy = LocalDate.of(2026, 9, 13);
