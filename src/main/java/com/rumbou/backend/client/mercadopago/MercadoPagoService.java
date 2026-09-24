@@ -34,21 +34,7 @@ public class MercadoPagoService {
             throw new ExternalServiceException("Falta configurar MP_ACCESS_TOKEN");
         }
         MercadoPagoConfig.setAccessToken(accessToken);
-
-        PreApprovalAutoRecurringCreateRequest autoRecurring = PreApprovalAutoRecurringCreateRequest.builder()
-                .frequency(1)
-                .frequencyType("months")
-                .transactionAmount(MONTO_PRO_SOLES)
-                .currencyId(MONEDA_PERU)
-                .build();
-
-        PreapprovalCreateRequest request = PreapprovalCreateRequest.builder()
-                .reason("Plan PRO RumboU")
-                .externalReference(externalReference)
-                .payerEmail(payerEmail)
-                .autoRecurring(autoRecurring)
-                .build();
-
+        PreapprovalCreateRequest request = construirSolicitud(externalReference, payerEmail);
         try {
             Preapproval preapproval = new PreapprovalClient().create(request);
             return new ResultadoPreaprobacion(
@@ -59,5 +45,21 @@ public class MercadoPagoService {
         } catch (MPException | MPApiException e) {
             throw new ExternalServiceException("No se pudo crear la preaprobacion en Mercado Pago: " + e.getMessage(), e);
         }
+    }
+
+    private PreapprovalCreateRequest construirSolicitud(String externalReference, String payerEmail) {
+        PreApprovalAutoRecurringCreateRequest autoRecurring = PreApprovalAutoRecurringCreateRequest.builder()
+                .frequency(1)
+                .frequencyType("months")
+                .transactionAmount(MONTO_PRO_SOLES)
+                .currencyId(MONEDA_PERU)
+                .build();
+
+        return PreapprovalCreateRequest.builder()
+                .reason("Plan PRO RumboU")
+                .externalReference(externalReference)
+                .payerEmail(payerEmail)
+                .autoRecurring(autoRecurring)
+                .build();
     }
 }
