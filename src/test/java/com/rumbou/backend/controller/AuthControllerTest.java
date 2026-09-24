@@ -47,7 +47,7 @@ class AuthControllerTest {
     @Test
     void registerFallaConEmailInvalido() throws Exception {
         String body = objectMapper.writeValueAsString(
-                new RegisterRequest("no-es-un-email", "password123", "Ana")
+                new RegisterRequest("no-es-un-email", "Password123", "Ana")
         );
 
         mockMvc.perform(post("/api/v1/auth/register")
@@ -69,7 +69,7 @@ class AuthControllerTest {
     }
 
     @Test
-    void forgotPasswordRespondeOkYDelegaAlServiceConEmailValido() throws Exception {
+    void forgotPasswordResponde204YDelegaAlServiceConEmailValido() throws Exception {
         String body = objectMapper.writeValueAsString(
                 new ForgotPasswordRequest("postulante@rumbou.com")
         );
@@ -77,7 +77,7 @@ class AuthControllerTest {
         mockMvc.perform(post("/api/v1/auth/forgot-password")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
-                .andExpect(status().isOk());
+                .andExpect(status().isNoContent());
 
         verify(authService).forgotPassword("postulante@rumbou.com");
     }
@@ -119,16 +119,30 @@ class AuthControllerTest {
     }
 
     @Test
-    void resetPasswordRespondeOkYDelegaAlServiceConDatosValidos() throws Exception {
+    void resetPasswordResponde204YDelegaAlServiceConDatosValidos() throws Exception {
         String body = objectMapper.writeValueAsString(
-                new ResetPasswordRequest("token-123", "nueva-contrasena")
+                new ResetPasswordRequest("token-123", "NuevaClave2026")
         );
 
         mockMvc.perform(post("/api/v1/auth/reset-password")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
-                .andExpect(status().isOk());
+                .andExpect(status().isNoContent());
 
-        verify(authService).resetPassword("token-123", "nueva-contrasena");
+        verify(authService).resetPassword("token-123", "NuevaClave2026");
+    }
+
+    @Test
+    void registerFallaConUnaContrasenaSinMayusculasNiNumeros() throws Exception {
+        String body = objectMapper.writeValueAsString(
+                new RegisterRequest("postulante@rumbou.com", "solominusculas", "Ana")
+        );
+
+        mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
+
+        verify(authService, never()).register(org.mockito.ArgumentMatchers.any());
     }
 }

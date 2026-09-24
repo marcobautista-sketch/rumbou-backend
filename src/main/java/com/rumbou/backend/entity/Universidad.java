@@ -11,7 +11,7 @@ public class Universidad extends BaseEntity {
     @Column(nullable = false)
     private String nombre;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length = 20)
     private String siglas;
 
     @Column(nullable = false)

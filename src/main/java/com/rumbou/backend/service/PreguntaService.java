@@ -12,68 +12,72 @@ import com.rumbou.backend.entity.Funcionalidad;
 import com.rumbou.backend.entity.OrigenPregunta;
 import com.rumbou.backend.entity.Pregunta;
 import com.rumbou.backend.entity.Tema;
-import com.rumbou.backend.entity.Usuario;
+import com.rumbou.backend.exception.ResourceInUseException;
 import com.rumbou.backend.exception.ResourceNotFoundException;
+import com.rumbou.backend.mapper.PreguntaMapper;
 import com.rumbou.backend.repository.PreguntaRepository;
+import com.rumbou.backend.repository.RespuestaUsuarioRepository;
 import com.rumbou.backend.repository.TemaRepository;
+import com.rumbou.backend.security.CurrentUserService;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class PreguntaService {
 
+    private static final int TAMANO_PAGINA_MAXIMO = 50;
+
     private final PreguntaRepository preguntaRepository;
     private final TemaRepository temaRepository;
+    private final RespuestaUsuarioRepository respuestaUsuarioRepository;
     private final GeminiClient geminiClient;
     private final PlanService planService;
+    private final CurrentUserService currentUserService;
 
     public PreguntaService(PreguntaRepository preguntaRepository, TemaRepository temaRepository,
-                            GeminiClient geminiClient, PlanService planService) {
+                            RespuestaUsuarioRepository respuestaUsuarioRepository, GeminiClient geminiClient,
+                            PlanService planService, CurrentUserService currentUserService) {
         this.preguntaRepository = preguntaRepository;
         this.temaRepository = temaRepository;
+        this.respuestaUsuarioRepository = respuestaUsuarioRepository;
         this.geminiClient = geminiClient;
         this.planService = planService;
+        this.currentUserService = currentUserService;
     }
 
     // Quien no es admin solo ve aprobadas: una pregunta generada por IA no llega
     // a un postulante sin revision humana.
+    @Transactional(readOnly = true)
     public Page<PreguntaResponse> buscar(Long temaId, Dificultad dificultad, OrigenPregunta origen,
-                                          Boolean aprobada, Pageable pageable, boolean esAdmin) {
-        Boolean aprobadaEfectiva = esAdmin ? aprobada : Boolean.TRUE;
-        return preguntaRepository.buscar(temaId, dificultad, origen, aprobadaEfectiva, pageable)
-                .map(this::aResponse);
+                                          Boolean aprobada, Pageable pageable) {
+        Boolean aprobadaEfectiva = currentUserService.esAdmin() ? aprobada : Boolean.TRUE;
+        return preguntaRepository.buscar(temaId, dificultad, origen, aprobadaEfectiva, limitarTamano(pageable))
+                .map(PreguntaMapper::toResponse);
     }
 
-    public PreguntaResponse obtener(Long id, boolean esAdmin) {
-        Pregunta pregunta = obtenerEntidad(id);
-        if (!esAdmin && !pregunta.isAprobada()) {
-            throw new ResourceNotFoundException("No existe una pregunta con id " + id);
-        }
-        return aResponse(pregunta);
+    @Transactional(readOnly = true)
+    public PreguntaResponse obtener(Long id) {
+        return PreguntaMapper.toResponse(obtenerVisibleParaElUsuario(id));
     }
 
     @Transactional
     public PreguntaAdminResponse aprobar(Long id) {
         Pregunta pregunta = obtenerEntidad(id);
         pregunta.setAprobada(true);
-        return aAdminResponse(pregunta);
+        return PreguntaMapper.toAdminResponse(pregunta);
     }
 
     // Todo el lote en una transaccion: un id inexistente revierte el lote completo.
     @Transactional
     public List<PreguntaAdminResponse> aprobarLote(AprobarLoteRequest request) {
-        List<PreguntaAdminResponse> aprobadas = new ArrayList<>();
-        for (Long id : request.ids()) {
-            Pregunta pregunta = obtenerEntidad(id);
-            pregunta.setAprobada(true);
-            aprobadas.add(aAdminResponse(pregunta));
-        }
-        return aprobadas;
+        return request.ids().stream()
+                .map(this::aprobar)
+                .toList();
     }
 
     @Transactional
@@ -91,7 +95,7 @@ public class PreguntaService {
                 request.aprobada()
         );
 
-        return aAdminResponse(preguntaRepository.save(pregunta));
+        return PreguntaMapper.toAdminResponse(preguntaRepository.save(pregunta));
     }
 
     @Transactional
@@ -108,29 +112,41 @@ public class PreguntaService {
         pregunta.setOrigen(request.origen());
         pregunta.setAprobada(request.aprobada());
 
-        return aAdminResponse(pregunta);
+        return PreguntaMapper.toAdminResponse(pregunta);
     }
 
     // Consulta PRO real: se pregunta a Gemini en el momento y se descuenta del cupo
     // diario, sin cachear (la explicacion estatica la cachea TutorIaExplicacionListener).
-    public TutorIaResponse pedirExplicacionTutorIa(Long id, Usuario usuario, boolean esAdmin) {
-        Pregunta pregunta = obtenerEntidad(id);
-        if (!esAdmin && !pregunta.isAprobada()) {
-            throw new ResourceNotFoundException("No existe una pregunta con id " + id);
-        }
-        planService.puedeAcceder(usuario, Funcionalidad.TUTOR_IA);
+    public TutorIaResponse pedirExplicacionTutorIa(Long id) {
+        Pregunta pregunta = obtenerVisibleParaElUsuario(id);
+        planService.puedeAcceder(currentUserService.getUsuario(), Funcionalidad.TUTOR_IA);
 
         String explicacion = geminiClient.explicar(
                 pregunta.getEnunciado(), pregunta.getAlternativas(), pregunta.getClaveCorrecta());
 
-        planService.registrarUso(usuario, Funcionalidad.TUTOR_IA);
+        planService.registrarUso(currentUserService.getUsuario(), Funcionalidad.TUTOR_IA);
         return new TutorIaResponse(pregunta.getId(), explicacion);
     }
 
+    // Una pregunta que ya salio en algun simulacro no se borra: se perderia el
+    // historial de respuestas de los postulantes. Se puede desaprobar con PUT.
     @Transactional
     public void eliminar(Long id) {
         Pregunta pregunta = obtenerEntidad(id);
+        if (respuestaUsuarioRepository.existsByPreguntaId(id)) {
+            throw new ResourceInUseException(
+                    "La pregunta ya fue usada en simulacros; desapruebala en lugar de eliminarla");
+        }
         preguntaRepository.delete(pregunta);
+    }
+
+    // Para un postulante, una pregunta sin aprobar no existe.
+    private Pregunta obtenerVisibleParaElUsuario(Long id) {
+        Pregunta pregunta = obtenerEntidad(id);
+        if (!pregunta.isAprobada() && !currentUserService.esAdmin()) {
+            throw new ResourceNotFoundException("No existe una pregunta con id " + id);
+        }
+        return pregunta;
     }
 
     private Pregunta obtenerEntidad(Long id) {
@@ -143,29 +159,13 @@ public class PreguntaService {
                 .orElseThrow(() -> new ResourceNotFoundException("No existe un tema con id " + temaId));
     }
 
-    private PreguntaResponse aResponse(Pregunta pregunta) {
-        return new PreguntaResponse(
-                pregunta.getId(),
-                pregunta.getTema().getId(),
-                pregunta.getTema().getNombre(),
-                pregunta.getEnunciado(),
-                pregunta.getAlternativas(),
-                pregunta.getDificultad()
-        );
-    }
-
-    private PreguntaAdminResponse aAdminResponse(Pregunta pregunta) {
-        return new PreguntaAdminResponse(
-                pregunta.getId(),
-                pregunta.getTema().getId(),
-                pregunta.getTema().getNombre(),
-                pregunta.getEnunciado(),
-                pregunta.getAlternativas(),
-                pregunta.getClaveCorrecta(),
-                pregunta.getExplicacion(),
-                pregunta.getDificultad(),
-                pregunta.getOrigen(),
-                pregunta.isAprobada()
-        );
+    private Pageable limitarTamano(Pageable pageable) {
+        if (pageable.isUnpaged()) {
+            return PageRequest.of(0, TAMANO_PAGINA_MAXIMO, pageable.getSort());
+        }
+        if (pageable.getPageSize() <= TAMANO_PAGINA_MAXIMO) {
+            return pageable;
+        }
+        return PageRequest.of(pageable.getPageNumber(), TAMANO_PAGINA_MAXIMO, pageable.getSort());
     }
 }

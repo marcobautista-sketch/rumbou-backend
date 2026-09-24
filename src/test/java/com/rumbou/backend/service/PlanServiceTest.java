@@ -7,7 +7,7 @@ import com.rumbou.backend.entity.Role;
 import com.rumbou.backend.entity.Suscripcion;
 import com.rumbou.backend.entity.UsoDiario;
 import com.rumbou.backend.entity.Usuario;
-import com.rumbou.backend.exception.UnauthorizedException;
+import com.rumbou.backend.exception.ForbiddenException;
 import com.rumbou.backend.repository.SuscripcionRepository;
 import com.rumbou.backend.repository.UsoDiarioRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -117,13 +117,13 @@ class PlanServiceTest {
         when(usoDiarioRepository.sumConsultasTutorIA(anyLong(), any(LocalDate.class))).thenReturn(30);
 
         assertThatThrownBy(() -> planService.puedeAcceder(usuarioConId(7), Funcionalidad.TUTOR_IA))
-                .isInstanceOf(UnauthorizedException.class);
+                .isInstanceOf(ForbiddenException.class);
     }
 
     @Test
     void elTutorEsExclusivoDelPlanPro() {
         assertThatThrownBy(() -> planService.puedeAcceder(usuarioConId(7), Funcionalidad.TUTOR_IA))
-                .isInstanceOf(UnauthorizedException.class);
+                .isInstanceOf(ForbiddenException.class);
     }
 
     // ---- SIMULACRO_TEMA ----
@@ -148,7 +148,7 @@ class PlanServiceTest {
         when(usoDiarioRepository.sumSimulacrosTemaDesde(anyLong(), any(LocalDate.class))).thenReturn(3);
 
         assertThatThrownBy(() -> planService.puedeAcceder(usuarioConId(7), Funcionalidad.SIMULACRO_TEMA))
-                .isInstanceOf(UnauthorizedException.class);
+                .isInstanceOf(ForbiddenException.class);
     }
 
     // ---- SIMULACRO_COMPLETO ----
@@ -165,7 +165,7 @@ class PlanServiceTest {
         when(usoDiarioRepository.sumSimulacrosCompletosDesde(anyLong(), any(LocalDate.class))).thenReturn(1);
 
         assertThatThrownBy(() -> planService.puedeAcceder(usuarioConId(7), Funcionalidad.SIMULACRO_COMPLETO))
-                .isInstanceOf(UnauthorizedException.class);
+                .isInstanceOf(ForbiddenException.class);
     }
 
     // ---- registrarUso ----
@@ -198,7 +198,7 @@ class PlanServiceTest {
         when(usoDiarioRepository.sumConsultasTutorIA(anyLong(), any(LocalDate.class))).thenReturn(30);
 
         assertThatThrownBy(() -> planService.puedeAcceder(usuarioConId(7), Funcionalidad.TUTOR_IA))
-                .isInstanceOf(UnauthorizedException.class);
+                .isInstanceOf(ForbiddenException.class);
         planService.puedeAcceder(adminConId(1), Funcionalidad.TUTOR_IA);
     }
 

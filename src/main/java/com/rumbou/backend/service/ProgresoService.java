@@ -1,7 +1,6 @@
 package com.rumbou.backend.service;
 
 import com.rumbou.backend.dto.response.DominioTemaResponse;
-import com.rumbou.backend.dto.response.EstadoPreparacion;
 import com.rumbou.backend.dto.response.HistorialPspResponse;
 import com.rumbou.backend.dto.response.ObjetivoResponse;
 import com.rumbou.backend.entity.EstadoSimulacro;
@@ -9,12 +8,15 @@ import com.rumbou.backend.entity.ObjetivoUsuario;
 import com.rumbou.backend.entity.OfertaAcademica;
 import com.rumbou.backend.entity.Usuario;
 import com.rumbou.backend.exception.DuplicateResourceException;
+import com.rumbou.backend.exception.ForbiddenException;
+import com.rumbou.backend.exception.PlanLimitExceededException;
 import com.rumbou.backend.exception.ResourceNotFoundException;
-import com.rumbou.backend.exception.UnauthorizedException;
+import com.rumbou.backend.mapper.ProgresoMapper;
 import com.rumbou.backend.repository.ObjetivoUsuarioRepository;
 import com.rumbou.backend.repository.OfertaAcademicaRepository;
 import com.rumbou.backend.repository.RespuestaUsuarioRepository;
 import com.rumbou.backend.repository.SimulacroRepository;
+import com.rumbou.backend.security.CurrentUserService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,17 +35,20 @@ public class ProgresoService {
     private final SimulacroRepository simulacroRepository;
     private final RespuestaUsuarioRepository respuestaUsuarioRepository;
     private final PlanService planService;
+    private final CurrentUserService currentUserService;
 
     public ProgresoService(ObjetivoUsuarioRepository objetivoUsuarioRepository,
                            OfertaAcademicaRepository ofertaAcademicaRepository,
                            SimulacroRepository simulacroRepository,
                            RespuestaUsuarioRepository respuestaUsuarioRepository,
-                           PlanService planService) {
+                           PlanService planService,
+                           CurrentUserService currentUserService) {
         this.objetivoUsuarioRepository = objetivoUsuarioRepository;
         this.ofertaAcademicaRepository = ofertaAcademicaRepository;
         this.simulacroRepository = simulacroRepository;
         this.respuestaUsuarioRepository = respuestaUsuarioRepository;
         this.planService = planService;
+        this.currentUserService = currentUserService;
     }
 
     // IP = PSP / puntaje del ultimo ingresante. Al dividir por el corte de esa carrera
@@ -58,7 +63,8 @@ public class ProgresoService {
     // Elegir una oferta que ya tuvo desactivada reutiliza la misma fila (la tabla
     // no permite repetir usuario + oferta).
     @Transactional
-    public ObjetivoResponse crearObjetivo(Usuario usuario, Long ofertaAcademicaId) {
+    public ObjetivoResponse crearObjetivo(Long ofertaAcademicaId) {
+        Usuario usuario = currentUserService.getUsuario();
         OfertaAcademica oferta = ofertaAcademicaRepository.findById(ofertaAcademicaId)
                 .orElseThrow(() -> new ResourceNotFoundException("No existe la oferta academica indicada"));
 
@@ -76,23 +82,23 @@ public class ProgresoService {
         inicializarConUltimoSimulacro(objetivo, usuario.getId(), oferta);
         objetivoUsuarioRepository.save(objetivo);
 
-        return aResponse(objetivo);
+        return ProgresoMapper.toObjetivoResponse(objetivo);
     }
 
     @Transactional(readOnly = true)
-    public List<ObjetivoResponse> listarObjetivos(Usuario usuario) {
-        return objetivoUsuarioRepository.findByUsuarioIdAndActivoTrue(usuario.getId()).stream()
-                .map(this::aResponse)
+    public List<ObjetivoResponse> listarObjetivos() {
+        return objetivoUsuarioRepository.findByUsuarioIdAndActivoTrue(currentUserService.getUsuarioId()).stream()
+                .map(ProgresoMapper::toObjetivoResponse)
                 .toList();
     }
 
     @Transactional
-    public void desactivarObjetivo(Usuario usuario, Long objetivoId) {
+    public void desactivarObjetivo(Long objetivoId) {
         ObjetivoUsuario objetivo = objetivoUsuarioRepository.findById(objetivoId)
                 .orElseThrow(() -> new ResourceNotFoundException("No existe ese objetivo"));
 
-        if (!objetivo.getUsuario().getId().equals(usuario.getId())) {
-            throw new UnauthorizedException("Este objetivo no te pertenece");
+        if (!objetivo.getUsuario().getId().equals(currentUserService.getUsuarioId())) {
+            throw new ForbiddenException("Este objetivo no te pertenece");
         }
 
         objetivo.setActivo(false);
@@ -118,30 +124,27 @@ public class ProgresoService {
 
     // PRO: ordenado del tema mas debil al mas fuerte, para mostrar primero las zonas de refuerzo.
     @Transactional(readOnly = true)
-    public List<DominioTemaResponse> dominioPorTema(Usuario usuario) {
+    public List<DominioTemaResponse> dominioPorTema() {
+        Usuario usuario = currentUserService.getUsuario();
         verificarAccesoPro(usuario, "El dominio por tema es exclusivo del plan PRO");
 
         return respuestaUsuarioRepository.contarRespuestasPorTema(usuario.getId(), EstadoSimulacro.FINALIZADO)
                 .stream()
-                .map(this::aDominio)
+                .map(ProgresoMapper::toDominioResponse)
                 .sorted(Comparator.comparingDouble(DominioTemaResponse::porcentajeAciertos))
                 .toList();
     }
 
     // PRO: la evolucion del PSP del usuario en un area, del simulacro mas antiguo al mas reciente.
     @Transactional(readOnly = true)
-    public List<HistorialPspResponse> historialPsp(Usuario usuario, Long areaId) {
+    public List<HistorialPspResponse> historialPsp(Long areaId) {
+        Usuario usuario = currentUserService.getUsuario();
         verificarAccesoPro(usuario, "El historico de PSP es exclusivo del plan PRO");
 
         return simulacroRepository
                 .findByUsuarioIdAndAreaIdAndEstadoOrderByFechaFinAsc(usuario.getId(), areaId, EstadoSimulacro.FINALIZADO)
                 .stream()
-                .map(simulacro -> new HistorialPspResponse(
-                        simulacro.getId(),
-                        simulacro.getTipo(),
-                        simulacro.getFechaFin(),
-                        simulacro.getPuntajeObtenido(),
-                        simulacro.getPsp()))
+                .map(ProgresoMapper::toHistorialResponse)
                 .toList();
     }
 
@@ -166,47 +169,15 @@ public class ProgresoService {
             return;
         }
         if (planService.tieneAccesoPro(usuario)) {
-            throw new UnauthorizedException("Tu plan permite hasta " + limite + " objetivos activos a la vez");
+            throw new PlanLimitExceededException("Tu plan permite hasta " + limite + " objetivos activos a la vez");
         }
-        throw new UnauthorizedException("El plan gratuito permite " + limite
+        throw new PlanLimitExceededException("El plan gratuito permite " + limite
                 + " objetivo activo: desactiva el actual o pasate a PRO para tener hasta 3");
     }
 
     private void verificarAccesoPro(Usuario usuario, String mensaje) {
         if (!planService.tieneAccesoPro(usuario)) {
-            throw new UnauthorizedException(mensaje);
+            throw new PlanLimitExceededException(mensaje);
         }
-    }
-
-    private DominioTemaResponse aDominio(RespuestaUsuarioRepository.ConteoPorTema conteo) {
-        long correctas = conteo.getCorrectas();
-        long incorrectas = conteo.getIncorrectas();
-        long enBlanco = conteo.getEnBlanco();
-        long total = correctas + incorrectas + enBlanco;
-        double porcentaje = total == 0 ? 0 : Math.round(correctas * 1000.0 / total) / 10.0;
-
-        return new DominioTemaResponse(conteo.getTemaId(), conteo.getTema(),
-                correctas, incorrectas, enBlanco, total, porcentaje);
-    }
-
-    private ObjetivoResponse aResponse(ObjetivoUsuario objetivo) {
-        OfertaAcademica oferta = objetivo.getOfertaAcademica();
-        Double ip = objetivo.getUltimoIp();
-        EstadoPreparacion estado = ip == null ? null : EstadoPreparacion.desde(ip);
-
-        return new ObjetivoResponse(
-                objetivo.getId(),
-                oferta.getId(),
-                oferta.getUniversidad().getSiglas(),
-                oferta.getArea().getId(),
-                oferta.getArea().getCodigo(),
-                oferta.getCarrera().getNombre(),
-                oferta.getProcesoAdmision(),
-                oferta.getPuntajeUltimoIngresante(),
-                objetivo.getUltimoPsp(),
-                ip,
-                estado,
-                estado == null ? null : estado.getDescripcion(),
-                objetivo.getFechaActualizacion());
     }
 }

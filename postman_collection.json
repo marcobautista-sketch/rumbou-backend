@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "RumboU API",
-    "description": "Coleccion de endpoints de RumboU (CS2031 UTEC). Cubre autenticacion, usuarios, catalogo academico, simulacros, progreso, preguntas y suscripciones. Se puede correr completa, en orden, con \"Run collection\".\n\nComo usarla:\n1. baseUrl apunta a la API desplegada en Railway. Para local, cambia baseUrl por el valor de baseUrlLocal (docker compose up -d && ./mvnw spring-boot:run).\n2. \"Registrar usuario\" crea una cuenta nueva en cada corrida (genera el email solo) y guarda el token; \"Login\" reutiliza ese mismo email. No hay que copiar tokens a mano.\n3. Los requests marcados (ADMIN) necesitan rol ADMIN. Ejecuta \"Login como administrador\": usa la cuenta de evaluacion del curso (evaluador@rumbou.app, ya cargada en las variables adminEmail y adminPassword) y desde ahi todos los requests corren como ADMIN. Sin ese login, los requests ADMIN responden 403 y sus tests lo aceptan como resultado valido.\n4. Los requests marcados (plan PRO) responden 403 con el plan gratuito; el ADMIN pasa todos los limites del plan.\n5. Cada request guarda en variables los ids que necesitan los siguientes (usuarioId, areaId, temaId, simulacroId, preguntaId, ofertaAcademicaId, objetivoId).\n6. \"Crear suscripcion PRO\" y \"Tutor de IA\" dependen de credenciales externas (MP_ACCESS_TOKEN, GEMINI_API_KEY) en el servidor; sin ellas responden 502.",
+    "description": "Coleccion de endpoints de RumboU (CS2031 UTEC). Cubre autenticacion, usuarios, catalogo academico, simulacros, progreso, preguntas y suscripciones. Se puede correr completa, en orden, con \"Run collection\".\n\nComo usarla:\n1. baseUrl apunta a la API desplegada en AWS (EC2 + RDS). Para local, cambia baseUrl por el valor de baseUrlLocal (docker compose up -d && ./mvnw spring-boot:run).\n2. \"Registrar usuario\" crea una cuenta nueva en cada corrida (genera el email solo) y guarda el token; \"Login\" reutiliza ese mismo email. No hay que copiar tokens a mano.\n3. Los requests marcados (ADMIN) necesitan rol ADMIN. Ejecuta \"Login como administrador\": usa la cuenta de evaluacion del curso (evaluador@rumbou.app, ya cargada en las variables adminEmail y adminPassword) y desde ahi todos los requests corren como ADMIN. Sin ese login, los requests ADMIN responden 403 y sus tests lo aceptan como resultado valido.\n4. Los requests marcados (plan PRO) responden 403 con el plan gratuito; el ADMIN pasa todos los limites del plan.\n5. Cada request guarda en variables los ids que necesitan los siguientes (usuarioId, areaId, temaId, simulacroId, preguntaId, ofertaAcademicaId, objetivoId).\n6. \"Crear suscripcion PRO\" y \"Tutor de IA\" dependen de credenciales externas (MP_ACCESS_TOKEN, GEMINI_API_KEY) en el servidor; sin ellas responden 502.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -19,7 +19,7 @@
       "key": "baseUrl",
       "value": "http://184.194.122.22",
       "type": "string",
-      "description": "API desplegada en Railway. Para local, usar el valor de baseUrlLocal."
+      "description": "API desplegada en AWS (EC2 + RDS). Para local, usar el valor de baseUrlLocal."
     },
     {
       "key": "accessToken",
@@ -130,7 +130,8 @@
             "description": "Unico endpoint publico fuera de auth y webhooks. No requiere token. Responde {status, servicio, timestamp} sin tocar la base de datos. Sirve para comprobar que la API esta arriba (abrir la URL en el navegador) y como health check de la plataforma de despliegue."
           }
         }
-      ]
+      ],
+      "description": "Estado de la API. Publico: no necesita token."
     },
     {
       "name": "Autenticacion",
@@ -159,9 +160,12 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"password123\",\n  \"nombre\": \"Ana\"\n}"
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"Password123\",\n  \"nombre\": \"Ana\"\n}"
             },
-            "description": "Crea una cuenta con role=USER y devuelve access token (15 min) y refresh token (7 dias). El email se genera en cada corrida (variable email) para que la coleccion se pueda repetir sin 409. Publica UsuarioRegistradoEvent (correo de bienvenida asincrono)."
+            "description": "Crea una cuenta con role=USER y devuelve access token (15 min) y refresh token (7 dias). El email se genera en cada corrida (variable email) para que la coleccion se pueda repetir sin 409. Publica UsuarioRegistradoEvent (correo de bienvenida asincrono).",
+            "auth": {
+              "type": "noauth"
+            }
           },
           "event": [
             {
@@ -210,9 +214,12 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"password123\"\n}"
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"Password123\"\n}"
             },
-            "description": "Autentica y devuelve access + refresh token."
+            "description": "Autentica y devuelve access + refresh token.",
+            "auth": {
+              "type": "noauth"
+            }
           },
           "event": [
             {
@@ -253,7 +260,10 @@
               "mode": "raw",
               "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
             },
-            "description": "Genera un access token nuevo (y un refresh token nuevo) a partir del refresh token vigente."
+            "description": "Genera un access token nuevo (y un refresh token nuevo) a partir del refresh token vigente.",
+            "auth": {
+              "type": "noauth"
+            }
           },
           "event": [
             {
@@ -294,7 +304,10 @@
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{email}}\"\n}"
             },
-            "description": "Siempre responde 200, exista o no el email (para no revelar que correos estan registrados). Publica PasswordResetRequestedEvent con el token; en local, mientras no exista el servicio de correo, el token se ve en el log de la aplicacion."
+            "description": "Siempre responde 200, exista o no el email (para no revelar que correos estan registrados). Publica PasswordResetRequestedEvent con el token; en local, mientras no exista el servicio de correo, el token se ve en el log de la aplicacion.",
+            "auth": {
+              "type": "noauth"
+            }
           },
           "event": [
             {
@@ -302,7 +315,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('200 siempre, exista o no el email (no revela cuentas)', () => pm.response.to.have.status(200));"
+                  "pm.test('204 siempre, exista o no el email (no revela cuentas)', () => pm.response.to.have.status(204));"
                 ]
               }
             }
@@ -332,9 +345,12 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"newPassword\": \"nueva-password123\"\n}"
+              "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"newPassword\": \"NuevaPassword123\"\n}"
             },
-            "description": "El token vale 30 minutos y es de un solo uso. Pegar el valor de {{resetToken}} obtenido del paso anterior."
+            "description": "El token vale 30 minutos y es de un solo uso. Pegar el valor de {{resetToken}} obtenido del paso anterior.",
+            "auth": {
+              "type": "noauth"
+            }
           },
           "event": [
             {
@@ -342,7 +358,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('200 con el token del correo; 400/401 si resetToken esta vacio o vencido', () => pm.expect([200, 400, 401]).to.include(pm.response.code));"
+                  "pm.test('204 con el token del correo; 400/401 si resetToken esta vacio o vencido', () => pm.expect([204, 400, 401]).to.include(pm.response.code));"
                 ]
               }
             }
@@ -386,10 +402,14 @@
                 "login"
               ]
             },
-            "description": "Mismo endpoint de login, con una cuenta administradora. Las variables adminEmail y adminPassword vienen cargadas con la cuenta de evaluacion del curso (evaluador@rumbou.app), que ya tiene rol ADMIN en produccion: basta con ejecutar este request para que el resto de la coleccion corra como ADMIN (que ademas pasa todos los limites del plan). Tambien sirven las credenciales de cualquier otro administrador."
+            "description": "Mismo endpoint de login, con una cuenta administradora. Las variables adminEmail y adminPassword vienen cargadas con la cuenta de evaluacion del curso (evaluador@rumbou.app), que ya tiene rol ADMIN en produccion: basta con ejecutar este request para que el resto de la coleccion corra como ADMIN (que ademas pasa todos los limites del plan). Tambien sirven las credenciales de cualquier otro administrador.",
+            "auth": {
+              "type": "noauth"
+            }
           }
         }
-      ]
+      ],
+      "description": "Registro, login, refresh y recuperacion de contrasena. Son publicos (auth: noauth). La contrasena debe tener 8 a 72 caracteres con mayuscula, minuscula y numero; si no, 400. Credenciales o tokens invalidos responden 401."
     },
     {
       "name": "Usuarios",
@@ -425,6 +445,70 @@
             },
             "description": "Devuelve id, email, nombre y rol de la cuenta del token (nunca el hash de la contrasena). Sirve para comprobar con que rol se esta llamando a la API; guarda el id en la variable usuarioId."
           }
+        },
+        {
+          "name": "Mi gamificacion (XP, racha y logros)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/usuarios/me/gamificacion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "usuarios",
+                "me",
+                "gamificacion"
+              ]
+            },
+            "description": "XP total y semanal, racha actual y maxima, y los logros desbloqueados del usuario autenticado. Se actualizan al finalizar cada simulacro."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 con XP, racha y logros', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Ejemplo 200",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/usuarios/me/gamificacion",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "usuarios",
+                    "me",
+                    "gamificacion"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"xpTotal\": 300,\n  \"xpSemanal\": 100,\n  \"rachaActual\": 2,\n  \"rachaMaxima\": 4,\n  \"ultimaActividad\": \"2026-09-24\",\n  \"logros\": [\n    {\n      \"id\": 1,\n      \"nombre\": \"Primer simulacro\",\n      \"descripcion\": \"Terminaste tu primer simulacro\",\n      \"fechaDesbloqueo\": \"2026-09-20T10:00:00\"\n    }\n  ]\n}"
+            }
+          ]
         },
         {
           "name": "Buscar usuario por email (ADMIN)",
@@ -687,7 +771,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('200; 400 si el simulacro ya se finalizo', () => pm.expect([200, 400]).to.include(pm.response.code));"
+                  "pm.test('204; 400 si el simulacro ya se finalizo', () => pm.expect([204, 400]).to.include(pm.response.code));"
                 ]
               }
             }
@@ -723,8 +807,131 @@
               }
             }
           ]
+        },
+        {
+          "name": "Listar mis simulacros",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/simulacros?page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "simulacros?page=0&size=10"
+              ]
+            },
+            "description": "Historial paginado de los simulacros del usuario autenticado, del mas reciente al mas antiguo, sin las preguntas."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 con la pagina de simulacros del usuario', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Ejemplo 200",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/simulacros?page=0&size=10",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "simulacros?page=0&size=10"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"content\": [\n    {\n      \"id\": 12,\n      \"tipo\": \"COMPLETO\",\n      \"estado\": \"FINALIZADO\",\n      \"areaId\": 1,\n      \"area\": \"GENERAL\",\n      \"fechaInicio\": \"2026-09-24T10:00:00\",\n      \"fechaFin\": \"2026-09-24T12:30:00\",\n      \"puntajeObtenido\": 842.5,\n      \"psp\": 842.5\n    }\n  ],\n  \"totalElements\": 1,\n  \"number\": 0,\n  \"size\": 10\n}"
+            }
+          ]
+        },
+        {
+          "name": "Ver detalle de un simulacro",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/simulacros/{{simulacroId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "simulacros",
+                "{{simulacroId}}"
+              ]
+            },
+            "description": "Las preguntas del simulacro con lo que marco el usuario. Mientras esta EN_CURSO no trae la clave; ya FINALIZADO incluye claveCorrecta, esCorrecta, puntajeAportado y la explicacion. 403 si el simulacro es de otro usuario."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 con las preguntas del simulacro; 404 si simulacroId esta vacio', () => pm.expect([200, 404]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Ejemplo 200",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/simulacros/{{simulacroId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "simulacros",
+                    "{{simulacroId}}"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"id\": 12,\n  \"tipo\": \"COMPLETO\",\n  \"estado\": \"FINALIZADO\",\n  \"areaId\": 1,\n  \"fechaInicio\": \"2026-09-24T10:00:00\",\n  \"fechaFin\": \"2026-09-24T12:30:00\",\n  \"puntajeObtenido\": 842.5,\n  \"psp\": 842.5,\n  \"preguntas\": [\n    {\n      \"respuestaUsuarioId\": 301,\n      \"preguntaId\": 45,\n      \"enunciado\": \"Si 2x + 3 = 11, halle x.\",\n      \"alternativas\": [\n        \"2\",\n        \"3\",\n        \"4\",\n        \"5\",\n        \"6\"\n      ],\n      \"alternativaMarcada\": 2,\n      \"claveCorrecta\": 2,\n      \"esCorrecta\": true,\n      \"puntajeAportado\": 20,\n      \"explicacion\": \"2x = 8, entonces x = 4.\"\n    }\n  ]\n}"
+            }
+          ]
         }
-      ]
+      ],
+      "description": "Ciclo del examen: iniciar (201), listar y ver el detalle, responder (204) y finalizar (200). Solo el dueno puede ver o tocar un simulacro (403). El detalle de un simulacro finalizado incluye la clave, si acerto y la explicacion de cada pregunta."
     },
     {
       "name": "Progreso",
@@ -1011,7 +1218,8 @@
                 "preguntas",
                 "{{preguntaId}}"
               ]
-            }
+            },
+            "description": "Devuelve una pregunta sin clave ni explicacion. Para un USER, una pregunta sin aprobar responde 404 como si no existiera; el ADMIN la ve."
           },
           "event": [
             {
@@ -1231,13 +1439,14 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('204 como ADMIN; 403 como USER', () => pm.expect([204, 403]).to.include(pm.response.code));"
+                  "pm.test('204 como ADMIN; 403 como USER; 409 si ya salio en un simulacro', () => pm.expect([204, 403, 409]).to.include(pm.response.code));"
                 ]
               }
             }
           ]
         }
-      ]
+      ],
+      "description": "Banco de preguntas. Un USER solo ve preguntas aprobadas y sin clave; el ADMIN gestiona el CRUD. Una pregunta que ya salio en un simulacro no se puede borrar (409): se desaprueba con PUT."
     },
     {
       "name": "Suscripciones",
@@ -1273,6 +1482,68 @@
           ]
         },
         {
+          "name": "Mi suscripcion",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/suscripciones/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "suscripciones",
+                "me"
+              ]
+            },
+            "description": "La suscripcion mas reciente del usuario y su estado (PENDIENTE, ACTIVA, VENCIDA o CANCELADA): asi el cliente sabe si Mercado Pago ya confirmo el pago. 404 si nunca creo una."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 con la suscripcion; 404 si el usuario no tiene ninguna', () => pm.expect([200, 404]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Ejemplo 200",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/suscripciones/me",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "suscripciones",
+                    "me"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"id\": 3,\n  \"plan\": \"PRO\",\n  \"estado\": \"ACTIVA\",\n  \"fechaInicio\": \"2026-09-20\",\n  \"fechaFin\": \"2026-10-20\",\n  \"linkPago\": null\n}"
+            }
+          ]
+        },
+        {
           "name": "Webhook de Mercado Pago (pago aprobado)",
           "request": {
             "method": "POST",
@@ -1298,20 +1569,24 @@
               "mode": "raw",
               "raw": "{\n  \"action\": \"payment.approved\",\n  \"paymentId\": 123456789,\n  \"mercadoPagoPreapprovalId\": \"preapproval-demo\",\n  \"externalReference\": \"{{suscripcionId}}\"\n}"
             },
-            "description": "Endpoint publico que recibe la notificacion de pago de Mercado Pago. Es idempotente: cada paymentId se registra en la tabla pagos_webhook y repetirlo no vuelve a procesarlo. Con action=payment.approved publica PagoAprobadoEvent, que activa la suscripcion y dispara el correo de confirmacion."
+            "description": "Endpoint publico que recibe la notificacion de pago de Mercado Pago. Es idempotente: cada paymentId se registra en la tabla pagos_webhook y repetirlo no vuelve a procesarlo. Con action=payment.approved publica PagoAprobadoEvent, que activa la suscripcion y dispara el correo de confirmacion.\n\nCon MP_WEBHOOK_SECRET configurado en el servidor, la notificacion debe traer los headers x-signature (ts=...,v1=HMAC-SHA256) y x-request-id; sin firma valida responde 401.",
+            "auth": {
+              "type": "noauth"
+            }
           },
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Responde 2xx o 404 si la referencia no existe', () => pm.expect([200,204,404]).to.include(pm.response.code));"
+                  "pm.test('Responde 2xx o 404 si la referencia no existe', () => pm.expect([200,204,401,404]).to.include(pm.response.code));"
                 ]
               }
             }
           ]
         }
-      ]
+      ],
+      "description": "Plan PRO con Mercado Pago. El webhook es publico pero, si el servidor tiene MP_WEBHOOK_SECRET, exige la firma x-signature de Mercado Pago (401 sin ella)."
     }
   ]
 }

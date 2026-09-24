@@ -15,8 +15,11 @@ import com.rumbou.backend.entity.Role;
 import com.rumbou.backend.entity.Tema;
 import com.rumbou.backend.entity.Usuario;
 import com.rumbou.backend.exception.ResourceNotFoundException;
-import com.rumbou.backend.exception.UnauthorizedException;
+import com.rumbou.backend.exception.ForbiddenException;
+import com.rumbou.backend.exception.ResourceInUseException;
 import com.rumbou.backend.repository.PreguntaRepository;
+import com.rumbou.backend.repository.RespuestaUsuarioRepository;
+import com.rumbou.backend.security.CurrentUserService;
 import com.rumbou.backend.repository.TemaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,12 +52,19 @@ class PreguntaServiceTest {
     @Mock
     private PlanService planService;
 
+    @Mock
+    private RespuestaUsuarioRepository respuestaUsuarioRepository;
+
+    @Mock
+    private CurrentUserService currentUserService;
+
     private PreguntaService preguntaService;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        preguntaService = new PreguntaService(preguntaRepository, temaRepository, geminiClient, planService);
+        preguntaService = new PreguntaService(preguntaRepository, temaRepository, respuestaUsuarioRepository,
+                geminiClient, planService, currentUserService);
     }
 
     private Pregunta preguntaConId(Long id, boolean aprobada) {
@@ -74,9 +84,10 @@ class PreguntaServiceTest {
 
     @Test
     void unAdminPuedeVerUnaPreguntaSinAprobar() {
+        given(currentUserService.esAdmin()).willReturn(true);
         given(preguntaRepository.findById(1L)).willReturn(Optional.of(preguntaConId(1L, false)));
 
-        PreguntaResponse respuesta = preguntaService.obtener(1L, true);
+        PreguntaResponse respuesta = preguntaService.obtener(1L);
 
         assertThat(respuesta.id()).isEqualTo(1L);
     }
@@ -85,7 +96,7 @@ class PreguntaServiceTest {
     void unNoAdminNoPuedeVerUnaPreguntaSinAprobar() {
         given(preguntaRepository.findById(1L)).willReturn(Optional.of(preguntaConId(1L, false)));
 
-        assertThatThrownBy(() -> preguntaService.obtener(1L, false))
+        assertThatThrownBy(() -> preguntaService.obtener(1L))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
@@ -93,7 +104,7 @@ class PreguntaServiceTest {
     void unNoAdminSiPuedeVerUnaPreguntaAprobada() {
         given(preguntaRepository.findById(1L)).willReturn(Optional.of(preguntaConId(1L, true)));
 
-        PreguntaResponse respuesta = preguntaService.obtener(1L, false);
+        PreguntaResponse respuesta = preguntaService.obtener(1L);
 
         assertThat(respuesta.id()).isEqualTo(1L);
     }
@@ -103,7 +114,7 @@ class PreguntaServiceTest {
         given(preguntaRepository.buscar(any(), any(), any(), org.mockito.ArgumentMatchers.eq(Boolean.TRUE), any()))
                 .willReturn(org.springframework.data.domain.Page.empty());
 
-        preguntaService.buscar(null, null, null, Boolean.FALSE, org.springframework.data.domain.Pageable.unpaged(), false);
+        preguntaService.buscar(null, null, null, Boolean.FALSE, org.springframework.data.domain.Pageable.unpaged());
 
         org.mockito.Mockito.verify(preguntaRepository)
                 .buscar(any(), any(), any(), org.mockito.ArgumentMatchers.eq(Boolean.TRUE), any());
@@ -111,10 +122,11 @@ class PreguntaServiceTest {
 
     @Test
     void unAdminBuscaConElFiltroQuePida() {
+        given(currentUserService.esAdmin()).willReturn(true);
         given(preguntaRepository.buscar(any(), any(), any(), org.mockito.ArgumentMatchers.isNull(), any()))
                 .willReturn(org.springframework.data.domain.Page.empty());
 
-        preguntaService.buscar(null, null, null, null, org.springframework.data.domain.Pageable.unpaged(), true);
+        preguntaService.buscar(null, null, null, null, org.springframework.data.domain.Pageable.unpaged());
 
         org.mockito.Mockito.verify(preguntaRepository)
                 .buscar(any(), any(), any(), org.mockito.ArgumentMatchers.isNull(), any());
@@ -160,11 +172,12 @@ class PreguntaServiceTest {
     void unUsuarioConCupoRecibeLaExplicacionYGastaUnaConsultaDelDia() {
         Pregunta pregunta = preguntaConId(1L, true);
         Usuario usuario = usuarioConId(10L);
+        given(currentUserService.getUsuario()).willReturn(usuario);
         given(preguntaRepository.findById(1L)).willReturn(Optional.of(pregunta));
         given(geminiClient.explicar(pregunta.getEnunciado(), pregunta.getAlternativas(), pregunta.getClaveCorrecta()))
                 .willReturn("Porque 2 + 2 = 4");
 
-        TutorIaResponse respuesta = preguntaService.pedirExplicacionTutorIa(1L, usuario, false);
+        TutorIaResponse respuesta = preguntaService.pedirExplicacionTutorIa(1L);
 
         assertThat(respuesta.preguntaId()).isEqualTo(1L);
         assertThat(respuesta.explicacion()).isEqualTo("Porque 2 + 2 = 4");
@@ -176,12 +189,13 @@ class PreguntaServiceTest {
     void siPlanServiceRechazaElAccesoNuncaSeLlamaAGemini() {
         Pregunta pregunta = preguntaConId(1L, true);
         Usuario usuario = usuarioConId(10L);
+        given(currentUserService.getUsuario()).willReturn(usuario);
         given(preguntaRepository.findById(1L)).willReturn(Optional.of(pregunta));
-        willThrow(new UnauthorizedException("El tutor de IA es exclusivo del plan PRO"))
+        willThrow(new ForbiddenException("El tutor de IA es exclusivo del plan PRO"))
                 .given(planService).puedeAcceder(usuario, Funcionalidad.TUTOR_IA);
 
-        assertThatThrownBy(() -> preguntaService.pedirExplicacionTutorIa(1L, usuario, false))
-                .isInstanceOf(UnauthorizedException.class);
+        assertThatThrownBy(() -> preguntaService.pedirExplicacionTutorIa(1L))
+                .isInstanceOf(ForbiddenException.class);
 
         verify(geminiClient, never()).explicar(any(), any(), any(Integer.class));
         verify(planService, never()).registrarUso(any(), any());
@@ -191,11 +205,12 @@ class PreguntaServiceTest {
     void siGeminiFallaNoSeDescuentaElCupoDelDia() {
         Pregunta pregunta = preguntaConId(1L, true);
         Usuario usuario = usuarioConId(10L);
+        given(currentUserService.getUsuario()).willReturn(usuario);
         given(preguntaRepository.findById(1L)).willReturn(Optional.of(pregunta));
         given(geminiClient.explicar(any(), any(), any(Integer.class)))
                 .willThrow(new GeminiException("Gemini no respondio"));
 
-        assertThatThrownBy(() -> preguntaService.pedirExplicacionTutorIa(1L, usuario, false))
+        assertThatThrownBy(() -> preguntaService.pedirExplicacionTutorIa(1L))
                 .isInstanceOf(GeminiException.class);
 
         verify(planService, never()).registrarUso(any(), any());
@@ -205,9 +220,10 @@ class PreguntaServiceTest {
     void unNoAdminNoPuedePedirleAlTutorIaUnaPreguntaSinAprobar() {
         Pregunta pregunta = preguntaConId(1L, false);
         Usuario usuario = usuarioConId(10L);
+        given(currentUserService.getUsuario()).willReturn(usuario);
         given(preguntaRepository.findById(1L)).willReturn(Optional.of(pregunta));
 
-        assertThatThrownBy(() -> preguntaService.pedirExplicacionTutorIa(1L, usuario, false))
+        assertThatThrownBy(() -> preguntaService.pedirExplicacionTutorIa(1L))
                 .isInstanceOf(ResourceNotFoundException.class);
 
         verify(planService, never()).puedeAcceder(any(), any());
@@ -216,13 +232,37 @@ class PreguntaServiceTest {
 
     @Test
     void unAdminSiPuedePedirleAlTutorIaUnaPreguntaSinAprobar() {
+        given(currentUserService.esAdmin()).willReturn(true);
         Pregunta pregunta = preguntaConId(1L, false);
         Usuario usuario = usuarioConId(10L);
+        given(currentUserService.getUsuario()).willReturn(usuario);
         given(preguntaRepository.findById(1L)).willReturn(Optional.of(pregunta));
         given(geminiClient.explicar(any(), any(), any(Integer.class))).willReturn("Explicacion");
 
-        TutorIaResponse respuesta = preguntaService.pedirExplicacionTutorIa(1L, usuario, true);
+        TutorIaResponse respuesta = preguntaService.pedirExplicacionTutorIa(1L);
 
         assertThat(respuesta.explicacion()).isEqualTo("Explicacion");
+    }
+
+    @Test
+    void noSeEliminaUnaPreguntaQueYaSalioEnUnSimulacro() {
+        given(preguntaRepository.findById(1L)).willReturn(Optional.of(preguntaConId(1L, true)));
+        given(respuestaUsuarioRepository.existsByPreguntaId(1L)).willReturn(true);
+
+        assertThatThrownBy(() -> preguntaService.eliminar(1L))
+                .isInstanceOf(ResourceInUseException.class);
+
+        verify(preguntaRepository, never()).delete(any());
+    }
+
+    @Test
+    void seEliminaUnaPreguntaQueNuncaSeUso() {
+        Pregunta pregunta = preguntaConId(1L, true);
+        given(preguntaRepository.findById(1L)).willReturn(Optional.of(pregunta));
+        given(respuestaUsuarioRepository.existsByPreguntaId(1L)).willReturn(false);
+
+        preguntaService.eliminar(1L);
+
+        verify(preguntaRepository).delete(pregunta);
     }
 }

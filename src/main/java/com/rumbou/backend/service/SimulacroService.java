@@ -2,9 +2,10 @@ package com.rumbou.backend.service;
 
 import com.rumbou.backend.dto.request.IniciarSimulacroRequest;
 import com.rumbou.backend.dto.request.ResponderPreguntaRequest;
-import com.rumbou.backend.dto.response.PreguntaSimulacroResponse;
 import com.rumbou.backend.dto.response.ResultadoSimulacroResponse;
+import com.rumbou.backend.dto.response.SimulacroDetalleResponse;
 import com.rumbou.backend.dto.response.SimulacroResponse;
+import com.rumbou.backend.dto.response.SimulacroResumenResponse;
 import com.rumbou.backend.entity.Area;
 import com.rumbou.backend.entity.EsquemaCalificacion;
 import com.rumbou.backend.entity.EstadoSimulacro;
@@ -17,14 +18,18 @@ import com.rumbou.backend.entity.TipoSimulacro;
 import com.rumbou.backend.entity.Usuario;
 import com.rumbou.backend.event.RespuestaIncorrectaEvent;
 import com.rumbou.backend.event.SimulacroFinalizadoEvent;
+import com.rumbou.backend.exception.ForbiddenException;
 import com.rumbou.backend.exception.InvalidOperationException;
 import com.rumbou.backend.exception.ResourceNotFoundException;
-import com.rumbou.backend.exception.UnauthorizedException;
+import com.rumbou.backend.mapper.SimulacroMapper;
 import com.rumbou.backend.repository.AreaRepository;
 import com.rumbou.backend.repository.EstructuraExamenRepository;
 import com.rumbou.backend.repository.RespuestaUsuarioRepository;
 import com.rumbou.backend.repository.SimulacroRepository;
+import com.rumbou.backend.security.CurrentUserService;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,6 +50,7 @@ public class SimulacroService {
     private final CalificadorService calificadorService;
     private final ApplicationEventPublisher eventPublisher;
     private final PlanService planService;
+    private final CurrentUserService currentUserService;
 
     public SimulacroService(SimulacroRepository simulacroRepository,
                              RespuestaUsuarioRepository respuestaUsuarioRepository,
@@ -53,7 +59,8 @@ public class SimulacroService {
                              SimulacroGeneratorService simulacroGeneratorService,
                              CalificadorService calificadorService,
                              ApplicationEventPublisher eventPublisher,
-                             PlanService planService) {
+                             PlanService planService,
+                             CurrentUserService currentUserService) {
         this.simulacroRepository = simulacroRepository;
         this.respuestaUsuarioRepository = respuestaUsuarioRepository;
         this.areaRepository = areaRepository;
@@ -62,10 +69,12 @@ public class SimulacroService {
         this.calificadorService = calificadorService;
         this.eventPublisher = eventPublisher;
         this.planService = planService;
+        this.currentUserService = currentUserService;
     }
 
     @Transactional
-    public SimulacroResponse iniciar(Usuario usuario, IniciarSimulacroRequest request) {
+    public SimulacroResponse iniciar(IniciarSimulacroRequest request) {
+        Usuario usuario = currentUserService.getUsuario();
         Area area = areaRepository.findById(request.areaId())
                 .orElseThrow(() -> new ResourceNotFoundException("No existe el area indicada"));
 
@@ -76,12 +85,26 @@ public class SimulacroService {
                 usuario, area, request.tipo(), request.temaId());
         planService.registrarUso(usuario, funcionalidad);
 
-        return construirRespuesta(simulacro);
+        return SimulacroMapper.toResponse(simulacro, respuestaUsuarioRepository.findBySimulacroId(simulacro.getId()));
+    }
+
+    @Transactional(readOnly = true)
+    public Page<SimulacroResumenResponse> listar(Pageable pageable) {
+        return simulacroRepository
+                .findByUsuarioIdOrderByFechaInicioDesc(currentUserService.getUsuarioId(), pageable)
+                .map(SimulacroMapper::toResumen);
+    }
+
+    // En curso: las preguntas sin clave. Finalizado: la correccion completa con explicaciones.
+    @Transactional(readOnly = true)
+    public SimulacroDetalleResponse obtener(Long simulacroId) {
+        Simulacro simulacro = obtenerSimulacroDelUsuario(simulacroId);
+        return SimulacroMapper.toDetalle(simulacro, respuestaUsuarioRepository.findBySimulacroId(simulacroId));
     }
 
     @Transactional
-    public void responder(Usuario usuario, Long simulacroId, ResponderPreguntaRequest request) {
-        Simulacro simulacro = obtenerSimulacroDelUsuario(usuario, simulacroId);
+    public void responder(Long simulacroId, ResponderPreguntaRequest request) {
+        Simulacro simulacro = obtenerSimulacroDelUsuario(simulacroId);
         verificarEnCurso(simulacro);
 
         RespuestaUsuario respuesta = respuestaUsuarioRepository
@@ -95,14 +118,21 @@ public class SimulacroService {
     }
 
     @Transactional
-    public ResultadoSimulacroResponse finalizar(Usuario usuario, Long simulacroId) {
-        Simulacro simulacro = obtenerSimulacroDelUsuario(usuario, simulacroId);
+    public ResultadoSimulacroResponse finalizar(Long simulacroId) {
+        Simulacro simulacro = obtenerSimulacroDelUsuario(simulacroId);
         verificarEnCurso(simulacro);
 
         List<RespuestaUsuario> respuestas = respuestaUsuarioRepository.findBySimulacroId(simulacroId);
+        calificar(simulacro, respuestas);
+        simulacroRepository.save(simulacro);
+
+        publicarEventos(simulacro, respuestas);
+        return SimulacroMapper.toResultado(simulacro);
+    }
+
+    private void calificar(Simulacro simulacro, List<RespuestaUsuario> respuestas) {
         List<EstructuraExamen> estructura = estructuraExamenRepository
                 .findByAreaIdOrderByOrden(simulacro.getArea().getId());
-
         Map<Long, EsquemaCalificacion> esquemaPorTemaId = mapearEsquemaPorTema(estructura);
         verificarQueTodoTemaTengaEsquema(respuestas, esquemaPorTemaId);
 
@@ -116,20 +146,18 @@ public class SimulacroService {
         simulacro.setPsp(psp);
         simulacro.setEstado(EstadoSimulacro.FINALIZADO);
         simulacro.setFechaFin(LocalDateTime.now());
-        simulacroRepository.save(simulacro);
+    }
 
+    private void publicarEventos(Simulacro simulacro, List<RespuestaUsuario> respuestas) {
+        Long usuarioId = simulacro.getUsuario().getId();
         eventPublisher.publishEvent(new SimulacroFinalizadoEvent(
-                simulacro.getId(), usuario.getId(), simulacro.getArea().getId(),
-                simulacro.getTipo(), puntajeTotal, psp));
+                simulacro.getId(), usuarioId, simulacro.getArea().getId(),
+                simulacro.getTipo(), simulacro.getPuntajeObtenido(), simulacro.getPsp()));
 
-        for (RespuestaUsuario respuesta : respuestas) {
-            if (Boolean.FALSE.equals(respuesta.getEsCorrecta())) {
-                eventPublisher.publishEvent(new RespuestaIncorrectaEvent(
-                        respuesta.getId(), respuesta.getPregunta().getId(), usuario.getId()));
-            }
-        }
-
-        return new ResultadoSimulacroResponse(simulacro.getId(), puntajeTotal, psp, simulacro.getEstado());
+        respuestas.stream()
+                .filter(respuesta -> Boolean.FALSE.equals(respuesta.getEsCorrecta()))
+                .forEach(respuesta -> eventPublisher.publishEvent(new RespuestaIncorrectaEvent(
+                        respuesta.getId(), respuesta.getPregunta().getId(), usuarioId)));
     }
 
     // Un tema en dos bloques del area no se puede calificar (no se sabria con
@@ -173,12 +201,12 @@ public class SimulacroService {
         return puntajeMaximo;
     }
 
-    private Simulacro obtenerSimulacroDelUsuario(Usuario usuario, Long simulacroId) {
+    private Simulacro obtenerSimulacroDelUsuario(Long simulacroId) {
         Simulacro simulacro = simulacroRepository.findById(simulacroId)
                 .orElseThrow(() -> new ResourceNotFoundException("No existe ese simulacro"));
 
-        if (!simulacro.getUsuario().getId().equals(usuario.getId())) {
-            throw new UnauthorizedException("Este simulacro no te pertenece");
+        if (!simulacro.getUsuario().getId().equals(currentUserService.getUsuarioId())) {
+            throw new ForbiddenException("Este simulacro no te pertenece");
         }
         return simulacro;
     }
@@ -198,21 +226,6 @@ public class SimulacroService {
         if (simulacro.getEstado() != EstadoSimulacro.EN_CURSO) {
             throw new InvalidOperationException("Este simulacro ya fue finalizado");
         }
-    }
-
-    private SimulacroResponse construirRespuesta(Simulacro simulacro) {
-        List<PreguntaSimulacroResponse> preguntas = respuestaUsuarioRepository
-                .findBySimulacroId(simulacro.getId()).stream()
-                .map(r -> new PreguntaSimulacroResponse(
-                        r.getId(),
-                        r.getPregunta().getId(),
-                        r.getPregunta().getEnunciado(),
-                        r.getPregunta().getAlternativas()))
-                .toList();
-
-        return new SimulacroResponse(
-                simulacro.getId(), simulacro.getTipo(), simulacro.getEstado(),
-                simulacro.getFechaInicio(), preguntas);
     }
 
     // El diagnostico gratuito se cobra con el contador del simulacro completo

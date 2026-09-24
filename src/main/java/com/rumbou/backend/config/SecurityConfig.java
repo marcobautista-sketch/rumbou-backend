@@ -2,6 +2,7 @@ package com.rumbou.backend.config;
 
 import com.rumbou.backend.security.JwtAuthenticationEntryPoint;
 import com.rumbou.backend.security.JwtAuthenticationFilter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -30,13 +31,16 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final UserDetailsService userDetailsService;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final List<String> allowedOrigins;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
                            UserDetailsService userDetailsService,
-                           JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint) {
+                           JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
+                           @Value("${app.cors.allowed-origins}") List<String> allowedOrigins) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.userDetailsService = userDetailsService;
         this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
+        this.allowedOrigins = allowedOrigins;
     }
 
     @Bean
@@ -60,8 +64,8 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Abierto en desarrollo; restringir al dominio real del cliente antes de produccion.
-        configuration.setAllowedOriginPatterns(List.of("*"));
+        // Los origenes vienen de CORS_ALLOWED_ORIGINS; en produccion se fija el dominio del frontend.
+        configuration.setAllowedOriginPatterns(allowedOrigins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

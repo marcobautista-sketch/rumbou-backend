@@ -26,7 +26,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -81,40 +80,40 @@ class PreguntaControllerTest {
 
     @Test
     void unUsuarioAutenticadoPuedeVerUnaPregunta() throws Exception {
-        given(preguntaService.obtener(1L, false)).willReturn(
+        given(preguntaService.obtener(1L)).willReturn(
                 new PreguntaResponse(1L, 1L, "Algebra", "¿Cuanto es 2 + 2?", List.of("1", "2", "3", "4", "5"), Dificultad.FACIL));
 
         mockMvc.perform(get("/api/v1/preguntas/1").with(user(usuarioConRol(Role.USER))))
                 .andExpect(status().isOk());
 
-        verify(preguntaService).obtener(1L, false);
+        verify(preguntaService).obtener(1L);
     }
 
     @Test
-    void unAdminQueVeUnaPreguntaPasaEsAdminEnTrue() throws Exception {
-        given(preguntaService.obtener(1L, true)).willReturn(
+    void unAdminPuedeVerUnaPregunta() throws Exception {
+        given(preguntaService.obtener(1L)).willReturn(
                 new PreguntaResponse(1L, 1L, "Algebra", "¿Cuanto es 2 + 2?", List.of("1", "2", "3", "4", "5"), Dificultad.FACIL));
 
         mockMvc.perform(get("/api/v1/preguntas/1").with(user(usuarioConRol(Role.ADMIN))))
                 .andExpect(status().isOk());
 
-        verify(preguntaService).obtener(1L, true);
+        verify(preguntaService).obtener(1L);
     }
 
     @Test
-    void alListarUnUsuarioSinRolAdminPasaEsAdminEnFalse() throws Exception {
-        given(preguntaService.buscar(any(), any(), any(), any(), any(), org.mockito.ArgumentMatchers.eq(false)))
+    void unUsuarioAutenticadoPuedeListarPreguntas() throws Exception {
+        given(preguntaService.buscar(any(), any(), any(), any(), any()))
                 .willReturn(org.springframework.data.domain.Page.empty());
 
         mockMvc.perform(get("/api/v1/preguntas?aprobada=false").with(user(usuarioConRol(Role.USER))))
                 .andExpect(status().isOk());
 
-        verify(preguntaService).buscar(any(), any(), any(), any(), any(), org.mockito.ArgumentMatchers.eq(false));
+        verify(preguntaService).buscar(any(), any(), any(), any(), any());
     }
 
     @Test
     void unUsuarioAutenticadoPuedePedirleAlTutorIaUnaExplicacion() throws Exception {
-        given(preguntaService.pedirExplicacionTutorIa(any(), any(), anyBoolean()))
+        given(preguntaService.pedirExplicacionTutorIa(any()))
                 .willReturn(new TutorIaResponse(1L, "Porque 2 + 2 = 4"));
 
         mockMvc.perform(post("/api/v1/preguntas/1/tutor-ia")

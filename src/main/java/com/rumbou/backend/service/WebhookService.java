@@ -1,5 +1,6 @@
 package com.rumbou.backend.service;
 
+import com.rumbou.backend.client.mercadopago.WebhookSignatureValidator;
 import com.rumbou.backend.dto.request.WebhookNotificationRequest;
 import com.rumbou.backend.entity.PagoWebhook;
 import com.rumbou.backend.event.PagoAprobadoEvent;
@@ -15,15 +16,20 @@ public class WebhookService {
 
     private final PagoWebhookRepository pagoWebhookRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final WebhookSignatureValidator signatureValidator;
 
     public WebhookService(PagoWebhookRepository pagoWebhookRepository,
-                          ApplicationEventPublisher eventPublisher) {
+                          ApplicationEventPublisher eventPublisher,
+                          WebhookSignatureValidator signatureValidator) {
         this.pagoWebhookRepository = pagoWebhookRepository;
         this.eventPublisher = eventPublisher;
+        this.signatureValidator = signatureValidator;
     }
 
     @Transactional
-    public void procesar(WebhookNotificationRequest notificacion) {
+    public void procesar(WebhookNotificationRequest notificacion, String xSignature, String xRequestId) {
+        signatureValidator.validar(xSignature, xRequestId, String.valueOf(notificacion.paymentId()));
+
         // MP envia muchas acciones; solo nos interesa la aprobacion.
         if (!ACCION_PAGO_APROBADO.equals(notificacion.action())) {
             return;

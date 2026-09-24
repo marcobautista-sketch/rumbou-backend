@@ -16,11 +16,12 @@ import com.rumbou.backend.entity.Universidad;
 import com.rumbou.backend.entity.Usuario;
 import com.rumbou.backend.exception.DuplicateResourceException;
 import com.rumbou.backend.exception.ResourceNotFoundException;
-import com.rumbou.backend.exception.UnauthorizedException;
+import com.rumbou.backend.exception.ForbiddenException;
 import com.rumbou.backend.repository.ObjetivoUsuarioRepository;
 import com.rumbou.backend.repository.OfertaAcademicaRepository;
 import com.rumbou.backend.repository.RespuestaUsuarioRepository;
 import com.rumbou.backend.repository.SimulacroRepository;
+import com.rumbou.backend.security.CurrentUserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -48,6 +49,7 @@ class ProgresoServiceTest {
     private SimulacroRepository simulacroRepository;
     private RespuestaUsuarioRepository respuestaUsuarioRepository;
     private PlanService planService;
+    private CurrentUserService currentUserService;
     private ProgresoService progresoService;
 
     private Usuario postulante;
@@ -61,11 +63,14 @@ class ProgresoServiceTest {
         simulacroRepository = mock(SimulacroRepository.class);
         respuestaUsuarioRepository = mock(RespuestaUsuarioRepository.class);
         planService = mock(PlanService.class);
+        currentUserService = mock(CurrentUserService.class);
         progresoService = new ProgresoService(objetivoUsuarioRepository, ofertaAcademicaRepository,
-                simulacroRepository, respuestaUsuarioRepository, planService);
+                simulacroRepository, respuestaUsuarioRepository, planService, currentUserService);
 
         postulante = new Usuario("ana@rumbou.com", "hash", "Ana", Role.USER);
         postulante.setId(7L);
+        when(currentUserService.getUsuario()).thenReturn(postulante);
+        when(currentUserService.getUsuarioId()).thenReturn(7L);
 
         Universidad uni = new Universidad("Universidad Nacional de Ingenieria", "UNI", 1800, 180);
         areaGeneralUni = new Area(uni, "GENERAL", "General");
@@ -118,7 +123,7 @@ class ProgresoServiceTest {
     void unObjetivoNuevoSinSimulacrosPreviosQuedaActivoYSinProgreso() {
         prepararCreacion(Optional.empty(), 0, 1);
 
-        ObjetivoResponse respuesta = progresoService.crearObjetivo(postulante, 10L);
+        ObjetivoResponse respuesta = progresoService.crearObjetivo(10L);
 
         assertThat(respuesta.carrera()).isEqualTo("Ingenieria de Sistemas");
         assertThat(respuesta.universidad()).isEqualTo("UNI");
@@ -135,7 +140,7 @@ class ProgresoServiceTest {
         when(simulacroRepository.findFirstByUsuarioIdAndAreaIdAndEstadoOrderByFechaFinDesc(
                 7L, 2L, EstadoSimulacro.FINALIZADO)).thenReturn(Optional.of(ultimo));
 
-        ObjetivoResponse respuesta = progresoService.crearObjetivo(postulante, 10L);
+        ObjetivoResponse respuesta = progresoService.crearObjetivo(10L);
 
         assertThat(respuesta.ultimoPsp()).isEqualTo(1100.0);
         assertThat(respuesta.indicePreparacion()).isCloseTo(1100.0 / 1209, within(0.0001));
@@ -147,7 +152,7 @@ class ProgresoServiceTest {
     void crearUnObjetivoDeUnaOfertaInexistenteDa404() {
         when(ofertaAcademicaRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> progresoService.crearObjetivo(postulante, 99L))
+        assertThatThrownBy(() -> progresoService.crearObjetivo(99L))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
@@ -156,7 +161,7 @@ class ProgresoServiceTest {
         ObjetivoUsuario activo = new ObjetivoUsuario(postulante, sistemasUni, LocalDateTime.now());
         prepararCreacion(Optional.of(activo), 1, 3);
 
-        assertThatThrownBy(() -> progresoService.crearObjetivo(postulante, 10L))
+        assertThatThrownBy(() -> progresoService.crearObjetivo(10L))
                 .isInstanceOf(DuplicateResourceException.class);
     }
 
@@ -165,8 +170,8 @@ class ProgresoServiceTest {
         prepararCreacion(Optional.empty(), 1, 1);
         when(planService.tieneAccesoPro(postulante)).thenReturn(false);
 
-        assertThatThrownBy(() -> progresoService.crearObjetivo(postulante, 10L))
-                .isInstanceOf(UnauthorizedException.class)
+        assertThatThrownBy(() -> progresoService.crearObjetivo(10L))
+                .isInstanceOf(ForbiddenException.class)
                 .hasMessageContaining("plan gratuito");
         verify(objetivoUsuarioRepository, never()).save(any(ObjetivoUsuario.class));
     }
@@ -175,7 +180,7 @@ class ProgresoServiceTest {
     void unUsuarioProPuedeTenerHastaTresObjetivos() {
         prepararCreacion(Optional.empty(), 2, 3);
 
-        progresoService.crearObjetivo(postulante, 10L);
+        progresoService.crearObjetivo(10L);
 
         verify(objetivoUsuarioRepository).save(any(ObjetivoUsuario.class));
     }
@@ -185,8 +190,8 @@ class ProgresoServiceTest {
         prepararCreacion(Optional.empty(), 3, 3);
         when(planService.tieneAccesoPro(postulante)).thenReturn(true);
 
-        assertThatThrownBy(() -> progresoService.crearObjetivo(postulante, 10L))
-                .isInstanceOf(UnauthorizedException.class)
+        assertThatThrownBy(() -> progresoService.crearObjetivo(10L))
+                .isInstanceOf(ForbiddenException.class)
                 .hasMessageContaining("hasta 3");
     }
 
@@ -197,7 +202,7 @@ class ProgresoServiceTest {
         desactivado.setActivo(false);
         prepararCreacion(Optional.of(desactivado), 0, 1);
 
-        ObjetivoResponse respuesta = progresoService.crearObjetivo(postulante, 10L);
+        ObjetivoResponse respuesta = progresoService.crearObjetivo(10L);
 
         assertThat(respuesta.id()).isEqualTo(5L);
         assertThat(desactivado.isActivo()).isTrue();
@@ -210,7 +215,7 @@ class ProgresoServiceTest {
     void desactivarUnObjetivoInexistenteDa404() {
         when(objetivoUsuarioRepository.findById(5L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> progresoService.desactivarObjetivo(postulante, 5L))
+        assertThatThrownBy(() -> progresoService.desactivarObjetivo(5L))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
@@ -221,8 +226,8 @@ class ProgresoServiceTest {
         ObjetivoUsuario ajeno = new ObjetivoUsuario(otro, sistemasUni, LocalDateTime.now());
         when(objetivoUsuarioRepository.findById(5L)).thenReturn(Optional.of(ajeno));
 
-        assertThatThrownBy(() -> progresoService.desactivarObjetivo(postulante, 5L))
-                .isInstanceOf(UnauthorizedException.class);
+        assertThatThrownBy(() -> progresoService.desactivarObjetivo(5L))
+                .isInstanceOf(ForbiddenException.class);
         assertThat(ajeno.isActivo()).isTrue();
     }
 
@@ -231,7 +236,7 @@ class ProgresoServiceTest {
         ObjetivoUsuario propio = new ObjetivoUsuario(postulante, sistemasUni, LocalDateTime.now());
         when(objetivoUsuarioRepository.findById(5L)).thenReturn(Optional.of(propio));
 
-        progresoService.desactivarObjetivo(postulante, 5L);
+        progresoService.desactivarObjetivo(5L);
 
         assertThat(propio.isActivo()).isFalse();
     }
@@ -251,7 +256,7 @@ class ProgresoServiceTest {
         assertThat(objetivo.getUltimoIp()).isCloseTo(1.1, within(0.0001));
         assertThat(objetivo.getFechaActualizacion()).isNotNull();
 
-        ObjetivoResponse enElPanel = progresoService.listarObjetivos(postulante).get(0);
+        ObjetivoResponse enElPanel = progresoService.listarObjetivos().get(0);
         assertThat(enElPanel.estado()).isEqualTo(EstadoPreparacion.HOLGADO);
         assertThat(enElPanel.estadoDescripcion()).isEqualTo("Zona de ingreso holgada");
     }
@@ -273,8 +278,8 @@ class ProgresoServiceTest {
     void elDominioPorTemaEsExclusivoDePro() {
         when(planService.tieneAccesoPro(postulante)).thenReturn(false);
 
-        assertThatThrownBy(() -> progresoService.dominioPorTema(postulante))
-                .isInstanceOf(UnauthorizedException.class)
+        assertThatThrownBy(() -> progresoService.dominioPorTema())
+                .isInstanceOf(ForbiddenException.class)
                 .hasMessageContaining("PRO");
         verifyNoInteractions(respuestaUsuarioRepository);
     }
@@ -285,7 +290,7 @@ class ProgresoServiceTest {
         when(respuestaUsuarioRepository.contarRespuestasPorTema(7L, EstadoSimulacro.FINALIZADO))
                 .thenReturn(List.of(conteo(1L, "Algebra", 8, 1, 1), conteo(2L, "Fisica", 3, 4, 3)));
 
-        List<DominioTemaResponse> dominio = progresoService.dominioPorTema(postulante);
+        List<DominioTemaResponse> dominio = progresoService.dominioPorTema();
 
         assertThat(dominio).extracting(DominioTemaResponse::tema).containsExactly("Fisica", "Algebra");
         DominioTemaResponse fisica = dominio.get(0);
@@ -299,8 +304,8 @@ class ProgresoServiceTest {
     void elHistoricoDePspEsExclusivoDePro() {
         when(planService.tieneAccesoPro(postulante)).thenReturn(false);
 
-        assertThatThrownBy(() -> progresoService.historialPsp(postulante, 2L))
-                .isInstanceOf(UnauthorizedException.class);
+        assertThatThrownBy(() -> progresoService.historialPsp(2L))
+                .isInstanceOf(ForbiddenException.class);
         verifyNoInteractions(simulacroRepository);
     }
 
@@ -312,7 +317,7 @@ class ProgresoServiceTest {
         when(simulacroRepository.findByUsuarioIdAndAreaIdAndEstadoOrderByFechaFinAsc(
                 7L, 2L, EstadoSimulacro.FINALIZADO)).thenReturn(List.of(primero, segundo));
 
-        List<HistorialPspResponse> historial = progresoService.historialPsp(postulante, 2L);
+        List<HistorialPspResponse> historial = progresoService.historialPsp(2L);
 
         assertThat(historial).extracting(HistorialPspResponse::psp).containsExactly(900.0, 1100.0);
         assertThat(historial.get(0).tipo()).isEqualTo(TipoSimulacro.COMPLETO);
