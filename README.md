@@ -3,7 +3,7 @@
 - **Curso:** CS2031 Desarrollo Basado en Plataformas — UTEC, ciclo 2026-2
 - **Entrega:** Proyecto 1 (Semana 7)
 - **Integrantes:** Marco Bautista, Fabiana Gomez, Juan Carlos Vergara y Zoe Garrido Cantoni
-- **API en producción:** https://rumbou-backend-production.up.railway.app ([health](https://rumbou-backend-production.up.railway.app/api/v1/health))
+- **API en producción (AWS):** http://184.194.122.22 ([health](http://184.194.122.22/api/v1/health))
 - **Colección de Postman:** [`postman_collection.json`](postman_collection.json) · **Guía de uso:** [`GUIA-DE-USO.md`](GUIA-DE-USO.md)
 
 ## Índice
@@ -56,11 +56,11 @@ Una preparación de calidad suele estar limitada a quienes pueden pagar una acad
 - **Catálogo académico:** universidades, áreas, esquemas, temas, estructura del examen, 51 carreras y 70 ofertas con puntaje de ingreso, cargados desde CSV con un seed idempotente.
 - **Suscripción PRO:** `PlanService` como puerta única de límites, pago por Mercado Pago, webhook idempotente, activación por evento y job diario de vencimientos.
 - **Tutor de IA** (PRO, con tope diario) y explicación estática por pregunta fallada; **gamificación** con racha, XP y logros; **correo** de registro, recuperación y pago con plantillas Thymeleaf asíncronas.
-- **Despliegue continuo:** contenedor Docker en Railway con PostgreSQL en la nube; cada merge a `main` despliega.
+- **Despliegue en la nube:** la API corre en una instancia **EC2** contra **RDS PostgreSQL**, con el servicio administrado por systemd y nginx como proxy inverso.
 
 ### Tecnologías utilizadas
 
-Java 21, Spring Boot 3.3.5 y Maven · Spring Data JPA, Hibernate y PostgreSQL 16 · Spring Security con JWT (access y refresh) y BCrypt · Google Gemini, Mercado Pago y JavaMailSender + Thymeleaf · JUnit 5, Mockito, MockMvc, Testcontainers y GitHub Actions · Docker, Railway y Postman.
+Java 21, Spring Boot 3.3.5 y Maven · Spring Data JPA, Hibernate y PostgreSQL 16 · Spring Security con JWT (access y refresh) y BCrypt · Google Gemini, Mercado Pago y JavaMailSender + Thymeleaf · JUnit 5, Mockito, MockMvc, Testcontainers y GitHub Actions · Docker, AWS (EC2 y RDS) y Postman.
 
 ### Arquitectura y patrones
 
@@ -201,7 +201,7 @@ Variables de entorno (con valor por defecto de desarrollo; ninguna credencial re
 
 ### B. Despliegue
 
-La API corre en **Railway** con PostgreSQL gestionado. El [Dockerfile](Dockerfile) compila el jar en una etapa de build y produce una imagen solo con el runtime de Java 21; cada merge a `main` despliega. La configuración llega por variables de entorno y el seed se corre en producción activando temporalmente `SPRING_PROFILES_ACTIVE=seed`. La misma imagen es portable a AWS (EC2 o ECS + RDS).
+La API corre en **AWS**: una instancia **EC2** (Amazon Linux 2023, Java 21) ejecuta el jar como servicio de systemd detrás de **nginx**, y los datos viven en **RDS PostgreSQL 16**, cuyo grupo de seguridad solo acepta conexiones desde el de la instancia. La configuración llega por variables de entorno fuera del repositorio y el seed se ejecuta con `SPRING_PROFILES_ACTIVE=seed`. El [Dockerfile](Dockerfile) mantiene la imagen portable a otro proveedor.
 
 ### C. Referencia de la API y colección de Postman
 
