@@ -217,6 +217,15 @@ public class GeminiClient {
 
     // resolver() en lote: una llamada para las N preguntas; clave por pregunta en orden (-1 si falta).
     public List<Integer> resolverLote(List<PreguntaGeneradaDto> preguntas) {
+        JsonNode respuesta = llamar(promptResolverLote(preguntas), esquemaResolverLote(preguntas.size()));
+        List<Integer> claves = new ArrayList<>();
+        for (int p = 0; p < preguntas.size(); p++) {
+            claves.add(respuesta.path(p).path("claveElegida").asInt(-1));
+        }
+        return claves;
+    }
+
+    private String promptResolverLote(List<PreguntaGeneradaDto> preguntas) {
         StringBuilder prompt = new StringBuilder("Resuelve cada una de las siguientes preguntas de opcion multiple. ");
         prompt.append("Para cada pregunta responde unicamente con el indice (0 a 4) de la alternativa correcta, ");
         prompt.append("en el mismo orden en que aparecen.\n\n");
@@ -228,7 +237,10 @@ public class GeminiClient {
             }
             prompt.append("\n");
         }
+        return prompt.toString();
+    }
 
+    private ObjectNode esquemaResolverLote(int cantidad) {
         ObjectNode itemSchema = objectMapper.createObjectNode();
         itemSchema.put("type", "OBJECT");
         itemSchema.putObject("properties").putObject("claveElegida").put("type", "INTEGER");
@@ -236,20 +248,14 @@ public class GeminiClient {
 
         ObjectNode schema = objectMapper.createObjectNode();
         schema.put("type", "ARRAY");
-        schema.put("minItems", preguntas.size());
-        schema.put("maxItems", preguntas.size());
+        schema.put("minItems", cantidad);
+        schema.put("maxItems", cantidad);
         schema.set("items", itemSchema);
-
-        JsonNode respuesta = llamar(prompt.toString(), schema);
-        List<Integer> claves = new java.util.ArrayList<>();
-        for (int p = 0; p < preguntas.size(); p++) {
-            claves.add(respuesta.path(p).path("claveElegida").asInt(-1));
-        }
-        return claves;
+        return schema;
     }
 
     // A diferencia de resolver(), aqui si le damos la clave: el objetivo es explicar, no validar.
-    public String explicar(String enunciado, java.util.List<String> alternativas, int claveCorrecta) {
+    public String explicar(String enunciado, List<String> alternativas, int claveCorrecta) {
         StringBuilder prompt = new StringBuilder();
         prompt.append("Explica en un parrafo breve, para un postulante que respondio mal esta pregunta ");
         prompt.append("de un examen de admision, por que la alternativa correcta es la correcta.\n\n");
@@ -308,44 +314,52 @@ public class GeminiClient {
     // 429, 503 y timeout se reintentan con espera creciente; cualquier otro
     // fallo es definitivo.
     private HttpResponse<String> enviarConReintento(HttpRequest request) {
-        int intento = 1;
-        while (true) {
-            HttpResponse<String> response;
-            try {
-                response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            } catch (HttpTimeoutException ex) {
-                if (intento >= MAX_INTENTOS_TRANSITORIO) {
-                    throw new GeminiException("Gemini no respondio a tiempo despues de "
-                            + MAX_INTENTOS_TRANSITORIO + " intentos", ex);
-                }
-                log.warn("Timeout llamando a Gemini (intento {} de {}), se reintenta", intento, MAX_INTENTOS_TRANSITORIO);
+        for (int intento = 1; ; intento++) {
+            Optional<HttpResponse<String>> respuesta = enviarUnaVez(request, intento);
+            if (respuesta.isEmpty()) {
                 esperarAntesDeReintentar(intento, Optional.empty());
-                intento++;
                 continue;
-            } catch (IOException | InterruptedException ex) {
-                if (ex instanceof InterruptedException) {
-                    Thread.currentThread().interrupt();
-                }
-                throw new GeminiException("Error llamando a la API de Gemini", ex);
             }
-
+            HttpResponse<String> response = respuesta.get();
             if (response.statusCode() == 200) {
                 return response;
             }
-            if (!esTransitorio(response.statusCode())) {
-                throw new GeminiException("Gemini respondio " + response.statusCode() + ": " + response.body());
-            }
-            if (intento >= MAX_INTENTOS_TRANSITORIO) {
-                throw new GeminiException("Gemini sigue respondiendo " + response.statusCode()
-                        + " despues de " + MAX_INTENTOS_TRANSITORIO + " intentos");
-            }
+            verificarReintentable(response, intento);
             Optional<Duration> retryAfter = response.headers().firstValue("Retry-After")
                     .flatMap(GeminiClient::parsearSegundos);
             log.warn("Gemini respondio {} (intento {} de {}), se reintenta en {} s",
                     response.statusCode(), intento, MAX_INTENTOS_TRANSITORIO,
                     retryAfter.orElse(ESPERA_BASE_TRANSITORIO.multipliedBy(intento)).toSeconds());
             esperarAntesDeReintentar(intento, retryAfter);
-            intento++;
+        }
+    }
+
+    // Vacio significa timeout con intentos disponibles: el llamador espera y reintenta.
+    private Optional<HttpResponse<String>> enviarUnaVez(HttpRequest request, int intento) {
+        try {
+            return Optional.of(httpClient.send(request, HttpResponse.BodyHandlers.ofString()));
+        } catch (HttpTimeoutException ex) {
+            if (intento >= MAX_INTENTOS_TRANSITORIO) {
+                throw new GeminiException("Gemini no respondio a tiempo despues de "
+                        + MAX_INTENTOS_TRANSITORIO + " intentos", ex);
+            }
+            log.warn("Timeout llamando a Gemini (intento {} de {}), se reintenta", intento, MAX_INTENTOS_TRANSITORIO);
+            return Optional.empty();
+        } catch (IOException | InterruptedException ex) {
+            if (ex instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            throw new GeminiException("Error llamando a la API de Gemini", ex);
+        }
+    }
+
+    private void verificarReintentable(HttpResponse<String> response, int intento) {
+        if (!esTransitorio(response.statusCode())) {
+            throw new GeminiException("Gemini respondio " + response.statusCode() + ": " + response.body());
+        }
+        if (intento >= MAX_INTENTOS_TRANSITORIO) {
+            throw new GeminiException("Gemini sigue respondiendo " + response.statusCode()
+                    + " despues de " + MAX_INTENTOS_TRANSITORIO + " intentos");
         }
     }
 
