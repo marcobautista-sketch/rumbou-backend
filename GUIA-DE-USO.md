@@ -47,6 +47,7 @@ La colección hace esto sola: los requests de registro, login y refresh guardan 
 | Rol | Cómo se obtiene | Qué puede hacer |
 |---|---|---|
 | `USER` | Al registrarse (siempre) | Simulacros, progreso, ver preguntas, suscribirse |
+| `REVIEWER` | Lo asigna un administrador (`PATCH /usuarios/{id}/rol`) | Todo lo de `USER`, más ver las preguntas sin aprobar y aprobarlas (una por una o en lote). No crea, edita ni borra preguntas, ni administra usuarios |
 | `ADMIN` | Solo lo asigna otro administrador (`PATCH /usuarios/{id}/rol`) o las variables `ADMIN_EMAIL`/`ADMIN_PASSWORD` al arrancar el servidor | Todo lo anterior, más crear/editar/aprobar/borrar preguntas y administrar usuarios. **Además pasa todos los límites del plan** (puede usar el tutor de IA y los paneles PRO sin suscripción) |
 
 El rol vive en la base de datos **y dentro del token**. Por eso, si a un usuario se le cambia el rol, tiene que volver a iniciar sesión para que su token nuevo lo refleje.
@@ -55,7 +56,7 @@ El rol vive en la base de datos **y dentro del token**. Por eso, si a un usuario
 
 ### Las tres formas de entrar
 
-1. **Registrar usuario** — crea una cuenta `USER` nueva. La colección genera el correo automáticamente (`postulante<fecha>@rumbou.com`, contraseña `password123`) y lo guarda en la variable `email`.
+1. **Registrar usuario** — crea una cuenta `USER` nueva. La colección genera el correo automáticamente (`postulante<fecha>@rumbou.com`, contraseña `Password123`) y lo guarda en la variable `email`. La contraseña debe tener entre 8 y 72 caracteres con al menos una mayúscula, una minúscula y un número; si no, `400`.
 2. **Login** — entra con ese mismo correo. Útil para renovar tokens.
 3. **Login como administrador** — el mismo endpoint de login, pero con la **cuenta de evaluación** del curso, que ya tiene rol `ADMIN` en producción:
 
@@ -68,7 +69,7 @@ El rol vive en la base de datos **y dentro del token**. Por eso, si a un usuario
 
 ### Recuperar la contraseña
 
-`POST /auth/forgot-password` responde `200` **siempre**, exista o no el correo (para no revelar qué cuentas están registradas), y dispara un correo con un token de un solo uso que vence a los 30 minutos. `POST /auth/reset-password` recibe ese token y la contraseña nueva. En el despliegue de AWS el correo **sí se envía** (Gmail por SMTP): al registrarse llega el de bienvenida y al pedir la recuperación llega el del token. En la colección, "Resetear contraseña" responde `400` porque usa un token de ejemplo; para probarlo de verdad, copia el token del correo en la variable `resetToken` y vuelve a ejecutar ese request.
+`POST /auth/forgot-password` responde `204` **siempre**, exista o no el correo (para no revelar qué cuentas están registradas), y dispara un correo con un token de un solo uso que vence a los 30 minutos. `POST /auth/reset-password` recibe ese token y la contraseña nueva. En el despliegue de AWS el correo **sí se envía** (Gmail por SMTP): al registrarse llega el de bienvenida y al pedir la recuperación llega el del token. En la colección, "Resetear contraseña" responde `400` porque usa un token de ejemplo; para probarlo de verdad, copia el token del correo en la variable `resetToken` y vuelve a ejecutar ese request.
 
 ---
 
@@ -117,8 +118,9 @@ Los códigos entre paréntesis son los que aceptan los tests de la colección. T
 | Request | Envía | Devuelve |
 |---|---|---|
 | Mi perfil | — | `200` `{id, email, nombre, role}`. Nunca incluye la contraseña |
+| Mi gamificación | `GET /usuarios/me/gamificacion` | `200` `{xpTotal, xpSemanal, rachaActual, rachaMaxima, ultimaActividad, logros[]}`. Se actualiza al finalizar cada simulacro |
 | Buscar usuario por email (ADMIN) | `?email=` | `200` con el usuario (`403` como USER, `404` si no existe) |
-| Cambiar rol (ADMIN) | `{"role": "ADMIN"}` o `"USER"` sobre `/usuarios/{usuarioId}/rol` | `200` con el usuario actualizado. `400` si un admin intenta quitarse su propio rol, `403` como USER |
+| Cambiar rol (ADMIN) | `{"role": "ADMIN"}`, `"REVIEWER"` o `"USER"` sobre `/usuarios/{usuarioId}/rol` | `200` con el usuario actualizado. `400` si un admin intenta quitarse su propio rol, `403` como USER |
 
 ### Catálogo académico
 | Request | Envía | Devuelve |
@@ -130,10 +132,12 @@ Los códigos entre paréntesis son los que aceptan los tests de la colección. T
 |---|---|---|
 | Iniciar simulacro por tema | `{areaId, tipo: "POR_TEMA", temaId}` | `201` `{id, tipo, estado: EN_CURSO, fechaInicio, preguntas[]}`. Trae solo las preguntas de ese tema, tantas como tiene en el examen real (Razonamiento Matemático: 32; Trigonometría: 10). `400` sin `temaId` o si el tema no pertenece al área; `403` si se superó el límite del plan |
 | Iniciar simulacro completo | `{areaId, tipo: "COMPLETO"}` (o `"DIAGNOSTICO"`) | `201` con el examen entero: 180 preguntas en la UNI, 100 en UNMSM. `403` si se superó el límite mensual |
-| Responder pregunta | `{preguntaId, alternativaMarcada}` sobre `/simulacros/{simulacroId}/respuestas`. `alternativaMarcada` va de `0` a `4`; `null` deja la pregunta en blanco | `200`. `400` si la pregunta no es de ese simulacro, la alternativa no existe o el simulacro ya terminó |
+| Responder pregunta | `{preguntaId, alternativaMarcada}` sobre `/simulacros/{simulacroId}/respuestas`. `alternativaMarcada` va de `0` a `4`; `null` deja la pregunta en blanco | `204`. `400` si la pregunta no es de ese simulacro, la alternativa no existe o el simulacro ya terminó |
 | Finalizar simulacro | — | `200` `{simulacroId, puntajeObtenido, psp, estado: FINALIZADO}`. Dispara gamificación (racha, XP, logros) y progreso |
+| Listar mis simulacros | `GET /simulacros?page=&size=` | `200` página de `{id, tipo, estado, areaId, area, fechaInicio, fechaFin, puntajeObtenido, psp}`, del más reciente al más antiguo |
+| Ver detalle de un simulacro | `GET /simulacros/{simulacroId}` | `200` con cada pregunta y lo marcado. Si ya está `FINALIZADO` incluye `claveCorrecta`, `esCorrecta`, `puntajeAportado` y la `explicacion`. `403` si el simulacro es de otro usuario |
 
-Cada pregunta del simulacro llega como `{respuestaUsuarioId, preguntaId, enunciado, alternativas[5]}`, **sin** la clave correcta ni la explicación.
+Al iniciar, cada pregunta llega como `{respuestaUsuarioId, preguntaId, enunciado, alternativas[5]}`, **sin** la clave correcta ni la explicación; la corrección se ve con el detalle del simulacro una vez finalizado.
 
 ### Progreso
 | Request | Envía | Devuelve |
@@ -148,14 +152,14 @@ Cada pregunta del simulacro llega como `{respuestaUsuarioId, preguntaId, enuncia
 ### Preguntas
 | Request | Envía | Devuelve |
 |---|---|---|
-| Listar preguntas | `?temaId=&dificultad=&origen=&aprobada=&page=&size=` (todos opcionales; `size` máximo 50) | `200` página de preguntas aprobadas. Solo un ADMIN puede pedir `aprobada=false` |
+| Listar preguntas | `?temaId=&dificultad=&origen=&aprobada=&page=&size=` (todos opcionales; `size` máximo 50) | `200` página de preguntas aprobadas. Solo `ADMIN` o `REVIEWER` pueden pedir `aprobada=false` |
 | Obtener pregunta por id | — | `200` `{id, temaId, tema, enunciado, alternativas, dificultad}` sin clave ni explicación |
 | Tutor de IA (PRO) | `/preguntas/{preguntaId}/tutor-ia` | `200` `{preguntaId, explicacion}` generada por Gemini; descuenta 1 de las 30 consultas diarias. `403` con plan gratuito o al superar el tope; `502` si el servidor no tiene `GEMINI_API_KEY` (no descuenta cupo) |
 | Crear pregunta (ADMIN) | `{temaId, enunciado, alternativas[5], claveCorrecta (0-4), explicacion, dificultad, origen, aprobada}` | `201` con la pregunta completa (con clave y explicación). Guarda `preguntaId`: los requests siguientes actúan sobre **esta** pregunta de prueba, no sobre el banco |
 | Actualizar pregunta (ADMIN) | mismo cuerpo, reemplaza todos los campos | `200` |
-| Aprobar pregunta (ADMIN) | `PATCH /preguntas/{id}/aprobar` | `200` con `aprobada: true` |
-| Aprobar preguntas en lote (ADMIN) | `{"ids": [...]}` | `200` lista de aprobadas. Si un id no existe, no se aprueba ninguna (`404`) |
-| Eliminar pregunta (ADMIN) | — | `204` |
+| Aprobar pregunta (ADMIN o REVIEWER) | `PATCH /preguntas/{id}/aprobar` | `200` con `aprobada: true` |
+| Aprobar preguntas en lote (ADMIN o REVIEWER) | `{"ids": [...]}` | `200` lista de aprobadas. Si un id no existe, no se aprueba ninguna (`404`) |
+| Eliminar pregunta (ADMIN) | — | `204`. `409` si la pregunta ya salió en algún simulacro: en ese caso se desaprueba con `PUT` |
 
 Valores posibles: `dificultad` = `FACIL`, `MEDIA`, `DIFICIL`; `origen` = `SEMILLA` (creada a mano o cargada por el seed), `IA_APROBADA` (generada con IA y aprobada por una persona).
 
@@ -163,7 +167,8 @@ Valores posibles: `dificultad` = `FACIL`, `MEDIA`, `DIFICIL`; `origen` = `SEMILL
 | Request | Envía | Devuelve |
 |---|---|---|
 | Crear suscripción PRO | — | `201` `{id, plan: PRO, estado: PENDIENTE, fechaInicio, fechaFin, linkPago}` con el enlace de pago de Mercado Pago (S/ 39 al mes). `502` si el servidor no tiene `MP_ACCESS_TOKEN` |
-| Webhook de Mercado Pago | `{action: "payment.approved", paymentId, mercadoPagoPreapprovalId, externalReference}` (público, lo llama Mercado Pago) | `200`. Es idempotente: el mismo `paymentId` dos veces no activa dos veces. Al aprobarse, activa la suscripción y envía el correo de pago |
+| Mi suscripción | `GET /suscripciones/me` | `200` con la suscripción más reciente y su estado (`PENDIENTE`, `ACTIVA`, `VENCIDA`, `CANCELADA`). `404` si nunca creó una |
+| Webhook de Mercado Pago | `{action: "payment.approved", paymentId, mercadoPagoPreapprovalId, externalReference}` (público, lo llama Mercado Pago) | `200`. Es idempotente: el mismo `paymentId` dos veces no activa dos veces. Al aprobarse, activa la suscripción y envía el correo de pago. Si el servidor tiene `MP_WEBHOOK_SECRET`, exige los headers `x-signature` y `x-request-id` de Mercado Pago; sin firma válida responde `401` |
 
 ---
 
@@ -337,7 +342,7 @@ Todas las respuestas de error tienen la misma forma:
 |---|---|---|
 | `400` | Cuerpo inválido (`@Valid`), JSON mal formado, parámetro de URL ausente o inválido, o una regla de negocio (simulacro ya finalizado, tema fuera del área, alternativa inexistente, admin quitándose su rol) | Leer `message`: dice exactamente qué falta |
 | `401` | Sin token, token vencido o inválido, credenciales incorrectas | Ejecutar Login o Refrescar token |
-| `403` | Sin el rol necesario (`ADMIN`) o límite del plan alcanzado | Entrar como administrador o esperar el reinicio del contador |
+| `403` | Sin el rol necesario (`ADMIN`, o `REVIEWER` para aprobar) o límite del plan alcanzado | Entrar como administrador o esperar el reinicio del contador |
 | `404` | El recurso no existe (simulacro, pregunta, oferta, usuario, ruta) | Revisar el id |
 | `409` | Duplicado: correo ya registrado, objetivo ya activo | — |
 | `502` | Un servicio externo falló o no está configurado (Gemini, Mercado Pago) | No es un error del cliente ni del código; falta la credencial en el servidor |

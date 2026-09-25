@@ -5,6 +5,7 @@ import com.rumbou.backend.dto.request.WebhookNotificationRequest;
 import com.rumbou.backend.entity.PagoWebhook;
 import com.rumbou.backend.event.PagoAprobadoEvent;
 import com.rumbou.backend.repository.PagoWebhookRepository;
+import com.rumbou.backend.service.impl.WebhookServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -20,13 +21,13 @@ class WebhookServiceTest {
 
     private PagoWebhookRepository pagoWebhookRepository;
     private ApplicationEventPublisher eventPublisher;
-    private WebhookService webhookService;
+    private WebhookServiceImpl webhookService;
 
     @BeforeEach
     void setUp() {
         pagoWebhookRepository = mock(PagoWebhookRepository.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
-        webhookService = new WebhookService(pagoWebhookRepository, eventPublisher, new WebhookSignatureValidator(""));
+        webhookService = new WebhookServiceImpl(pagoWebhookRepository, eventPublisher, new WebhookSignatureValidator(""));
     }
 
     @Test
