@@ -22,7 +22,7 @@
 
 ### Contexto
 
-En el Perú, el ingreso a la UNI y la UNMSM se decide en un examen muy competitivo. Cada universidad y área tiene su propia estructura de prueba, su penalidad por respuesta incorrecta y un puntaje de corte por carrera que cambia en cada proceso. RumboU es una API REST en Spring Boot para prepararse con esas reglas exactas (UNI área General; UNMSM áreas B y C). No incluye frontend: se demuestra con Postman.
+En el Perú, el ingreso a la UNI y la UNMSM se decide en un examen muy competitivo. Cada universidad y área tiene su estructura de prueba, su penalidad y un puntaje de corte por carrera que cambia en cada proceso. RumboU es una API REST en Spring Boot para prepararse con esas reglas exactas (UNI área General; UNMSM áreas B y C). No incluye frontend: se demuestra con Postman.
 
 ### Objetivos
 
@@ -39,17 +39,17 @@ Los postulantes practican con material genérico que no refleja la calificación
 
 ### Justificación
 
-Una preparación de calidad suele estar limitada a quien paga una academia. Modelar las reglas de cada examen como datos, y no como código, permite llegar a más personas y hace que agregar una universidad sea un cambio de datos, no de arquitectura.
+Una preparación de calidad suele estar limitada a quien paga una academia. Modelar las reglas de cada examen como datos permite llegar a más personas y agregar universidades sin cambiar la arquitectura.
 
 ## 3. Descripción de la solución
 
 ### Funcionalidades implementadas
 
 - **Autenticación y roles:** registro, login, JWT con refresh token, recuperación de contraseña y tres roles: `USER`, `REVIEWER` (aprueba preguntas) y `ADMIN`.
-- **Simulacros:** `COMPLETO`, `DIAGNOSTICO` y `POR_TEMA`; califican con la penalidad del esquema, calculan el PSP y, al finalizar, muestran la corrección con explicación.
+- **Simulacros:** `COMPLETO`, `DIAGNOSTICO` y `POR_TEMA`; califican con la penalidad real, calculan el PSP y muestran la corrección.
 - **Progreso:** carreras objetivo con PSP, IP y semáforo; dominio por tema e historial de PSP (PRO).
 - **Banco de preguntas:** 792 preguntas aprobadas, filtros paginados, generación con Gemini y aprobación humana.
-- **Catálogo académico:** universidades, áreas, esquemas, temas, 51 carreras y 70 ofertas, cargados desde CSV.
+- **Catálogo académico:** 51 carreras y 70 ofertas con sus reglas de examen, cargadas desde CSV.
 - **Suscripción PRO:** Mercado Pago, webhook firmado e idempotente, límites centralizados en `PlanService` y vencimiento diario.
 - **Tutor de IA** (PRO), **gamificación** (racha, XP y logros) y **correos** HTML con Thymeleaf.
 
@@ -78,9 +78,9 @@ Cada controller solo delega en una interfaz de servicio (`service/`), implementa
 ### Decisiones de diseño
 
 - **Reglas como datos:** `CalificadorService` recibe el esquema como parámetro; no hay un condicional por universidad.
-- **Acciones de dominio como subrecursos:** `POST /simulacros/{id}/finalizar` y `PATCH /preguntas/{id}/aprobar` no son actualizaciones de campos, sino transiciones con reglas (calificar, publicar eventos). Modelarlas como `PATCH {estado}` escondería esa lógica.
-- **Sin HATEOAS:** la API la consume un cliente propio que conoce sus rutas; los ids que encadenan el flujo (`simulacroId`, `preguntaId`, `areaId`) vienen en cada respuesta.
-- **Interfaces solo donde hay contrato:** los servicios que usan controllers y listeners tienen interfaz; los auxiliares internos (`PlanService`, `CalificadorService`) no.
+- **Acciones como subrecursos:** `POST /simulacros/{id}/finalizar` y `PATCH /preguntas/{id}/aprobar` son transiciones con reglas (calificar, publicar eventos), no simples cambios de campo.
+- **Sin HATEOAS:** el cliente conoce sus rutas y cada respuesta trae los ids que encadenan el flujo.
+- **Interfaces solo donde hay contrato:** las tienen los servicios que usan controllers y listeners, no los auxiliares internos.
 
 ## 4. Modelo de entidades
 
@@ -167,7 +167,7 @@ Los eventos desacoplan los módulos: el simulacro no conoce la gamificación ni 
 ## 8. GitHub y gestión del proyecto
 
 - **Flujo:** `main` protegida, una rama por funcionalidad y merge solo por pull request con el CI en verde.
-- **GitHub Actions:** [`ci.yml`](.github/workflows/ci.yml) ejecuta `mvnw verify` en cada push y PR: 256 pruebas unitarias, de controller, de repositorio con Testcontainers y una prueba de humo del contexto completo.
+- **GitHub Actions:** [`ci.yml`](.github/workflows/ci.yml) ejecuta `mvnw verify` en cada push y PR: 256 pruebas unitarias, de controller, de repositorio con Testcontainers y de humo.
 - **Issues:** milestone "Entrega Semana 7", labels por módulo, tipo y proceso, y responsables asignados.
 - **Reparto:** Marco (autenticación, examen, preguntas), Juan Carlos (catálogo, progreso), Zoe (suscripción, gamificación, correo) y Fabiana (contenido, revisión de rúbrica).
 
@@ -175,14 +175,13 @@ Los eventos desacoplan los módulos: el simulacro no conoce la gamificación ni 
 
 ### Logros
 
-La API cubre el flujo completo del postulante: registrarse, elegir una carrera, rendir un simulacro con las reglas reales, revisar su corrección, ver su PSP e IP, acumular XP y pasar a PRO. Tiene 792 preguntas revisadas y está desplegada en AWS.
+La API cubre el flujo completo del postulante: registrarse, elegir carrera, rendir un simulacro con las reglas reales, revisar la corrección, ver su PSP e IP y pasar a PRO. Tiene 792 preguntas revisadas y está desplegada en AWS.
 
 ### Aprendizajes clave
 
 - Modelar las reglas como datos permitió soportar dos universidades sin condicionales.
 - `AFTER_COMMIT` exige abrir una transacción nueva (`REQUIRES_NEW`) para escribir.
 - Un CI en verde no garantiza que la aplicación arranque: la prueba de humo con `@SpringBootTest` cerró ese hueco.
-- Probar contra PostgreSQL real destapó errores que los mocks no ven.
 
 ### Trabajo futuro
 
@@ -193,13 +192,20 @@ La API cubre el flujo completo del postulante: registrarse, elegir una carrera, 
 
 ### A. Ejecución local
 
-Requisitos: Java 21 o superior y Docker Desktop abierto.
+Requisitos: Java 21 o superior (con Java 17 no compila) y Docker Desktop abierto; sin Docker la API no arranca ("Unable to determine Dialect").
 
 1. `docker compose up -d` levanta PostgreSQL (puerto 5433) y Mailpit, que muestra los correos en `http://localhost:8025`.
 2. `./mvnw spring-boot:run "-Dspring-boot.run.profiles=seed"` carga los datos, crea la cuenta de evaluación `ADMIN` y deja la API en `http://localhost:8080`, adonde apunta la colección.
 3. `./mvnw test` corre las pruebas.
 
-Variables de entorno: `SPRING_DATASOURCE_*`, `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `GEMINI_API_KEY`, `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `MP_BACK_URL`, `MP_TEST_PAYER_EMAIL`, `CORS_ALLOWED_ORIGINS`, `APP_RESET_PASSWORD_URL`, `SHOW_SQL` y `MAIL_*`. Todas tienen valor de desarrollo; sin Gemini ni Mercado Pago esas funciones responden 502.
+A tener en cuenta:
+
+- Deben estar libres los puertos 5433, 8080, 1025 y 8025.
+- La primera ejecución tarda unos minutos por las descargas de Maven y Docker.
+- Desde IntelliJ, ejecutar `BackendApplication` con `seed` en *Active profiles*; sin ese perfil arranca sin datos ni cuenta `ADMIN`.
+- En local, "Tutor de IA" y "Crear suscripción PRO" responden 502 porque las claves de Gemini y Mercado Pago no están en el repositorio; su funcionamiento en AWS consta en [`docs/despliegue-aws`](docs/despliegue-aws).
+
+Variables de entorno: `SPRING_DATASOURCE_*`, `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `GEMINI_API_KEY`, `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `MP_BACK_URL`, `MP_TEST_PAYER_EMAIL`, `CORS_ALLOWED_ORIGINS`, `APP_RESET_PASSWORD_URL`, `SHOW_SQL` y `MAIL_*`. Todas tienen valor de desarrollo.
 
 ### B. Despliegue
 
