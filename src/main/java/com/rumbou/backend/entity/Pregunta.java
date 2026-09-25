@@ -13,6 +13,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
 
+import java.util.ArrayList;
 import java.util.List;
 
 // Pertenece a un Tema, nunca a una universidad: el mismo banco sirve para UNI y UNMSM.
@@ -57,7 +58,7 @@ public class Pregunta extends BaseEntity {
                      String explicacion, Dificultad dificultad, OrigenPregunta origen, boolean aprobada) {
         this.tema = tema;
         this.enunciado = enunciado;
-        this.alternativas = alternativas;
+        this.alternativas = new ArrayList<>(alternativas);
         this.claveCorrecta = claveCorrecta;
         this.explicacion = explicacion;
         this.dificultad = dificultad;
@@ -85,8 +86,18 @@ public class Pregunta extends BaseEntity {
         return alternativas;
     }
 
+    // Se actualiza el contenido y no la referencia: Hibernate administra esta lista
+    // y reemplazarla (por ejemplo, con un List.of inmutable) rompe el merge al re-sembrar.
     public void setAlternativas(List<String> alternativas) {
-        this.alternativas = alternativas;
+        if (this.alternativas == alternativas) {
+            return;
+        }
+        if (this.alternativas == null) {
+            this.alternativas = new ArrayList<>(alternativas);
+            return;
+        }
+        this.alternativas.clear();
+        this.alternativas.addAll(alternativas);
     }
 
     public int getClaveCorrecta() {
