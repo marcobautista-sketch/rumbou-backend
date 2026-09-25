@@ -192,7 +192,7 @@ HTTPS con dominio propio, un frontend web, más universidades y ligas semanales.
 
 Para usar una cuenta `ADMIN` en local, arrancar con `ADMIN_EMAIL=evaluador@rumbou.app` y `ADMIN_PASSWORD=RumboU-Evaluador-2026`, los mismos de la colección.
 
-**Variables de entorno:** `SPRING_DATASOURCE_*`, `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `GEMINI_API_KEY`, `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `MAIL_*`, `CORS_ALLOWED_ORIGINS`, `APP_RESET_PASSWORD_URL` y `PORT`. Todas tienen valor de desarrollo; sin Gemini ni Mercado Pago esas funciones responden 502.
+**Variables de entorno:** `SPRING_DATASOURCE_*`, `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `GEMINI_API_KEY`, `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `MP_BACK_URL`, `MP_TEST_PAYER_EMAIL`, `MAIL_*`, `CORS_ALLOWED_ORIGINS`, `APP_RESET_PASSWORD_URL` y `PORT`. Todas tienen valor de desarrollo; sin Gemini ni Mercado Pago esas funciones responden 502.
 
 ### B. Despliegue en AWS
 
