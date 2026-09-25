@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-// Cliente HTTP de Gemini con java.net.http y Jackson: sin dependencias nuevas.
 @Component
 public class GeminiClient {
 
