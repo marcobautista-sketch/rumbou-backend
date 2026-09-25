@@ -64,33 +64,41 @@ public class PlanService {
         }
         boolean pro = esPro(usuario.getId());
         switch (funcionalidad) {
-            case TUTOR_IA -> {
-                if (!pro) {
-                    throw new PlanLimitExceededException("El tutor de IA es exclusivo del plan PRO");
-                }
-                int usadas = usoDiarioRepository.sumConsultasTutorIA(usuario.getId(), LocalDate.now());
-                if (usadas >= PRO_CONSULTAS_TUTOR_IA_DIARIO) {
-                    throw new PlanLimitExceededException("Limite alcanzado: 30 consultas al tutor de IA al dia");
-                }
-            }
+            case TUTOR_IA -> verificarTutorIa(usuario.getId(), pro);
             case SIMULACRO_TEMA -> {
                 if (!pro) {
-                    int usados = usoDiarioRepository.sumSimulacrosTemaDesde(
-                            usuario.getId(), LocalDate.now().minusDays(6));
-                    if (usados >= GRATUITO_SIMULACROS_TEMA_SEMANAL) {
-                        throw new PlanLimitExceededException("Limite alcanzado: 3 simulacros de tema a la semana");
-                    }
+                    verificarSimulacrosTemaSemanales(usuario.getId());
                 }
             }
             case SIMULACRO_COMPLETO -> {
                 if (!pro) {
-                    int usados = usoDiarioRepository.sumSimulacrosCompletosDesde(
-                            usuario.getId(), LocalDate.now().minusMonths(1));
-                    if (usados >= GRATUITO_SIMULACROS_COMPLETOS_MENSUAL) {
-                        throw new PlanLimitExceededException("Limite alcanzado: 1 simulacro completo al mes");
-                    }
+                    verificarSimulacrosCompletosMensuales(usuario.getId());
                 }
             }
+        }
+    }
+
+    private void verificarTutorIa(Long usuarioId, boolean pro) {
+        if (!pro) {
+            throw new PlanLimitExceededException("El tutor de IA es exclusivo del plan PRO");
+        }
+        int usadas = usoDiarioRepository.sumConsultasTutorIA(usuarioId, LocalDate.now());
+        if (usadas >= PRO_CONSULTAS_TUTOR_IA_DIARIO) {
+            throw new PlanLimitExceededException("Limite alcanzado: 30 consultas al tutor de IA al dia");
+        }
+    }
+
+    private void verificarSimulacrosTemaSemanales(Long usuarioId) {
+        int usados = usoDiarioRepository.sumSimulacrosTemaDesde(usuarioId, LocalDate.now().minusDays(6));
+        if (usados >= GRATUITO_SIMULACROS_TEMA_SEMANAL) {
+            throw new PlanLimitExceededException("Limite alcanzado: 3 simulacros de tema a la semana");
+        }
+    }
+
+    private void verificarSimulacrosCompletosMensuales(Long usuarioId) {
+        int usados = usoDiarioRepository.sumSimulacrosCompletosDesde(usuarioId, LocalDate.now().minusMonths(1));
+        if (usados >= GRATUITO_SIMULACROS_COMPLETOS_MENSUAL) {
+            throw new PlanLimitExceededException("Limite alcanzado: 1 simulacro completo al mes");
         }
     }
 

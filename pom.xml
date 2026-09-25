@@ -19,6 +19,9 @@
 		     con junit-jupiter y postgresql 1.21.4. Sin esto, docker-java no puede hablar
 		     con Docker Desktop 29 en Windows. -->
 		<testcontainers.version>1.21.4</testcontainers.version>
+		<!-- Byte Buddy (usado por Mockito) no reconoce oficialmente Java 24+; este flag
+		     permite correr los tests con cualquier JDK desde 21 sin configuracion extra. -->
+		<argLine>-Dnet.bytebuddy.experimental=true</argLine>
 	</properties>
 	<dependencies>
 		<dependency>

@@ -103,6 +103,12 @@
     {
       "key": "adminPassword",
       "value": "RumboU-Evaluador-2026"
+    },
+    {
+      "key": "objetivoIdAlterno",
+      "value": "",
+      "type": "string",
+      "description": "Se guarda al crear el segundo objetivo (PRO o ADMIN) y se desactiva junto con el primero."
     }
   ],
   "item": [
@@ -128,7 +134,55 @@
               ]
             },
             "description": "Unico endpoint publico fuera de auth y webhooks. No requiere token. Responde {status, servicio, timestamp} sin tocar la base de datos. Sirve para comprobar que la API esta arriba (abrir la URL en el navegador) y como health check de la plataforma de despliegue."
-          }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "auth": {
+                  "type": "noauth"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/health",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "health"
+                  ]
+                },
+                "description": "Unico endpoint publico fuera de auth y webhooks. No requiere token. Responde {status, servicio, timestamp} sin tocar la base de datos. Sirve para comprobar que la API esta arriba (abrir la URL en el navegador) y como health check de la plataforma de despliegue."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"ok\",\n  \"servicio\": \"backend\",\n  \"timestamp\": \"2026-09-25T06:06:48.957340Z\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 con status ok', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().status).to.eql('ok');",
+                  "});"
+                ]
+              }
+            }
+          ]
         }
       ],
       "description": "Estado de la API. Publico: no necesita token."
@@ -188,6 +242,51 @@
                 ]
               }
             }
+          ],
+          "response": [
+            {
+              "name": "201 Created",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/register",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "register"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"Password123\",\n  \"nombre\": \"Ana\"\n}"
+                },
+                "description": "Crea una cuenta con role=USER y devuelve access token (15 min) y refresh token (7 dias). El email se genera en cada corrida (variable email) para que la coleccion se pueda repetir sin 409. Publica UsuarioRegistradoEvent (correo de bienvenida asincrono).",
+                "auth": {
+                  "type": "noauth"
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"accessToken\": \"eyJhbGciOiJIUzUxMiJ9...\",\n  \"refreshToken\": \"eyJhbGciOiJIUzUxMiJ9...\",\n  \"tokenType\": \"Bearer\"\n}"
+            }
           ]
         },
         {
@@ -231,6 +330,51 @@
                   "pm.test('200 con tokens nuevos', () => pm.response.to.have.status(200));"
                 ]
               }
+            }
+          ],
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "login"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"Password123\"\n}"
+                },
+                "description": "Autentica y devuelve access + refresh token.",
+                "auth": {
+                  "type": "noauth"
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"accessToken\": \"eyJhbGciOiJIUzUxMiJ9...\",\n  \"refreshToken\": \"eyJhbGciOiJIUzUxMiJ9...\",\n  \"tokenType\": \"Bearer\"\n}"
             }
           ]
         },
@@ -276,6 +420,51 @@
                 ]
               }
             }
+          ],
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/refresh",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "refresh"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+                },
+                "description": "Genera un access token nuevo (y un refresh token nuevo) a partir del refresh token vigente.",
+                "auth": {
+                  "type": "noauth"
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"accessToken\": \"eyJhbGciOiJIUzUxMiJ9...\",\n  \"refreshToken\": \"eyJhbGciOiJIUzUxMiJ9...\",\n  \"tokenType\": \"Bearer\"\n}"
+            }
           ]
         },
         {
@@ -319,6 +508,46 @@
                 ]
               }
             }
+          ],
+          "response": [
+            {
+              "name": "204 No Content",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/forgot-password",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "forgot-password"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{email}}\"\n}"
+                },
+                "description": "Siempre responde 200, exista o no el email (para no revelar que correos estan registrados). Publica PasswordResetRequestedEvent con el token; en local, mientras no exista el servicio de correo, el token se ve en el log de la aplicacion.",
+                "auth": {
+                  "type": "noauth"
+                }
+              },
+              "status": "No Content",
+              "code": 204,
+              "_postman_previewlanguage": "text",
+              "header": [],
+              "cookie": [],
+              "body": ""
+            }
           ]
         },
         {
@@ -361,6 +590,51 @@
                   "pm.test('204 con el token del correo; 400/401 si resetToken esta vacio o vencido', () => pm.expect([204, 400, 401]).to.include(pm.response.code));"
                 ]
               }
+            }
+          ],
+          "response": [
+            {
+              "name": "400 Bad Request (token de ejemplo; el real llega por correo)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/reset-password",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "reset-password"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"newPassword\": \"NuevaPassword123\"\n}"
+                },
+                "description": "El token vale 30 minutos y es de un solo uso. Pegar el valor de {{resetToken}} obtenido del paso anterior.",
+                "auth": {
+                  "type": "noauth"
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"timestamp\": \"2026-09-25T01:06:49.8606656\",\n  \"status\": 400,\n  \"error\": \"Bad Request\",\n  \"message\": \"token: no debe estar vacío\",\n  \"path\": \"/api/v1/auth/reset-password\"\n}"
             }
           ]
         },
@@ -406,7 +680,52 @@
             "auth": {
               "type": "noauth"
             }
-          }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "login"
+                  ]
+                },
+                "description": "Mismo endpoint de login, con una cuenta administradora. Las variables adminEmail y adminPassword vienen cargadas con la cuenta de evaluacion del curso (evaluador@rumbou.app), que ya tiene rol ADMIN en produccion: basta con ejecutar este request para que el resto de la coleccion corra como ADMIN (que ademas pasa todos los limites del plan). Tambien sirven las credenciales de cualquier otro administrador.",
+                "auth": {
+                  "type": "noauth"
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"accessToken\": \"eyJhbGciOiJIUzUxMiJ9...\",\n  \"refreshToken\": \"eyJhbGciOiJIUzUxMiJ9...\",\n  \"tokenType\": \"Bearer\"\n}"
+            }
+          ]
         }
       ],
       "description": "Registro, login, refresh y recuperacion de contrasena. Son publicos (auth: noauth). La contrasena debe tener 8 a 72 caracteres con mayuscula, minuscula y numero; si no, 400. Credenciales o tokens invalidos responden 401."
@@ -444,7 +763,39 @@
               ]
             },
             "description": "Devuelve id, email, nombre y rol de la cuenta del token (nunca el hash de la contrasena). Sirve para comprobar con que rol se esta llamando a la API; guarda el id en la variable usuarioId."
-          }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/usuarios/me",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "usuarios",
+                    "me"
+                  ]
+                },
+                "description": "Devuelve id, email, nombre y rol de la cuenta del token (nunca el hash de la contrasena). Sirve para comprobar con que rol se esta llamando a la API; guarda el id en la variable usuarioId."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": 11,\n  \"email\": \"evaluador@rumbou.app\",\n  \"nombre\": \"Administrador\",\n  \"role\": \"ADMIN\"\n}"
+            }
+          ]
         },
         {
           "name": "Mi gamificacion (XP, racha y logros)",
@@ -545,7 +896,45 @@
               ]
             },
             "description": "Ubica una cuenta por su email para conocer su id (lo guarda en usuarioId) antes de cambiarle el rol. Requiere role=ADMIN; 404 si el email no existe."
-          }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/usuarios?email={{email}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "usuarios"
+                  ],
+                  "query": [
+                    {
+                      "key": "email",
+                      "value": "{{email}}",
+                      "description": "Email exacto de la cuenta"
+                    }
+                  ]
+                },
+                "description": "Ubica una cuenta por su email para conocer su id (lo guarda en usuarioId) antes de cambiarle el rol. Requiere role=ADMIN; 404 si el email no existe."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": 12,\n  \"email\": \"postulante1790316409040@rumbou.com\",\n  \"nombre\": \"Ana\",\n  \"role\": \"USER\"\n}"
+            }
+          ]
         },
         {
           "name": "Cambiar rol (ADMIN)",
@@ -585,6 +974,49 @@
                   "pm.test('200 como ADMIN; 403 como USER', () => pm.expect([200, 403]).to.include(pm.response.code));"
                 ]
               }
+            }
+          ],
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"role\": \"ADMIN\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/usuarios/{{usuarioId}}/rol",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "usuarios",
+                    "{{usuarioId}}",
+                    "rol"
+                  ]
+                },
+                "description": "Cambia el rol de la cuenta indicada (USER o ADMIN). Requiere role=ADMIN. Un admin no puede quitarse su propio rol (400), para que el sistema nunca se quede sin administradores. El usuario promovido debe volver a hacer login: el rol viaja dentro del JWT y su token anterior sigue diciendo USER."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": 12,\n  \"email\": \"postulante1790316409040@rumbou.com\",\n  \"nombre\": \"Ana\",\n  \"role\": \"ADMIN\"\n}"
             }
           ]
         }
@@ -649,6 +1081,56 @@
                 ]
               }
             }
+          ],
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/ofertas-academicas?universidad=UNI",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "ofertas-academicas"
+                  ],
+                  "query": [
+                    {
+                      "key": "universidad",
+                      "value": "UNI",
+                      "description": "Siglas de la universidad: UNI | UNMSM"
+                    },
+                    {
+                      "key": "area",
+                      "value": "C",
+                      "description": "Codigo del area: GENERAL (UNI) | A, B, C, D, E (UNMSM)",
+                      "disabled": true
+                    },
+                    {
+                      "key": "carrera",
+                      "value": "sistemas",
+                      "description": "Coincidencia parcial, sin distinguir mayusculas",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Los tres filtros son opcionales y combinables; sin ninguno devuelve el catalogo completo (70 ofertas del proceso 2026-II). Requiere JWT."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "[\n  {\n    \"id\": 1,\n    \"universidad\": \"UNI\",\n    \"areaId\": 1,\n    \"area\": \"GENERAL\",\n    \"areaNombre\": \"General\",\n    \"carrera\": \"Arquitectura\",\n    \"facultad\": \"Facultad de Arquitectura, Urbanismo y Artes\",\n    \"procesoAdmision\": \"2026-II\",\n    \"puntajeUltimoIngresante\": 1073.7,\n    \"vacantes\": 23\n  },\n  {\n    \"id\": 7,\n    \"universidad\": \"UNI\",\n    \"areaId\": 1,\n    \"area\": \"GENERAL\",\n    \"areaNombre\": \"General\",\n    \"carrera\": \"Ciencia de la Computación\",\n    \"facultad\": \"Facultad de Ciencias\",\n    \"procesoAdmision\": \"2026-II\",\n    \"puntajeUltimoIngresante\": 993.6,\n    \"vacantes\": 10\n  }\n]"
+            }
           ]
         }
       ]
@@ -694,6 +1176,47 @@
                 ]
               }
             }
+          ],
+          "response": [
+            {
+              "name": "201 Created",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/simulacros",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "simulacros"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"areaId\": {{areaId}},\n  \"tipo\": \"POR_TEMA\",\n  \"temaId\": {{temaId}}\n}"
+                },
+                "description": "Practica de un solo tema: entrega la misma cantidad de preguntas que ese tema tiene en el examen real del area (segun EstructuraExamen). temaId es obligatorio cuando el tipo es POR_TEMA; sin el responde 400, y tambien si el tema no forma parte del examen de esa area. Consume el contador de simulacros por tema del plan (3 a la semana en el gratuito). Requiere JWT."
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": 20,\n  \"tipo\": \"POR_TEMA\",\n  \"estado\": \"EN_CURSO\",\n  \"fechaInicio\": \"2026-09-25T01:06:50.7293993\",\n  \"preguntas\": [\n    {\n      \"respuestaUsuarioId\": 2059,\n      \"preguntaId\": 668,\n      \"enunciado\": \"Halle el valor de x en la siguiente distribución numérica: 4 (14) 3; 5 (23) 4; 6 ( x ) 5.\",\n      \"alternativas\": [\n        \"28\",\n        \"30\",\n        \"32\",\n        \"34\",\n        \"36\"\n      ]\n    },\n    {\n      \"respuestaUsuarioId\": 2060,\n      \"preguntaId\": 663,\n      \"enunciado\": \"Cuatro sospechosos son interrogados por el robo de un reloj. Se sabe que solo uno robó el reloj y que exactamente tres de ellos mienten: - Andrés: 'Carlos robó el reloj.' - Boris: 'Yo no robé el reloj.' - Carlos: 'Daniel robó el reloj.' - Daniel: 'Carlos miente.' ¿Quién es el culpable del robo?\",\n      \"alternativas\": [\n        \"Andrés\",\n        \"Boris\",\n        \"Carlos\",\n        \"Daniel\",\n        \"No se puede determinar\"\n      ]\n    }\n  ]\n}"
+            }
           ]
         },
         {
@@ -734,7 +1257,48 @@
               ]
             },
             "description": "Examen completo del area: recorre toda la EstructuraExamen (180 preguntas en la UNI, 100 en UNMSM). temaId no se usa en este tipo. DIAGNOSTICO se arma igual que COMPLETO (es el examen completo que se rinde al inicio) y ambos consumen el contador de simulacros completos (1 al mes en el plan gratuito). Requiere JWT."
-          }
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"areaId\": {{areaId}},\n  \"tipo\": \"COMPLETO\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/simulacros",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "simulacros"
+                  ]
+                },
+                "description": "Examen completo del area: recorre toda la EstructuraExamen (180 preguntas en la UNI, 100 en UNMSM). temaId no se usa en este tipo. DIAGNOSTICO se arma igual que COMPLETO (es el examen completo que se rinde al inicio) y ambos consumen el contador de simulacros completos (1 al mes en el plan gratuito). Requiere JWT."
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": 21,\n  \"tipo\": \"COMPLETO\",\n  \"estado\": \"EN_CURSO\",\n  \"fechaInicio\": \"2026-09-25T01:06:50.9090682\",\n  \"preguntas\": [\n    {\n      \"respuestaUsuarioId\": 2091,\n      \"preguntaId\": 649,\n      \"enunciado\": \"Se define el operador matemático a * b = 2a + 3b - 5. Calcule el valor de (3 * 4) * 2.\",\n      \"alternativas\": [\n        \"21\",\n        \"25\",\n        \"27\",\n        \"31\",\n        \"33\"\n      ]\n    },\n    {\n      \"respuestaUsuarioId\": 2092,\n      \"preguntaId\": 656,\n      \"enunciado\": \"La razón entre dos números es de 3 a 5. Si la suma de ambos números es 40, ¿cuál es el número mayor?\",\n      \"alternativas\": [\n        \"15\",\n        \"20\",\n        \"25\",\n        \"30\",\n        \"35\"\n      ]\n    }\n  ]\n}"
+            }
+          ]
         },
         {
           "name": "Responder pregunta",
@@ -775,6 +1339,44 @@
                 ]
               }
             }
+          ],
+          "response": [
+            {
+              "name": "204 No Content",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/simulacros/{{simulacroId}}/respuestas",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "simulacros",
+                    "{{simulacroId}}",
+                    "respuestas"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"preguntaId\": {{preguntaId}},\n  \"alternativaMarcada\": 2\n}"
+                },
+                "description": "alternativaMarcada es el indice (0 a 4) de la alternativa elegida. Usar null para dejarla en blanco. Solo el dueno del simulacro puede responder, y no si ya esta finalizado."
+              },
+              "status": "No Content",
+              "code": 204,
+              "_postman_previewlanguage": "text",
+              "header": [],
+              "cookie": [],
+              "body": ""
+            }
           ]
         },
         {
@@ -805,6 +1407,39 @@
                   "pm.test('200 con puntaje y PSP; 400 si ya estaba finalizado', () => pm.expect([200, 400]).to.include(pm.response.code));"
                 ]
               }
+            }
+          ],
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/simulacros/{{simulacroId}}/finalizar",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "simulacros",
+                    "{{simulacroId}}",
+                    "finalizar"
+                  ]
+                },
+                "description": "Califica el simulacro, lo cierra, y publica SimulacroFinalizadoEvent y (por cada respuesta incorrecta) RespuestaIncorrectaEvent. Devuelve puntajeObtenido y psp."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"simulacroId\": 21,\n  \"puntajeObtenido\": 6,\n  \"psp\": 6,\n  \"estado\": \"FINALIZADO\"\n}"
             }
           ]
         },
@@ -976,6 +1611,47 @@
                 ]
               }
             }
+          ],
+          "response": [
+            {
+              "name": "201 Created",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/objetivos",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "objetivos"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ofertaAcademicaId\": {{ofertaAcademicaId}}\n}"
+                },
+                "description": "Marca una carrera como objetivo. Responde 201 con el panel de esa carrera. Si el usuario ya tiene esa misma oferta activa responde 409, si la oferta no existe 404, y si supera el limite de objetivos de su plan responde 403. Si ya rindio simulacros del area, el objetivo nace con su PSP e IP calculados."
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": 5,\n  \"ofertaAcademicaId\": 1,\n  \"universidad\": \"UNI\",\n  \"areaId\": 1,\n  \"area\": \"GENERAL\",\n  \"carrera\": \"Arquitectura\",\n  \"procesoAdmision\": \"2026-II\",\n  \"puntajeUltimoIngresante\": 1073.7,\n  \"ultimoPsp\": 6,\n  \"indicePreparacion\": 0.005588153115395362,\n  \"estado\": \"REFORZAR\",\n  \"estadoDescripcion\": \"Necesitas reforzar\",\n  \"fechaActualizacion\": \"2026-09-25T01:06:51.494786\"\n}"
+            }
           ]
         },
         {
@@ -1011,9 +1687,51 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('objetivoIdAlterno', pm.response.json().id); }",
                   "pm.test('Gratuito: 403 al segundo objetivo. PRO o ADMIN: 201 (409 si ya lo tenia activo de una corrida anterior)', () => pm.expect([201, 403, 409]).to.include(pm.response.code));"
                 ]
               }
+            }
+          ],
+          "response": [
+            {
+              "name": "201 Created (como ADMIN, sin tope de objetivos)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/objetivos",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "objetivos"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ofertaAcademicaId\": {{ofertaAcademicaIdAlterna}}\n}"
+                },
+                "description": "Demuestra el control de planes. Con plan gratuito el segundo objetivo responde 403 e indica el limite alcanzado; con plan PRO se permiten 3 y con rol ADMIN no hay tope. El limite lo decide PlanService, no el controller."
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": 6,\n  \"ofertaAcademicaId\": 7,\n  \"universidad\": \"UNI\",\n  \"areaId\": 1,\n  \"area\": \"GENERAL\",\n  \"carrera\": \"Ciencia de la Computación\",\n  \"procesoAdmision\": \"2026-II\",\n  \"puntajeUltimoIngresante\": 993.6,\n  \"ultimoPsp\": 6,\n  \"indicePreparacion\": 0.006038647342995169,\n  \"estado\": \"REFORZAR\",\n  \"estadoDescripcion\": \"Necesitas reforzar\",\n  \"fechaActualizacion\": \"2026-09-25T01:06:51.494786\"\n}"
             }
           ]
         },
@@ -1043,6 +1761,37 @@
                 ]
               }
             }
+          ],
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/objetivos",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "objetivos"
+                  ]
+                },
+                "description": "Devuelve los objetivos activos con el ultimo PSP, el indice de preparacion (IP = PSP / puntaje del ultimo ingresante) y el semaforo: HOLGADO (IP >= 1.10), AJUSTADO (1.00 a 1.09), CERCA (0.85 a 0.99), REFORZAR (< 0.85). El PSP y el IP llegan en null mientras no se haya finalizado un simulacro del area."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "[\n  {\n    \"id\": 5,\n    \"ofertaAcademicaId\": 1,\n    \"universidad\": \"UNI\",\n    \"areaId\": 1,\n    \"area\": \"GENERAL\",\n    \"carrera\": \"Arquitectura\",\n    \"procesoAdmision\": \"2026-II\",\n    \"puntajeUltimoIngresante\": 1073.7,\n    \"ultimoPsp\": 6,\n    \"indicePreparacion\": 0.005588153115395362,\n    \"estado\": \"REFORZAR\",\n    \"estadoDescripcion\": \"Necesitas reforzar\",\n    \"fechaActualizacion\": \"2026-09-25T01:06:51.494786\"\n  },\n  {\n    \"id\": 6,\n    \"ofertaAcademicaId\": 7,\n    \"universidad\": \"UNI\",\n    \"areaId\": 1,\n    \"area\": \"GENERAL\",\n    \"carrera\": \"Ciencia de la Computación\",\n    \"procesoAdmision\": \"2026-II\",\n    \"puntajeUltimoIngresante\": 993.6,\n    \"ultimoPsp\": 6,\n    \"indicePreparacion\": 0.006038647342995169,\n    \"estado\": \"REFORZAR\",\n    \"estadoDescripcion\": \"Necesitas reforzar\",\n    \"fechaActualizacion\": \"2026-09-25T01:06:51.494786\"\n  }\n]"
+            }
           ]
         },
         {
@@ -1071,6 +1820,38 @@
                   "pm.test('PRO o ADMIN: 200. Gratuito: 403', () => pm.expect([200, 403]).to.include(pm.response.code));"
                 ]
               }
+            }
+          ],
+          "response": [
+            {
+              "name": "200 OK (como ADMIN o PRO)",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/progreso/dominio-temas",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "progreso",
+                    "dominio-temas"
+                  ]
+                },
+                "description": "Correctas, incorrectas, en blanco y porcentaje de aciertos por tema, sobre todos los simulacros finalizados del usuario. Viene ordenado del tema mas debil al mas fuerte, para saber que estudiar. Exclusivo del plan PRO: un usuario gratuito recibe 403. El rol ADMIN pasa el limite."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "[\n  {\n    \"temaId\": 4,\n    \"tema\": \"Aritmética\",\n    \"correctas\": 0,\n    \"incorrectas\": 0,\n    \"enBlanco\": 10,\n    \"total\": 10,\n    \"porcentajeAciertos\": 0\n  },\n  {\n    \"temaId\": 6,\n    \"tema\": \"Geometría\",\n    \"correctas\": 0,\n    \"incorrectas\": 0,\n    \"enBlanco\": 10,\n    \"total\": 10,\n    \"porcentajeAciertos\": 0\n  }\n]"
             }
           ]
         },
@@ -1108,6 +1889,45 @@
                 ]
               }
             }
+          ],
+          "response": [
+            {
+              "name": "200 OK (como ADMIN o PRO)",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/progreso/historial?areaId={{areaId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "progreso",
+                    "historial"
+                  ],
+                  "query": [
+                    {
+                      "key": "areaId",
+                      "value": "{{areaId}}",
+                      "description": "Obligatorio: area del examen cuyo avance se quiere ver"
+                    }
+                  ]
+                },
+                "description": "Evolucion cronologica del puntaje simulado (PSP) en un area, un punto por simulacro finalizado. Exclusivo del plan PRO. Sin areaId responde 400 indicando el parametro que falta."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "[\n  {\n    \"simulacroId\": 21,\n    \"tipo\": \"COMPLETO\",\n    \"fechaFin\": \"2026-09-25T01:06:51.494786\",\n    \"puntajeObtenido\": 6,\n    \"psp\": 6\n  }\n]"
+            }
           ]
         },
         {
@@ -1133,9 +1953,45 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Responde 204 sin cuerpo', () => pm.response.to.have.status(204));"
+                  "pm.test('Responde 204 sin cuerpo', () => pm.response.to.have.status(204));",
+                  "// Si la corrida creo un segundo objetivo (PRO o ADMIN), tambien se desactiva: asi la cuenta queda igual que antes.",
+                  "const alterno = pm.collectionVariables.get('objetivoIdAlterno');",
+                  "if (alterno) {",
+                  "    pm.sendRequest({",
+                  "        url: pm.variables.get('baseUrl') + '/api/v1/objetivos/' + alterno,",
+                  "        method: 'DELETE',",
+                  "        header: { Authorization: 'Bearer ' + pm.collectionVariables.get('accessToken') }",
+                  "    }, () => pm.collectionVariables.set('objetivoIdAlterno', ''));",
+                  "}"
                 ]
               }
+            }
+          ],
+          "response": [
+            {
+              "name": "204 No Content",
+              "originalRequest": {
+                "method": "DELETE",
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/objetivos/{{objetivoId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "objetivos",
+                    "{{objetivoId}}"
+                  ]
+                },
+                "description": "Libera un cupo de objetivos del plan. No borra la fila: la desactiva, asi que si el usuario vuelve a elegir la misma carrera se reactiva conservando su historial. Responde 204. Un objetivo de otro usuario responde 403 y uno inexistente 404."
+              },
+              "status": "No Content",
+              "code": 204,
+              "_postman_previewlanguage": "text",
+              "header": [],
+              "cookie": [],
+              "body": ""
             }
           ]
         }
@@ -1201,6 +2057,67 @@
                 ]
               }
             }
+          ],
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/preguntas?temaId={{temaId}}&dificultad=MEDIA&page=0&size=10",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "preguntas"
+                  ],
+                  "query": [
+                    {
+                      "key": "temaId",
+                      "value": "{{temaId}}"
+                    },
+                    {
+                      "key": "dificultad",
+                      "value": "MEDIA",
+                      "description": "FACIL | MEDIA | DIFICIL"
+                    },
+                    {
+                      "key": "origen",
+                      "value": "IA_APROBADA",
+                      "description": "SEMILLA | IA_APROBADA",
+                      "disabled": true
+                    },
+                    {
+                      "key": "aprobada",
+                      "value": "true",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "10"
+                    }
+                  ]
+                },
+                "description": "Todos los filtros son opcionales y combinables. Un usuario normal solo ve preguntas aprobadas; un ADMIN ve todas. Nunca incluye claveCorrecta ni explicacion en este listado."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"content\": [\n    {\n      \"id\": 661,\n      \"temaId\": 1,\n      \"temaNombre\": \"Razonamiento Matemático\",\n      \"enunciado\": \"En la siguiente suma criptoaritmética: A4B + B32 = 7C7, donde letras distintas representan dígitos distintos. Halle A + B + C.\",\n      \"alternativas\": [\n        \"11\",\n        \"12\",\n        \"14\",\n        \"15\",\n        \"16\"\n      ],\n      \"dificultad\": \"MEDIA\"\n    },\n    {\n      \"id\": 662,\n      \"temaId\": 1,\n      \"temaNombre\": \"Razonamiento Matemático\",\n      \"enunciado\": \"Tres hermanos se reparten una herencia. El primero recibe el triple de lo que recibe el segundo, y el tercero recibe S/ 2000 más que el primero. Si la herencia total asciende a S/ 23 000, ¿cuánto recibió el hermano menor?\",\n      \"alternativas\": [\n        \"S/ 2000\",\n        \"S/ 3000\",\n        \"S/ 4000\",\n        \"S/ 6000\",\n        \"S/ 9000\"\n      ],\n      \"dificultad\": \"MEDIA\"\n    }\n  ],\n  \"pageable\": {\n    \"pageNumber\": 0,\n    \"pageSize\": 10,\n    \"sort\": {\n      \"empty\": true,\n      \"sorted\": false,\n      \"unsorted\": true\n    },\n    \"offset\": 0,\n    \"paged\": true,\n    \"unpaged\": false\n  },\n  \"totalPages\": 2,\n  \"totalElements\": 12,\n  \"last\": false,\n  \"size\": 10,\n  \"number\": 0,\n  \"numberOfElements\": 10,\n  \"sort\": {\n    \"empty\": true,\n    \"sorted\": false,\n    \"unsorted\": true\n  },\n  \"first\": true,\n  \"empty\": false\n}"
+            }
           ]
         },
         {
@@ -1230,6 +2147,38 @@
                   "pm.test('200 sin clave ni explicacion para un USER', () => pm.response.to.have.status(200));"
                 ]
               }
+            }
+          ],
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/preguntas/{{preguntaId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "preguntas",
+                    "{{preguntaId}}"
+                  ]
+                },
+                "description": "Devuelve una pregunta sin clave ni explicacion. Para un USER, una pregunta sin aprobar responde 404 como si no existiera; el ADMIN la ve."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": 649,\n  \"temaId\": 1,\n  \"temaNombre\": \"Razonamiento Matemático\",\n  \"enunciado\": \"Se define el operador matemático a * b = 2a + 3b - 5. Calcule el valor de (3 * 4) * 2.\",\n  \"alternativas\": [\n    \"21\",\n    \"25\",\n    \"27\",\n    \"31\",\n    \"33\"\n  ],\n  \"dificultad\": \"FACIL\"\n}"
             }
           ]
         },
@@ -1261,6 +2210,40 @@
                   "pm.test('Responde 200 (PRO), 403 (sin plan o limite) o 502 (proveedor)', () => pm.expect([200,403,502]).to.include(pm.response.code));"
                 ]
               }
+            }
+          ],
+          "response": [
+            {
+              "name": "200 OK (como ADMIN o PRO)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/preguntas/{{preguntaId}}/tutor-ia",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "preguntas",
+                    "{{preguntaId}}",
+                    "tutor-ia"
+                  ]
+                },
+                "description": "Explicacion personalizada de la pregunta generada con Gemini. Exclusiva del plan PRO (el rol ADMIN tambien puede usarla), con tope de 30 consultas al dia controlado por PlanService (403 si el usuario es gratuito o supero el limite). Requiere GEMINI_API_KEY configurada en el servidor; si el proveedor falla responde 502 sin descontar cupo. Un usuario no-admin solo puede consultar preguntas aprobadas."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"preguntaId\": 649,\n  \"explicacion\": \"Para resolver la expresión (3 * 4) * 2, se aplica la regla del operador a * b = 2a + 3b - 5 por partes: primero resolvemos el paréntesis obteniendo 3 * 4 = 2(3) + 3(4) - 5 = 13; posteriormente, evaluamos este resultado con el número final mediante 13 * 2 = 2(13) + 3(2) - 5 = 27, demostrando que la alternativa correcta es la número 2.\"\n}"
             }
           ]
         },
@@ -1302,6 +2285,47 @@
                 ]
               }
             }
+          ],
+          "response": [
+            {
+              "name": "201 Created",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/preguntas",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "preguntas"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"temaId\": {{temaId}},\n  \"enunciado\": \"¿Cual es la derivada de x^2?\",\n  \"alternativas\": [\"x\", \"2x\", \"x^2\", \"2\", \"0\"],\n  \"claveCorrecta\": 1,\n  \"explicacion\": \"La derivada de x^n es n*x^(n-1).\",\n  \"dificultad\": \"MEDIA\",\n  \"origen\": \"SEMILLA\",\n  \"aprobada\": true\n}"
+                },
+                "description": "Requiere role=ADMIN (403 si no). claveCorrecta es el indice 0-4 dentro de alternativas, que debe tener exactamente 5 elementos. El id creado se guarda en preguntaId, asi que Actualizar, Aprobar y Eliminar actuan sobre esta pregunta de prueba y no sobre el banco real."
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": 795,\n  \"temaId\": 1,\n  \"temaNombre\": \"Razonamiento Matemático\",\n  \"enunciado\": \"¿Cual es la derivada de x^2?\",\n  \"alternativas\": [\n    \"x\",\n    \"2x\",\n    \"x^2\",\n    \"2\",\n    \"0\"\n  ],\n  \"claveCorrecta\": 1,\n  \"explicacion\": \"La derivada de x^n es n*x^(n-1).\",\n  \"dificultad\": \"MEDIA\",\n  \"origen\": \"SEMILLA\",\n  \"aprobada\": true\n}"
+            }
           ]
         },
         {
@@ -1342,6 +2366,48 @@
                 ]
               }
             }
+          ],
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/preguntas/{{preguntaId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "preguntas",
+                    "{{preguntaId}}"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"temaId\": {{temaId}},\n  \"enunciado\": \"¿Cual es la derivada de x^2? (editado)\",\n  \"alternativas\": [\"x\", \"2x\", \"x^2\", \"2\", \"0\"],\n  \"claveCorrecta\": 1,\n  \"explicacion\": \"La derivada de x^n es n*x^(n-1).\",\n  \"dificultad\": \"MEDIA\",\n  \"origen\": \"SEMILLA\",\n  \"aprobada\": true\n}"
+                },
+                "description": "Reemplaza TODOS los campos editables (no es un update parcial). Requiere role=ADMIN."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": 795,\n  \"temaId\": 1,\n  \"temaNombre\": \"Razonamiento Matemático\",\n  \"enunciado\": \"¿Cual es la derivada de x^2? (editado)\",\n  \"alternativas\": [\n    \"x\",\n    \"2x\",\n    \"x^2\",\n    \"2\",\n    \"0\"\n  ],\n  \"claveCorrecta\": 1,\n  \"explicacion\": \"La derivada de x^n es n*x^(n-1).\",\n  \"dificultad\": \"MEDIA\",\n  \"origen\": \"SEMILLA\",\n  \"aprobada\": true\n}"
+            }
           ]
         },
         {
@@ -1372,6 +2438,39 @@
                   "pm.test('200 como ADMIN; 403 como USER', () => pm.expect([200, 403]).to.include(pm.response.code));"
                 ]
               }
+            }
+          ],
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/preguntas/{{preguntaId}}/aprobar",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "preguntas",
+                    "{{preguntaId}}",
+                    "aprobar"
+                  ]
+                },
+                "description": "Marca aprobada=true. Se usa sobre todo en el panel de revision de preguntas generadas con Gemini (nacen con aprobada=false). Requiere role=ADMIN."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": 795,\n  \"temaId\": 1,\n  \"temaNombre\": \"Razonamiento Matemático\",\n  \"enunciado\": \"¿Cual es la derivada de x^2? (editado)\",\n  \"alternativas\": [\n    \"x\",\n    \"2x\",\n    \"x^2\",\n    \"2\",\n    \"0\"\n  ],\n  \"claveCorrecta\": 1,\n  \"explicacion\": \"La derivada de x^n es n*x^(n-1).\",\n  \"dificultad\": \"MEDIA\",\n  \"origen\": \"SEMILLA\",\n  \"aprobada\": true\n}"
             }
           ]
         },
@@ -1413,6 +2512,48 @@
                 ]
               }
             }
+          ],
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ids\": [{{preguntaId}}]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/preguntas/aprobar-lote",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "preguntas",
+                    "aprobar-lote"
+                  ]
+                },
+                "description": "Marca aprobada=true en todas las preguntas indicadas en una sola llamada. Pensado para el panel de revision: despues de generar un lote con Gemini (profile generar-preguntas) y leerlo, se aprueban de un jalon. Devuelve la lista de preguntas aprobadas. Requiere role=ADMIN; ids no puede ir vacio (400)."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "[\n  {\n    \"id\": 795,\n    \"temaId\": 1,\n    \"temaNombre\": \"Razonamiento Matemático\",\n    \"enunciado\": \"¿Cual es la derivada de x^2? (editado)\",\n    \"alternativas\": [\n      \"x\",\n      \"2x\",\n      \"x^2\",\n      \"2\",\n      \"0\"\n    ],\n    \"claveCorrecta\": 1,\n    \"explicacion\": \"La derivada de x^n es n*x^(n-1).\",\n    \"dificultad\": \"MEDIA\",\n    \"origen\": \"SEMILLA\",\n    \"aprobada\": true\n  }\n]"
+            }
           ]
         },
         {
@@ -1442,6 +2583,33 @@
                   "pm.test('204 como ADMIN; 403 como USER; 409 si ya salio en un simulacro', () => pm.expect([204, 403, 409]).to.include(pm.response.code));"
                 ]
               }
+            }
+          ],
+          "response": [
+            {
+              "name": "204 No Content",
+              "originalRequest": {
+                "method": "DELETE",
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/preguntas/{{preguntaId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "preguntas",
+                    "{{preguntaId}}"
+                  ]
+                },
+                "description": "Requiere role=ADMIN. Devuelve 204 sin contenido."
+              },
+              "status": "No Content",
+              "code": 204,
+              "_postman_previewlanguage": "text",
+              "header": [],
+              "cookie": [],
+              "body": ""
             }
           ]
         }
@@ -1478,6 +2646,38 @@
                   "pm.test('Responde 200/201 o 502 si falta la credencial de Mercado Pago', () => pm.expect([200,201,502]).to.include(pm.response.code));"
                 ]
               }
+            }
+          ],
+          "response": [
+            {
+              "name": "201 Created",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/suscripciones",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "suscripciones"
+                  ]
+                },
+                "description": "Crea la suscripcion del usuario logueado en estado pendiente y la preaprobacion de pago en Mercado Pago (requiere MP_ACCESS_TOKEN en el servidor; sin ella responde 502 controlado). La activacion real ocurre cuando llega el webhook de pago aprobado."
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": 4,\n  \"plan\": \"PRO\",\n  \"estado\": \"PENDIENTE\",\n  \"fechaInicio\": null,\n  \"fechaFin\": null,\n  \"linkPago\": \"https://www.mercadopago.com.pe/subscriptions/checkout?preapproval_id=...\"\n}"
             }
           ]
         },
@@ -1582,6 +2782,46 @@
                   "pm.test('Responde 2xx o 404 si la referencia no existe', () => pm.expect([200,204,401,404]).to.include(pm.response.code));"
                 ]
               }
+            }
+          ],
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/webhooks/mercadopago",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "webhooks",
+                    "mercadopago"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"action\": \"payment.approved\",\n  \"paymentId\": 123456789,\n  \"mercadoPagoPreapprovalId\": \"preapproval-demo\",\n  \"externalReference\": \"{{suscripcionId}}\"\n}"
+                },
+                "description": "Endpoint publico que recibe la notificacion de pago de Mercado Pago. Es idempotente: cada paymentId se registra en la tabla pagos_webhook y repetirlo no vuelve a procesarlo. Con action=payment.approved publica PagoAprobadoEvent, que activa la suscripcion y dispara el correo de confirmacion.\n\nCon MP_WEBHOOK_SECRET configurado en el servidor, la notificacion debe traer los headers x-signature (ts=...,v1=HMAC-SHA256) y x-request-id; sin firma valida responde 401.",
+                "auth": {
+                  "type": "noauth"
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "text",
+              "header": [],
+              "cookie": [],
+              "body": ""
             }
           ]
         }
