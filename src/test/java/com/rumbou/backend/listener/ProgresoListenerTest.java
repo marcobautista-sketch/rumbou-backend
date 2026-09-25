@@ -12,7 +12,7 @@ import com.rumbou.backend.event.SimulacroFinalizadoEvent;
 import com.rumbou.backend.repository.AbstractContainerBaseTest;
 import com.rumbou.backend.security.CurrentUserService;
 import com.rumbou.backend.service.PlanService;
-import com.rumbou.backend.service.ProgresoService;
+import com.rumbou.backend.service.impl.ObjetivoServiceImpl;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.within;
 
 // Publica el evento real con el publicador de Spring y revisa la base: prueba que el
 // listener esta registrado, que es sincrono y que corre en la misma transaccion.
-@Import({ProgresoListener.class, ProgresoService.class, PlanService.class, CurrentUserService.class})
+@Import({ProgresoListener.class, ObjetivoServiceImpl.class, PlanService.class, CurrentUserService.class})
 class ProgresoListenerTest extends AbstractContainerBaseTest {
 
     @Autowired
