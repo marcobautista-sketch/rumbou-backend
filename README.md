@@ -1,8 +1,7 @@
 # RumboU — Plataforma de preparación para el examen de admisión (UNI y UNMSM)
 
-- **Curso:** CS2031 Desarrollo Basado en Plataformas — UTEC, ciclo 2026-2
-- **Entrega:** Proyecto 1 (Semana 7)
-- **Integrantes:** Marco Bautista, Fabiana Gomez, Juan Carlos Vergara y Zoe Garrido Cantoni
+- **Curso:** CS 2031 Desarrollo Basado en Plataforma — UTEC, 2026-2 (Proyecto 1, Semana 7)
+- **Integrantes:** Marco Emilio Bautista Ortega, Fabiana Gomez, Juan Carlos Alexander Vergara Montalván y Zoe Camila Garrido Cantoni
 - **API en producción (AWS):** http://184.194.122.22 ([health](http://184.194.122.22/api/v1/health))
 - **Colección de Postman:** [`postman_collection.json`](postman_collection.json) · **Guía de uso detallada:** [`GUIA-DE-USO.md`](GUIA-DE-USO.md)
 
@@ -148,7 +147,7 @@ También cubre las de Spring y del framework: validación (400), JSON mal formad
 
 ### Prevención de vulnerabilidades
 
-- **Inyección SQL:** solo consultas parametrizadas con Spring Data JPA.
+- **Inyección SQL:** toda consulta con datos del usuario es parametrizada (Spring Data JPA).
 - **XSS:** la API devuelve JSON y valida toda entrada con Bean Validation.
 - **CSRF:** desactivado porque la API es stateless y no usa cookies.
 - **CORS:** orígenes configurables con `CORS_ALLOWED_ORIGINS`.
@@ -168,7 +167,7 @@ Los eventos desacoplan los módulos: el simulacro no conoce la gamificación ni 
 ## 8. GitHub y gestión del proyecto
 
 - **Flujo:** `main` protegida, una rama por funcionalidad y merge solo por pull request con el CI en verde.
-- **GitHub Actions:** [`ci.yml`](.github/workflows/ci.yml) ejecuta `mvnw verify` en cada push y PR: 250 pruebas unitarias, de controller, de repositorio con Testcontainers y una prueba de humo del contexto completo.
+- **GitHub Actions:** [`ci.yml`](.github/workflows/ci.yml) ejecuta `mvnw verify` en cada push y PR: 256 pruebas unitarias, de controller, de repositorio con Testcontainers y una prueba de humo del contexto completo.
 - **Issues:** milestone "Entrega Semana 7", labels por módulo, tipo y proceso, y responsables asignados.
 - **Reparto:** Marco (autenticación, examen, preguntas), Juan Carlos (catálogo, progreso), Zoe (suscripción, gamificación, correo) y Fabiana (contenido, revisión de rúbrica).
 
@@ -194,13 +193,15 @@ La API cubre el flujo completo del postulante: registrarse, elegir una carrera, 
 
 ### A. Ejecución local
 
-Requisitos: Java 21 y Docker.
+Requisitos: Java 21 o superior y Docker Desktop abierto.
 
 1. `docker compose up -d` levanta PostgreSQL en el puerto 5433.
-2. `./mvnw spring-boot:run "-Dspring-boot.run.profiles=seed"` carga el catálogo y las preguntas.
-3. `./mvnw spring-boot:run` levanta la API en `http://localhost:8080`; `./mvnw test` corre las pruebas.
+2. La primera vez, `./mvnw spring-boot:run "-Dspring-boot.run.profiles=seed"` carga el catálogo y las 792 preguntas y deja la API en `http://localhost:8080`. Después basta `./mvnw spring-boot:run`; el seed se puede repetir sin duplicar datos.
+3. `./mvnw test` corre las pruebas (Testcontainers usa Docker).
 
-Variables de entorno: `SPRING_DATASOURCE_*`, `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `GEMINI_API_KEY`, `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `CORS_ALLOWED_ORIGINS`, `APP_RESET_PASSWORD_URL`, `SHOW_SQL` y `MAIL_*`.
+Para tener una cuenta `ADMIN` en local, arrancar con `ADMIN_EMAIL=evaluador@rumbou.app` y `ADMIN_PASSWORD=RumboU-Evaluador-2026`, los mismos de la colección.
+
+Variables de entorno: `SPRING_DATASOURCE_*`, `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `GEMINI_API_KEY`, `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `MP_BACK_URL`, `MP_TEST_PAYER_EMAIL`, `CORS_ALLOWED_ORIGINS`, `APP_RESET_PASSWORD_URL`, `SHOW_SQL` y `MAIL_*`. Todas tienen valor de desarrollo; sin Gemini ni Mercado Pago esas funciones responden 502.
 
 ### B. Despliegue
 
@@ -221,11 +222,11 @@ Rutas bajo `/api/v1`. 🔒 requiere token; 🛡️ `ADMIN` o `REVIEWER`; 👑 so
 | Preguntas | 🔒 `GET /preguntas`, `GET /preguntas/{id}`, `POST /preguntas/{id}/tutor-ia` · 🛡️ `PATCH /preguntas/{id}/aprobar`, `PATCH /preguntas/aprobar-lote` · 👑 `POST`, `PUT`, `DELETE /preguntas` |
 | Suscripciones | 🔒 `POST /suscripciones`, `GET /suscripciones/me` · `POST /webhooks/mercadopago` (público, firmado) |
 
-Cada request está documentado con ejemplos en la colección de Postman y explicado en la [guía de uso](GUIA-DE-USO.md).
+La colección de Postman trae los 35 requests con descripción, tests y una respuesta de ejemplo real; apunta a AWS e incluye la cuenta de evaluación `evaluador@rumbou.app` (`ADMIN`). Cada request se explica en la [guía de uso](GUIA-DE-USO.md).
 
 ### D. Licencia
 
-Proyecto académico del curso CS2031 (UTEC); uso restringido al curso, sin licencia de código abierto.
+Proyecto académico del curso CS 2031 (UTEC). Todos los derechos reservados por sus autores; no se distribuye bajo una licencia de código abierto.
 
 ### E. Referencias
 
