@@ -19,9 +19,10 @@ Esta guía explica cómo probar RumboU de punta a punta con la colección [`post
 
 | Qué | Dónde |
 |---|---|
-| API en producción (AWS) | `http://184.194.122.22` |
+| API local (la que usa la colección) | `http://localhost:8080`. Se levanta con `docker compose up -d` y `./mvnw spring-boot:run "-Dspring-boot.run.profiles=seed"` (README, apéndice A). El seed crea la cuenta de evaluación con rol `ADMIN` |
 | Health check (sin token) | `GET /api/v1/health` → `{"status":"ok", ...}` |
-| API local | `http://localhost:8080` (ver instalación en el README, apéndice A). Para que "Login como administrador" funcione en local, arrancar con `ADMIN_EMAIL=evaluador@rumbou.app` y `ADMIN_PASSWORD=RumboU-Evaluador-2026`; sin eso los requests de ADMIN y PRO responden `403`, que es lo esperado para un `USER` |
+| Correos en local | `http://localhost:8025` (Mailpit, incluido en el `docker-compose`): ahí llegan los correos de bienvenida, recuperación de contraseña y pago |
+| API desplegada (AWS) | `http://184.194.122.22`, en la variable `baseUrlAws` |
 
 **Importar la colección:** en Postman, *File → Import* y arrastrar `postman_collection.json`. Si ya existía una versión anterior, elegir **Replace**. No hace falta crear un *environment*: todo vive en las variables de la colección.
 
@@ -58,7 +59,7 @@ El rol vive en la base de datos **y dentro del token**. Por eso, si a un usuario
 
 1. **Registrar usuario** — crea una cuenta `USER` nueva. La colección genera el correo automáticamente (`postulante<fecha>@rumbou.com`, contraseña `Password123`) y lo guarda en la variable `email`. Toda contraseña debe tener entre 8 y 72 caracteres, con al menos una mayúscula, una minúscula y un número.
 2. **Login** — entra con ese mismo correo. Útil para renovar tokens.
-3. **Login como administrador** — el mismo endpoint de login, pero con la **cuenta de evaluación** del curso, que ya tiene rol `ADMIN` en producción:
+3. **Login como administrador** — el mismo endpoint de login, pero con la **cuenta de evaluación** del curso, que tiene rol `ADMIN` (en local la crea el seed; en AWS ya existe):
 
    | Campo | Valor |
    |---|---|
@@ -69,7 +70,7 @@ El rol vive en la base de datos **y dentro del token**. Por eso, si a un usuario
 
 ### Recuperar la contraseña
 
-`POST /auth/forgot-password` responde `204` (sin cuerpo) **siempre**, exista o no el correo (para no revelar qué cuentas están registradas), y dispara un correo con un token de un solo uso que vence a los 30 minutos. `POST /auth/reset-password` recibe ese token y la contraseña nueva. En el despliegue de AWS el correo **sí se envía** (Gmail por SMTP): al registrarse llega el de bienvenida y al pedir la recuperación llega el del token. En la colección, "Resetear contraseña" responde `400` porque usa un token de ejemplo; para probarlo de verdad, copia el token del correo en la variable `resetToken` y vuelve a ejecutar ese request.
+`POST /auth/forgot-password` responde `204` (sin cuerpo) **siempre**, exista o no el correo (para no revelar qué cuentas están registradas), y dispara un correo con un token de un solo uso que vence a los 30 minutos. `POST /auth/reset-password` recibe ese token y la contraseña nueva. En local los correos llegan a Mailpit (`http://localhost:8025`); en AWS se envían de verdad por Gmail. En la colección, "Resetear contraseña" responde `400` porque usa un token de ejemplo; para probarlo de verdad, abre el correo "Recupera tu contraseña" en Mailpit, copia el token en la variable `resetToken` y vuelve a ejecutar ese request.
 
 ---
 
@@ -79,8 +80,8 @@ Se ven en la colección → pestaña **Variables**. Las que empiezan con id las 
 
 | Variable | Valor por defecto | Quién la llena |
 |---|---|---|
-| `baseUrl` | URL de producción | Cambiar por el valor de `baseUrlLocal` para probar en local |
-| `baseUrlLocal` | `http://localhost:8080` | — |
+| `baseUrl` | `http://localhost:8080` | Cambiar por el valor de `baseUrlAws` para probar el despliegue |
+| `baseUrlAws` | `http://184.194.122.22` | — |
 | `email` | `postulante@rumbou.com` | Registrar usuario (genera uno nuevo por corrida) |
 | `accessToken`, `refreshToken` | vacío | Registrar, Login, Refrescar, Login como administrador |
 | `adminEmail`, `adminPassword` | cuenta de evaluación | Editar solo para usar otro administrador |
