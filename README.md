@@ -195,17 +195,15 @@ La API cubre el flujo completo del postulante: registrarse, elegir una carrera, 
 
 Requisitos: Java 21 o superior y Docker Desktop abierto.
 
-1. `docker compose up -d` levanta PostgreSQL en el puerto 5433.
-2. La primera vez, `./mvnw spring-boot:run "-Dspring-boot.run.profiles=seed"` carga el catálogo y las 792 preguntas y deja la API en `http://localhost:8080`. Después basta `./mvnw spring-boot:run`; el seed se puede repetir sin duplicar datos.
-3. `./mvnw test` corre las pruebas (Testcontainers usa Docker).
-
-Para tener una cuenta `ADMIN` en local, arrancar con `ADMIN_EMAIL=evaluador@rumbou.app` y `ADMIN_PASSWORD=RumboU-Evaluador-2026`, los mismos de la colección.
+1. `docker compose up -d` levanta PostgreSQL (puerto 5433) y Mailpit, que muestra los correos en `http://localhost:8025`.
+2. `./mvnw spring-boot:run "-Dspring-boot.run.profiles=seed"` carga los datos, crea la cuenta de evaluación `ADMIN` y deja la API en `http://localhost:8080`, adonde apunta la colección.
+3. `./mvnw test` corre las pruebas.
 
 Variables de entorno: `SPRING_DATASOURCE_*`, `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `GEMINI_API_KEY`, `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `MP_BACK_URL`, `MP_TEST_PAYER_EMAIL`, `CORS_ALLOWED_ORIGINS`, `APP_RESET_PASSWORD_URL`, `SHOW_SQL` y `MAIL_*`. Todas tienen valor de desarrollo; sin Gemini ni Mercado Pago esas funciones responden 502.
 
 ### B. Despliegue
 
-Una instancia **EC2** ejecuta el jar con systemd detrás de nginx; los datos viven en **RDS PostgreSQL 16**, cuyo security group solo acepta a la instancia. La configuración llega por variables de entorno.
+Una instancia **EC2** ejecuta el jar con systemd detrás de nginx; los datos viven en **RDS PostgreSQL 16**, cuyo security group solo acepta a la instancia. La configuración llega por variables de entorno. La evidencia está en [`docs/despliegue-aws`](docs/despliegue-aws).
 
 ### C. Endpoints
 
@@ -222,7 +220,7 @@ Rutas bajo `/api/v1`. 🔒 requiere token; 🛡️ `ADMIN` o `REVIEWER`; 👑 so
 | Preguntas | 🔒 `GET /preguntas`, `GET /preguntas/{id}`, `POST /preguntas/{id}/tutor-ia` · 🛡️ `PATCH /preguntas/{id}/aprobar`, `PATCH /preguntas/aprobar-lote` · 👑 `POST`, `PUT`, `DELETE /preguntas` |
 | Suscripciones | 🔒 `POST /suscripciones`, `GET /suscripciones/me` · `POST /webhooks/mercadopago` (público, firmado) |
 
-La colección de Postman trae los 35 requests con descripción, tests y una respuesta de ejemplo real; apunta a AWS e incluye la cuenta de evaluación `evaluador@rumbou.app` (`ADMIN`). Cada request se explica en la [guía de uso](GUIA-DE-USO.md).
+La colección de Postman trae los 35 requests con descripción, tests y una respuesta de ejemplo real; apunta a la API local (la de AWS está en `baseUrlAws`) e incluye la cuenta de evaluación `evaluador@rumbou.app` (`ADMIN`). Cada request se explica en la [guía de uso](GUIA-DE-USO.md).
 
 ### D. Licencia
 
