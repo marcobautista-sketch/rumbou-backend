@@ -165,7 +165,7 @@ Valores posibles: `dificultad` = `FACIL`, `MEDIA`, `DIFICIL`; `origen` = `SEMILL
 ### Suscripciones
 | Request | Envía | Devuelve |
 |---|---|---|
-| Crear suscripción PRO | — | `201` `{id, plan: PRO, estado: PENDIENTE, fechaInicio, fechaFin, linkPago}` con el enlace de pago de Mercado Pago (S/ 39 al mes). `502` si el servidor no tiene `MP_ACCESS_TOKEN` |
+| Crear suscripción PRO | — | `201` `{id, plan: PRO, estado: PENDIENTE, fechaInicio, fechaFin, linkPago}` con el enlace de pago de Mercado Pago (S/ 39 al mes). Con credenciales de prueba, Mercado Pago exige que el pagador sea una cuenta de prueba: el servidor usa la de `MP_TEST_PAYER_EMAIL`. `502` si falta `MP_ACCESS_TOKEN` o Mercado Pago rechaza la solicitud |
 | Mi suscripción | — | `200` con la suscripción más reciente (mismo formato). `404` si el usuario nunca se suscribió |
 | Webhook de Mercado Pago | `{action: "payment.approved", paymentId, mercadoPagoPreapprovalId, externalReference}` y los headers `x-signature`, `x-request-id` (público, lo llama Mercado Pago) | `200`. Es idempotente: el mismo `paymentId` dos veces no activa dos veces. Al aprobarse, activa la suscripción y envía el correo de pago. Si el servidor tiene `MP_WEBHOOK_SECRET`, una firma ausente o inválida responde `401` |
 

@@ -21,9 +21,17 @@ public class MercadoPagoService {
 
     // El token vive solo en la variable de entorno MP_ACCESS_TOKEN.
     private final String accessToken;
+    private final String backUrl;
+    // Con credenciales de prueba, Mercado Pago exige que quien paga tambien sea una
+    // cuenta de prueba. En produccion queda vacio y se usa el correo del usuario.
+    private final String testPayerEmail;
 
-    public MercadoPagoService(@Value("${mercadopago.access-token}") String accessToken) {
+    public MercadoPagoService(@Value("${mercadopago.access-token}") String accessToken,
+                              @Value("${mercadopago.back-url}") String backUrl,
+                              @Value("${mercadopago.test-payer-email}") String testPayerEmail) {
         this.accessToken = accessToken;
+        this.backUrl = backUrl;
+        this.testPayerEmail = testPayerEmail;
     }
 
     public record ResultadoPreaprobacion(String preapprovalId, String externalReference, String initPoint) {
@@ -47,7 +55,7 @@ public class MercadoPagoService {
         }
     }
 
-    private PreapprovalCreateRequest construirSolicitud(String externalReference, String payerEmail) {
+    PreapprovalCreateRequest construirSolicitud(String externalReference, String payerEmail) {
         PreApprovalAutoRecurringCreateRequest autoRecurring = PreApprovalAutoRecurringCreateRequest.builder()
                 .frequency(1)
                 .frequencyType("months")
@@ -58,7 +66,8 @@ public class MercadoPagoService {
         return PreapprovalCreateRequest.builder()
                 .reason("Plan PRO RumboU")
                 .externalReference(externalReference)
-                .payerEmail(payerEmail)
+                .payerEmail(testPayerEmail.isBlank() ? payerEmail : testPayerEmail)
+                .backUrl(backUrl)
                 .autoRecurring(autoRecurring)
                 .build();
     }
