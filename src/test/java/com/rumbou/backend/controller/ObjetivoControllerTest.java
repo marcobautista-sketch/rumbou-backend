@@ -8,7 +8,7 @@ import com.rumbou.backend.entity.Role;
 import com.rumbou.backend.entity.Usuario;
 import com.rumbou.backend.exception.ForbiddenException;
 import com.rumbou.backend.security.JwtService;
-import com.rumbou.backend.service.ProgresoService;
+import com.rumbou.backend.service.ObjetivoService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -42,7 +42,7 @@ class ObjetivoControllerTest {
     private ObjectMapper objectMapper;
 
     @MockBean
-    private ProgresoService progresoService;
+    private ObjetivoService objetivoService;
 
     // JwtAuthenticationFilter se instancia igual en el slice: necesita sus dependencias aunque no se ejecute.
     @MockBean
@@ -62,7 +62,7 @@ class ObjetivoControllerTest {
 
     @Test
     void crearUnObjetivoDevuelve201YElPanelDeEsaCarrera() throws Exception {
-        given(progresoService.crearObjetivo(10L)).willReturn(objetivo());
+        given(objetivoService.crearObjetivo(10L)).willReturn(objetivo());
 
         mockMvc.perform(post("/api/v1/objetivos")
                         .with(user(postulante()))
@@ -88,7 +88,7 @@ class ObjetivoControllerTest {
     @Test
     void alSuperarElLimiteDelPlanResponde403() throws Exception {
         willThrow(new ForbiddenException("El plan gratuito permite 1 objetivo activo"))
-                .given(progresoService).crearObjetivo(10L);
+                .given(objetivoService).crearObjetivo(10L);
 
         mockMvc.perform(post("/api/v1/objetivos")
                         .with(user(postulante()))
@@ -101,7 +101,7 @@ class ObjetivoControllerTest {
 
     @Test
     void listarDevuelveLosObjetivosActivosDelUsuario() throws Exception {
-        given(progresoService.listarObjetivos()).willReturn(List.of(objetivo()));
+        given(objetivoService.listarObjetivos()).willReturn(List.of(objetivo()));
 
         mockMvc.perform(get("/api/v1/objetivos").with(user(postulante())))
                 .andExpect(status().isOk())
@@ -117,6 +117,6 @@ class ObjetivoControllerTest {
                         .with(csrf()))
                 .andExpect(status().isNoContent());
 
-        verify(progresoService).desactivarObjetivo(1L);
+        verify(objetivoService).desactivarObjetivo(1L);
     }
 }

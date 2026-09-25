@@ -66,13 +66,13 @@ public class PreguntaController {
     }
 
     @PatchMapping("/{id}/aprobar")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'REVIEWER')")
     public ResponseEntity<PreguntaAdminResponse> aprobar(@PathVariable Long id) {
         return ResponseEntity.ok(preguntaService.aprobar(id));
     }
 
     @PatchMapping("/aprobar-lote")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'REVIEWER')")
     public ResponseEntity<List<PreguntaAdminResponse>> aprobarLote(@Valid @RequestBody AprobarLoteRequest request) {
         return ResponseEntity.ok(preguntaService.aprobarLote(request));
     }

@@ -47,6 +47,7 @@ La colección hace esto sola: los requests de registro, login y refresh guardan 
 | Rol | Cómo se obtiene | Qué puede hacer |
 |---|---|---|
 | `USER` | Al registrarse (siempre) | Simulacros, progreso, ver preguntas, suscribirse |
+| `REVIEWER` | Lo asigna un administrador (`PATCH /usuarios/{id}/rol`) | Todo lo de `USER`, más ver las preguntas sin aprobar y aprobarlas (una por una o en lote). No crea, edita ni borra preguntas, ni administra usuarios |
 | `ADMIN` | Solo lo asigna otro administrador (`PATCH /usuarios/{id}/rol`) o las variables `ADMIN_EMAIL`/`ADMIN_PASSWORD` al arrancar el servidor | Todo lo anterior, más crear/editar/aprobar/borrar preguntas y administrar usuarios. **Además pasa todos los límites del plan** (puede usar el tutor de IA y los paneles PRO sin suscripción) |
 
 El rol vive en la base de datos **y dentro del token**. Por eso, si a un usuario se le cambia el rol, tiene que volver a iniciar sesión para que su token nuevo lo refleje.
@@ -118,9 +119,9 @@ Los códigos entre paréntesis son los que aceptan los tests de la colección. T
 | Request | Envía | Devuelve |
 |---|---|---|
 | Mi perfil | — | `200` `{id, email, nombre, role}`. Nunca incluye la contraseña |
-| Mi gamificación | `/usuarios/me/gamificacion` | `200` `{xpTotal, xpSemanal, rachaActual, rachaMaxima, ultimaActividad, logros[]}`; cada logro trae `{id, nombre, descripcion, fechaDesbloqueo}` |
+| Mi gamificación | `GET /usuarios/me/gamificacion` | `200` `{xpTotal, xpSemanal, rachaActual, rachaMaxima, ultimaActividad, logros[]}`; cada logro trae `{id, nombre, descripcion, fechaDesbloqueo}`. Se actualiza al finalizar cada simulacro |
 | Buscar usuario por email (ADMIN) | `?email=` | `200` con el usuario (`403` como USER, `404` si no existe) |
-| Cambiar rol (ADMIN) | `{"role": "ADMIN"}` o `"USER"` sobre `/usuarios/{usuarioId}/rol` | `200` con el usuario actualizado. `400` si un admin intenta quitarse su propio rol, `403` como USER |
+| Cambiar rol (ADMIN) | `{"role": "ADMIN"}`, `"REVIEWER"` o `"USER"` sobre `/usuarios/{usuarioId}/rol` | `200` con el usuario actualizado. `400` si un admin intenta quitarse su propio rol, `403` como USER |
 
 ### Catálogo académico
 | Request | Envía | Devuelve |
@@ -134,10 +135,10 @@ Los códigos entre paréntesis son los que aceptan los tests de la colección. T
 | Iniciar simulacro completo | `{areaId, tipo: "COMPLETO"}` (o `"DIAGNOSTICO"`) | `201` con el examen entero: 180 preguntas en la UNI, 100 en UNMSM. `403` si se superó el límite mensual |
 | Responder pregunta | `{preguntaId, alternativaMarcada}` sobre `/simulacros/{simulacroId}/respuestas`. `alternativaMarcada` va de `0` a `4`; `null` deja la pregunta en blanco | `204` (sin cuerpo). `400` si la pregunta no es de ese simulacro, la alternativa no existe o el simulacro ya terminó |
 | Finalizar simulacro | — | `200` `{simulacroId, puntajeObtenido, psp, estado: FINALIZADO}`. Dispara gamificación (racha, XP, logros) y progreso |
-| Listar mis simulacros | `?page=&size=` | `200` página de `{id, tipo, estado, areaId, area, fechaInicio, fechaFin, puntajeObtenido, psp}`, del más reciente al más antiguo |
-| Ver detalle de un simulacro | `/simulacros/{simulacroId}` | `200` `{id, tipo, estado, areaId, fechaInicio, fechaFin, puntajeObtenido, psp, preguntas[]}`. Mientras está `EN_CURSO` no muestra la clave; ya `FINALIZADO`, cada pregunta trae `alternativaMarcada`, `claveCorrecta`, `esCorrecta`, `puntajeAportado` y `explicacion`. `403` si el simulacro es de otra persona |
+| Listar mis simulacros | `GET /simulacros?page=&size=` | `200` página de `{id, tipo, estado, areaId, area, fechaInicio, fechaFin, puntajeObtenido, psp}`, del más reciente al más antiguo |
+| Ver detalle de un simulacro | `GET /simulacros/{simulacroId}` | `200` `{id, tipo, estado, areaId, fechaInicio, fechaFin, puntajeObtenido, psp, preguntas[]}`. Mientras está `EN_CURSO` no muestra la clave; ya `FINALIZADO`, cada pregunta trae `alternativaMarcada`, `claveCorrecta`, `esCorrecta`, `puntajeAportado` y `explicacion`. `403` si el simulacro es de otra persona |
 
-Cada pregunta del simulacro llega como `{respuestaUsuarioId, preguntaId, enunciado, alternativas[5]}`, **sin** la clave correcta ni la explicación.
+Al iniciar, cada pregunta llega como `{respuestaUsuarioId, preguntaId, enunciado, alternativas[5]}`, **sin** la clave correcta ni la explicación; la corrección se ve con el detalle del simulacro una vez finalizado.
 
 ### Progreso
 | Request | Envía | Devuelve |
@@ -152,14 +153,14 @@ Cada pregunta del simulacro llega como `{respuestaUsuarioId, preguntaId, enuncia
 ### Preguntas
 | Request | Envía | Devuelve |
 |---|---|---|
-| Listar preguntas | `?temaId=&dificultad=&origen=&aprobada=&page=&size=` (todos opcionales; `size` máximo 50) | `200` página de preguntas aprobadas. Solo un ADMIN puede pedir `aprobada=false` |
+| Listar preguntas | `?temaId=&dificultad=&origen=&aprobada=&page=&size=` (todos opcionales; `size` máximo 50) | `200` página de preguntas aprobadas. Solo `ADMIN` o `REVIEWER` pueden pedir `aprobada=false` |
 | Obtener pregunta por id | — | `200` `{id, temaId, tema, enunciado, alternativas, dificultad}` sin clave ni explicación |
 | Tutor de IA (PRO) | `/preguntas/{preguntaId}/tutor-ia` | `200` `{preguntaId, explicacion}` generada por Gemini; descuenta 1 de las 30 consultas diarias. `403` con plan gratuito o al superar el tope; `502` si el servidor no tiene `GEMINI_API_KEY` (no descuenta cupo) |
 | Crear pregunta (ADMIN) | `{temaId, enunciado, alternativas[5], claveCorrecta (0-4), explicacion, dificultad, origen, aprobada}` | `201` con la pregunta completa (con clave y explicación). Guarda `preguntaId`: los requests siguientes actúan sobre **esta** pregunta de prueba, no sobre el banco |
 | Actualizar pregunta (ADMIN) | mismo cuerpo, reemplaza todos los campos | `200` |
-| Aprobar pregunta (ADMIN) | `PATCH /preguntas/{id}/aprobar` | `200` con `aprobada: true` |
-| Aprobar preguntas en lote (ADMIN) | `{"ids": [...]}` | `200` lista de aprobadas. Si un id no existe, no se aprueba ninguna (`404`) |
-| Eliminar pregunta (ADMIN) | — | `204`. `409` si la pregunta ya salió en algún simulacro (se conserva para no romper el historial) |
+| Aprobar pregunta (ADMIN o REVIEWER) | `PATCH /preguntas/{id}/aprobar` | `200` con `aprobada: true` |
+| Aprobar preguntas en lote (ADMIN o REVIEWER) | `{"ids": [...]}` | `200` lista de aprobadas. Si un id no existe, no se aprueba ninguna (`404`) |
+| Eliminar pregunta (ADMIN) | — | `204`. `409` si la pregunta ya salió en algún simulacro: en ese caso se desaprueba con `PUT` |
 
 Valores posibles: `dificultad` = `FACIL`, `MEDIA`, `DIFICIL`; `origen` = `SEMILLA` (creada a mano o cargada por el seed), `IA_APROBADA` (generada con IA y aprobada por una persona).
 
@@ -167,8 +168,8 @@ Valores posibles: `dificultad` = `FACIL`, `MEDIA`, `DIFICIL`; `origen` = `SEMILL
 | Request | Envía | Devuelve |
 |---|---|---|
 | Crear suscripción PRO | — | `201` `{id, plan: PRO, estado: PENDIENTE, fechaInicio, fechaFin, linkPago}` con el enlace de pago de Mercado Pago (S/ 39 al mes). Con credenciales de prueba, Mercado Pago exige que el pagador sea una cuenta de prueba: el servidor usa la de `MP_TEST_PAYER_EMAIL`. `502` si falta `MP_ACCESS_TOKEN` o Mercado Pago rechaza la solicitud |
-| Mi suscripción | — | `200` con la suscripción más reciente (mismo formato). `404` si el usuario nunca se suscribió |
-| Webhook de Mercado Pago | `{action: "payment.approved", paymentId, mercadoPagoPreapprovalId, externalReference}` y los headers `x-signature`, `x-request-id` (público, lo llama Mercado Pago) | `200`. Es idempotente: el mismo `paymentId` dos veces no activa dos veces. Al aprobarse, activa la suscripción y envía el correo de pago. Si el servidor tiene `MP_WEBHOOK_SECRET`, una firma ausente o inválida responde `401` |
+| Mi suscripción | `GET /suscripciones/me` | `200` con la suscripción más reciente y su estado (`PENDIENTE`, `ACTIVA`, `VENCIDA`, `CANCELADA`). `404` si nunca creó una |
+| Webhook de Mercado Pago | `{action: "payment.approved", paymentId, mercadoPagoPreapprovalId, externalReference}` (público, lo llama Mercado Pago) | `200`. Es idempotente: el mismo `paymentId` dos veces no activa dos veces. Al aprobarse, activa la suscripción y envía el correo de pago. Si el servidor tiene `MP_WEBHOOK_SECRET`, exige los headers `x-signature` y `x-request-id` de Mercado Pago; sin firma válida responde `401` |
 
 ---
 
@@ -342,7 +343,7 @@ Todas las respuestas de error tienen la misma forma:
 |---|---|---|
 | `400` | Cuerpo inválido (`@Valid`), JSON mal formado, parámetro de URL ausente o inválido, o una regla de negocio (simulacro ya finalizado, tema fuera del área, alternativa inexistente, admin quitándose su rol) | Leer `message`: dice exactamente qué falta |
 | `401` | Sin token, token vencido o inválido, credenciales incorrectas o firma de webhook inválida | Ejecutar Login o Refrescar token |
-| `403` | Sin el rol necesario (`ADMIN`), recurso de otra persona o límite del plan alcanzado | Entrar como administrador o esperar el reinicio del contador |
+| `403` | Sin el rol necesario (`ADMIN`, o `REVIEWER` para aprobar preguntas), recurso de otra persona o límite del plan alcanzado | Entrar con una cuenta con ese rol o esperar el reinicio del contador |
 | `404` | El recurso no existe (simulacro, pregunta, oferta, usuario, ruta) | Revisar el id |
 | `405` / `415` | Método HTTP equivocado para esa ruta, o cuerpo que no es `application/json` | Revisar el verbo y el header `Content-Type` |
 | `409` | Duplicado o recurso en uso: correo ya registrado, objetivo ya activo, pregunta que ya salió en un simulacro | — |

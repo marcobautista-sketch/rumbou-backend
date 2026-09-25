@@ -11,6 +11,7 @@ import com.rumbou.backend.event.PagoAprobadoEvent;
 import com.rumbou.backend.exception.ResourceNotFoundException;
 import com.rumbou.backend.repository.SuscripcionRepository;
 import com.rumbou.backend.security.CurrentUserService;
+import com.rumbou.backend.service.impl.SuscripcionServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -29,7 +30,7 @@ import static org.mockito.Mockito.when;
 class SuscripcionServiceTest {
 
     private SuscripcionRepository suscripcionRepository;
-    private SuscripcionService suscripcionService;
+    private SuscripcionServiceImpl suscripcionService;
     private MercadoPagoService mercadoPagoService;
     private PlanService planService;
     private CurrentUserService currentUserService;
@@ -46,7 +47,7 @@ class SuscripcionServiceTest {
         mercadoPagoService = mock(MercadoPagoService.class);
         planService = mock(PlanService.class);
         currentUserService = mock(CurrentUserService.class);
-        suscripcionService = new SuscripcionService(suscripcionRepository, mercadoPagoService, planService, currentUserService);
+        suscripcionService = new SuscripcionServiceImpl(suscripcionRepository, mercadoPagoService, planService, currentUserService);
     }
 
     @Test
