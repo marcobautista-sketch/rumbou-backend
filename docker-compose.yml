@@ -10,5 +10,17 @@ services:
     volumes:
       - rumbou_postgres_data:/var/lib/postgresql/data
 
+  # Buzon de prueba: recibe los correos de la API en el puerto 1025 y los muestra
+  # en http://localhost:8025, sin enviarlos a nadie.
+  mailpit:
+    image: axllent/mailpit:latest
+    environment:
+      # La API siempre se autentica por SMTP (Gmail lo exige); en local se acepta cualquiera.
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
 volumes:
   rumbou_postgres_data:

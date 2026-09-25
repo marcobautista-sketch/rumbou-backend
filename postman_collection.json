@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "RumboU API",
-    "description": "Coleccion de endpoints de RumboU (CS2031 UTEC). Cubre autenticacion, usuarios, catalogo academico, simulacros, progreso, preguntas y suscripciones. Se puede correr completa, en orden, con \"Run collection\".\n\nComo usarla:\n1. baseUrl apunta a la API desplegada en AWS (EC2 + RDS). Para local, cambia baseUrl por el valor de baseUrlLocal (docker compose up -d && ./mvnw spring-boot:run).\n2. \"Registrar usuario\" crea una cuenta nueva en cada corrida (genera el email solo) y guarda el token; \"Login\" reutiliza ese mismo email. No hay que copiar tokens a mano.\n3. Los requests marcados (ADMIN) necesitan rol ADMIN. Ejecuta \"Login como administrador\": usa la cuenta de evaluacion del curso (evaluador@rumbou.app, ya cargada en las variables adminEmail y adminPassword) y desde ahi todos los requests corren como ADMIN. Sin ese login, los requests ADMIN responden 403 y sus tests lo aceptan como resultado valido.\n4. Los requests marcados (plan PRO) responden 403 con el plan gratuito; el ADMIN pasa todos los limites del plan.\n5. Cada request guarda en variables los ids que necesitan los siguientes (usuarioId, areaId, temaId, simulacroId, preguntaId, ofertaAcademicaId, objetivoId).\n6. \"Crear suscripcion PRO\" y \"Tutor de IA\" dependen de credenciales externas (MP_ACCESS_TOKEN, GEMINI_API_KEY) en el servidor; sin ellas responden 502.",
+    "description": "Coleccion de endpoints de RumboU (CS2031 UTEC). Cubre autenticacion, usuarios, catalogo academico, simulacros, progreso, preguntas y suscripciones. Se puede correr completa, en orden, con \"Run collection\".\n\nComo usarla:\n1. baseUrl apunta a la API local (http://localhost:8080). Para levantarla: docker compose up -d y luego ./mvnw spring-boot:run \"-Dspring-boot.run.profiles=seed\" (README, apéndice A). Para usar el despliegue en AWS, cambia baseUrl por el valor de baseUrlAws.\n2. \"Registrar usuario\" crea una cuenta nueva en cada corrida (genera el email solo) y guarda el token; \"Login\" reutiliza ese mismo email. No hay que copiar tokens a mano.\n3. Los requests marcados (ADMIN) necesitan rol ADMIN. Ejecuta \"Login como administrador\": usa la cuenta de evaluacion del curso (evaluador@rumbou.app, ya cargada en las variables adminEmail y adminPassword; en local la crea el profile seed) y desde ahi todos los requests corren como ADMIN. Sin ese login, los requests ADMIN responden 403 y sus tests lo aceptan como resultado valido.\n4. Los requests marcados (plan PRO) responden 403 con el plan gratuito; el ADMIN pasa todos los limites del plan.\n5. Cada request guarda en variables los ids que necesitan los siguientes (usuarioId, areaId, temaId, simulacroId, preguntaId, ofertaAcademicaId, objetivoId).\n6. \"Crear suscripcion PRO\" y \"Tutor de IA\" dependen de credenciales externas (MP_ACCESS_TOKEN, GEMINI_API_KEY) en el servidor; sin ellas responden 502.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -17,9 +17,9 @@
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://184.194.122.22",
+      "value": "http://localhost:8080",
       "type": "string",
-      "description": "API desplegada en AWS (EC2 + RDS). Para local, usar el valor de baseUrlLocal."
+      "description": "API local (README, apéndice A). Para usar el despliegue en AWS, reemplazar por el valor de baseUrlAws."
     },
     {
       "key": "accessToken",
@@ -65,10 +65,10 @@
       "description": "Ajustar segun los datos cargados en tu base local"
     },
     {
-      "key": "baseUrlLocal",
-      "value": "http://localhost:8080",
+      "key": "baseUrlAws",
+      "value": "http://184.194.122.22",
       "type": "string",
-      "description": "Valor de baseUrl para correr contra la app local."
+      "description": "API desplegada en AWS (EC2 + RDS)."
     },
     {
       "key": "suscripcionId",
