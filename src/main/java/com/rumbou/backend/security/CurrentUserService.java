@@ -24,10 +24,6 @@ public class CurrentUserService {
         return getUsuario().getId();
     }
 
-    public boolean esAdmin() {
-        return getUsuario().getRole() == Role.ADMIN;
-    }
-
     // ADMIN y REVIEWER ven las preguntas sin aprobar, porque son quienes las revisan.
     public boolean puedeRevisarPreguntas() {
         Role role = getUsuario().getRole();
