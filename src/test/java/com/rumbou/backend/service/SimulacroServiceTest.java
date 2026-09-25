@@ -25,6 +25,7 @@ import com.rumbou.backend.repository.EstructuraExamenRepository;
 import com.rumbou.backend.repository.RespuestaUsuarioRepository;
 import com.rumbou.backend.repository.SimulacroRepository;
 import com.rumbou.backend.security.CurrentUserService;
+import com.rumbou.backend.service.impl.SimulacroServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -46,7 +47,7 @@ class SimulacroServiceTest {
     private RespuestaUsuarioRepository respuestaUsuarioRepository;
     private EstructuraExamenRepository estructuraExamenRepository;
     private ApplicationEventPublisher eventPublisher;
-    private SimulacroService simulacroService;
+    private SimulacroServiceImpl simulacroService;
     private CurrentUserService currentUserService;
 
     private Usuario usuario;
@@ -61,7 +62,7 @@ class SimulacroServiceTest {
         estructuraExamenRepository = mock(EstructuraExamenRepository.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
 
-        simulacroService = new SimulacroService(
+        simulacroService = new SimulacroServiceImpl(
                 simulacroRepository,
                 respuestaUsuarioRepository,
                 mock(AreaRepository.class),

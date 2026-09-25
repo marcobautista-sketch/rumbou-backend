@@ -2,7 +2,7 @@ package com.rumbou.backend.listener;
 
 import com.rumbou.backend.entity.TipoSimulacro;
 import com.rumbou.backend.event.SimulacroFinalizadoEvent;
-import com.rumbou.backend.service.ProgresoService;
+import com.rumbou.backend.service.ObjetivoService;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
@@ -11,10 +11,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class ProgresoListener {
 
-    private final ProgresoService progresoService;
+    private final ObjetivoService objetivoService;
 
-    public ProgresoListener(ProgresoService progresoService) {
-        this.progresoService = progresoService;
+    public ProgresoListener(ObjetivoService objetivoService) {
+        this.objetivoService = objetivoService;
     }
 
     // Un simulacro POR_TEMA no mueve el IP: su PSP sale de un solo tema y no
@@ -24,6 +24,6 @@ public class ProgresoListener {
         if (event.tipo() == TipoSimulacro.POR_TEMA) {
             return;
         }
-        progresoService.actualizarTrasSimulacro(event.usuarioId(), event.areaId(), event.psp());
+        objetivoService.actualizarTrasSimulacro(event.usuarioId(), event.areaId(), event.psp());
     }
 }
