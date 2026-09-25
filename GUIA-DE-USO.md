@@ -88,6 +88,7 @@ Se ven en la colección → pestaña **Variables**. Las que empiezan con id las 
 | `temaId` | `1` (Razonamiento Matemático) | Editar a mano para probar otro tema (ver sección 7) |
 | `ofertaAcademicaId`, `ofertaAcademicaIdAlterna` | vacío | Listar ofertas académicas |
 | `objetivoId` | vacío | Crear objetivo |
+| `objetivoIdAlterno` | vacío | Crear un segundo objetivo (PRO o ADMIN); Desactivar objetivo lo desactiva también, para que cada corrida deje la cuenta como estaba |
 | `simulacroId`, `preguntaId`, `respuestaUsuarioId` | vacío | Iniciar simulacro (y Crear pregunta, para las operaciones de administración) |
 | `suscripcionId` | vacío | Crear suscripción PRO |
 | `resetToken` | vacío | Pegar a mano el token recibido por correo |

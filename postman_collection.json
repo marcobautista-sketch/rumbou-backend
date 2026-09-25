@@ -103,6 +103,12 @@
     {
       "key": "adminPassword",
       "value": "RumboU-Evaluador-2026"
+    },
+    {
+      "key": "objetivoIdAlterno",
+      "value": "",
+      "type": "string",
+      "description": "Se guarda al crear el segundo objetivo (PRO o ADMIN) y se desactiva junto con el primero."
     }
   ],
   "item": [
@@ -1681,6 +1687,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('objetivoIdAlterno', pm.response.json().id); }",
                   "pm.test('Gratuito: 403 al segundo objetivo. PRO o ADMIN: 201 (409 si ya lo tenia activo de una corrida anterior)', () => pm.expect([201, 403, 409]).to.include(pm.response.code));"
                 ]
               }
@@ -1946,7 +1953,16 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Responde 204 sin cuerpo', () => pm.response.to.have.status(204));"
+                  "pm.test('Responde 204 sin cuerpo', () => pm.response.to.have.status(204));",
+                  "// Si la corrida creo un segundo objetivo (PRO o ADMIN), tambien se desactiva: asi la cuenta queda igual que antes.",
+                  "const alterno = pm.collectionVariables.get('objetivoIdAlterno');",
+                  "if (alterno) {",
+                  "    pm.sendRequest({",
+                  "        url: pm.variables.get('baseUrl') + '/api/v1/objetivos/' + alterno,",
+                  "        method: 'DELETE',",
+                  "        header: { Authorization: 'Bearer ' + pm.collectionVariables.get('accessToken') }",
+                  "    }, () => pm.collectionVariables.set('objetivoIdAlterno', ''));",
+                  "}"
                 ]
               }
             }
@@ -2630,6 +2646,38 @@
                   "pm.test('Responde 200/201 o 502 si falta la credencial de Mercado Pago', () => pm.expect([200,201,502]).to.include(pm.response.code));"
                 ]
               }
+            }
+          ],
+          "response": [
+            {
+              "name": "201 Created",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/suscripciones",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "suscripciones"
+                  ]
+                },
+                "description": "Crea la suscripcion del usuario logueado en estado pendiente y la preaprobacion de pago en Mercado Pago (requiere MP_ACCESS_TOKEN en el servidor; sin ella responde 502 controlado). La activacion real ocurre cuando llega el webhook de pago aprobado."
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": 4,\n  \"plan\": \"PRO\",\n  \"estado\": \"PENDIENTE\",\n  \"fechaInicio\": null,\n  \"fechaFin\": null,\n  \"linkPago\": \"https://www.mercadopago.com.pe/subscriptions/checkout?preapproval_id=...\"\n}"
             }
           ]
         },
