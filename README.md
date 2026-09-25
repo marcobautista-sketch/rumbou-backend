@@ -61,15 +61,15 @@ Java 21, Spring Boot 3.3.5, Maven · Spring Data JPA, Hibernate, PostgreSQL 16 �
 
 ```mermaid
 flowchart LR
-    C[Cliente / Postman] -->|JWT Bearer| F[JwtAuthenticationFilter]
+    C["Cliente / Postman"] -->|"JWT Bearer"| F[JwtAuthenticationFilter]
     F --> CT[Controllers]
-    CT --> S[Servicios: interfaces + impl]
+    CT --> S["Servicios: interfaces + impl"]
     S --> M[Mappers]
     S --> R[Repositories]
-    R --> DB[(PostgreSQL / RDS)]
-    S -->|publica| E[Eventos]
+    R --> DB[("PostgreSQL / RDS")]
+    S -->|"publica"| E[Eventos]
     E --> L[Listeners]
-    L -->|@Async| X[Gemini · SMTP]
+    L -->|"asíncrono"| X["Gemini · SMTP"]
     S --> MP[Mercado Pago]
 ```
 
