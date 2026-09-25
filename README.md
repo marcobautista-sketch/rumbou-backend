@@ -195,14 +195,14 @@ La API cubre el flujo completo del postulante: registrarse, elegir carrera, rend
 Requisitos: Java 21 o superior (con Java 17 no compila) y Docker Desktop abierto; sin Docker la API no arranca ("Unable to determine Dialect").
 
 1. `docker compose up -d` levanta PostgreSQL (puerto 5433) y Mailpit, que muestra los correos en `http://localhost:8025`.
-2. `./mvnw spring-boot:run "-Dspring-boot.run.profiles=seed"` carga los datos, crea la cuenta de evaluación `ADMIN` y deja la API en `http://localhost:8080`, adonde apunta la colección.
+2. `./mvnw spring-boot:run`, o *Run* sobre `BackendApplication` en el IDE, carga los datos, crea la cuenta de evaluación `ADMIN` y deja la API en `http://localhost:8080`, adonde apunta la colección.
 3. `./mvnw test` corre las pruebas.
 
 A tener en cuenta:
 
 - Deben estar libres los puertos 5433, 8080, 1025 y 8025.
-- La primera ejecución tarda unos minutos por las descargas de Maven y Docker.
-- Desde IntelliJ, ejecutar `BackendApplication` con `seed` en *Active profiles*; sin ese perfil arranca sin datos ni cuenta `ADMIN`.
+- La primera ejecución tarda unos minutos mientras descarga dependencias.
+- Para probar cada rol, la colección trae la carpeta "Cambiar de rol" (guía de uso, sección 2).
 - En local, "Tutor de IA" y "Crear suscripción PRO" responden 502 porque las claves de Gemini y Mercado Pago no están en el repositorio; su funcionamiento en AWS consta en [`docs/despliegue-aws`](docs/despliegue-aws).
 
 Variables de entorno: `SPRING_DATASOURCE_*`, `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `GEMINI_API_KEY`, `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `MP_BACK_URL`, `MP_TEST_PAYER_EMAIL`, `CORS_ALLOWED_ORIGINS`, `APP_RESET_PASSWORD_URL`, `SHOW_SQL` y `MAIL_*`. Todas tienen valor de desarrollo.
@@ -226,7 +226,7 @@ Rutas bajo `/api/v1`. 🔒 requiere token; 🛡️ `ADMIN` o `REVIEWER`; 👑 so
 | Preguntas | 🔒 `GET /preguntas`, `GET /preguntas/{id}`, `POST /preguntas/{id}/tutor-ia` · 🛡️ `PATCH /preguntas/{id}/aprobar`, `PATCH /preguntas/aprobar-lote` · 👑 `POST`, `PUT`, `DELETE /preguntas` |
 | Suscripciones | 🔒 `POST /suscripciones`, `GET /suscripciones/me` · `POST /webhooks/mercadopago` (público, firmado) |
 
-La colección de Postman trae los 35 requests con descripción, tests y una respuesta de ejemplo real; apunta a la API local (la de AWS está en `baseUrlAws`) e incluye la cuenta de evaluación `evaluador@rumbou.app` (`ADMIN`). Cada request se explica en la [guía de uso](GUIA-DE-USO.md).
+La colección de Postman trae los 41 requests con descripción, tests y una respuesta de ejemplo real; apunta a la API local (la de AWS está en `baseUrlAws`) e incluye la cuenta de evaluación `evaluador@rumbou.app` (`ADMIN`). Cada request se explica en la [guía de uso](GUIA-DE-USO.md).
 
 ### D. Licencia
 

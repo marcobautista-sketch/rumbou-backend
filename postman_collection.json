@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "RumboU API",
-    "description": "Coleccion de endpoints de RumboU (CS2031 UTEC). Cubre autenticacion, usuarios, catalogo academico, simulacros, progreso, preguntas y suscripciones. Se puede correr completa, en orden, con \"Run collection\".\n\nComo usarla:\n1. baseUrl apunta a la API local (http://localhost:8080). Para levantarla: docker compose up -d y luego ./mvnw spring-boot:run \"-Dspring-boot.run.profiles=seed\" (README, apéndice A). Para usar el despliegue en AWS, cambia baseUrl por el valor de baseUrlAws.\n2. \"Registrar usuario\" crea una cuenta nueva en cada corrida (genera el email solo) y guarda el token; \"Login\" reutiliza ese mismo email. No hay que copiar tokens a mano.\n3. Los requests marcados (ADMIN) necesitan rol ADMIN. Ejecuta \"Login como administrador\": usa la cuenta de evaluacion del curso (evaluador@rumbou.app, ya cargada en las variables adminEmail y adminPassword; en local la crea el profile seed) y desde ahi todos los requests corren como ADMIN. Sin ese login, los requests ADMIN responden 403 y sus tests lo aceptan como resultado valido.\n4. Los requests marcados (plan PRO) responden 403 con el plan gratuito; el ADMIN pasa todos los limites del plan.\n5. Cada request guarda en variables los ids que necesitan los siguientes (usuarioId, areaId, temaId, simulacroId, preguntaId, ofertaAcademicaId, objetivoId).\n6. \"Crear suscripcion PRO\" y \"Tutor de IA\" dependen de credenciales externas (MP_ACCESS_TOKEN, GEMINI_API_KEY) en el servidor; sin ellas responden 502.",
+    "description": "Coleccion de endpoints de RumboU (CS2031 UTEC). Cubre autenticacion, usuarios, catalogo academico, simulacros, progreso, preguntas y suscripciones. Se puede correr completa, en orden, con \"Run collection\".\n\nComo usarla:\n1. baseUrl apunta a la API local (http://localhost:8080). Para levantarla: docker compose up -d y luego ./mvnw spring-boot:run \"-Dspring-boot.run.profiles=seed\" (README, apéndice A). Para usar el despliegue en AWS, cambia baseUrl por el valor de baseUrlAws.\n2. \"Registrar usuario\" crea una cuenta nueva en cada corrida (genera el email solo) y guarda el token; \"Login\" reutiliza ese mismo email. No hay que copiar tokens a mano.\n3. Los requests marcados (ADMIN) necesitan rol ADMIN. Ejecuta \"Login como administrador\": usa la cuenta de evaluacion del curso (evaluador@rumbou.app, ya cargada en las variables adminEmail y adminPassword; en local la crea el profile seed) y desde ahi todos los requests corren como ADMIN. Sin ese login, los requests ADMIN responden 403 y sus tests lo aceptan como resultado valido.\n4. Los requests marcados (plan PRO) responden 403 con el plan gratuito; el ADMIN pasa todos los limites del plan.\n5. Cada request guarda en variables los ids que necesitan los siguientes (usuarioId, areaId, temaId, simulacroId, preguntaId, ofertaAcademicaId, objetivoId).\n6. \"Crear suscripcion PRO\" y \"Tutor de IA\" dependen de credenciales externas (MP_ACCESS_TOKEN, GEMINI_API_KEY) en el servidor; sin ellas responden 502.\n7. La carpeta \"Cambiar de rol\" permite pasar a USER, REVIEWER o ADMIN con un solo request; ver la seccion 2 de GUIA-DE-USO.md.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -109,6 +109,24 @@
       "value": "",
       "type": "string",
       "description": "Se guarda al crear el segundo objetivo (PRO o ADMIN) y se desactiva junto con el primero."
+    },
+    {
+      "key": "postulanteEmail",
+      "value": "",
+      "type": "string",
+      "description": "Correo de la ultima cuenta USER creada por \"Entrar como postulante\"."
+    },
+    {
+      "key": "revisorEmail",
+      "value": "",
+      "type": "string",
+      "description": "Correo de la cuenta REVIEWER; lo llena \"Entrar como revisor\" la primera vez."
+    },
+    {
+      "key": "preguntaRevisionId",
+      "value": "",
+      "type": "string",
+      "description": "Pregunta que usa \"Aprobar pregunta (REVIEWER o ADMIN)\"; se toma sola del banco."
     }
   ],
   "item": [
@@ -676,7 +694,7 @@
                 "login"
               ]
             },
-            "description": "Mismo endpoint de login, con una cuenta administradora. Las variables adminEmail y adminPassword vienen cargadas con la cuenta de evaluacion del curso (evaluador@rumbou.app), que ya tiene rol ADMIN en produccion: basta con ejecutar este request para que el resto de la coleccion corra como ADMIN (que ademas pasa todos los limites del plan). Tambien sirven las credenciales de cualquier otro administrador.",
+            "description": "Mismo endpoint de login, con una cuenta administradora. Las variables adminEmail y adminPassword vienen cargadas con la cuenta de evaluacion del curso (evaluador@rumbou.app), que tiene rol ADMIN (en local la crea el seed al arrancar): basta con ejecutar este request para que el resto de la coleccion corra como ADMIN (que ademas pasa todos los limites del plan). Tambien sirven las credenciales de cualquier otro administrador.",
             "auth": {
               "type": "noauth"
             }
@@ -2827,6 +2845,537 @@
         }
       ],
       "description": "Plan PRO con Mercado Pago. El webhook es publico pero, si el servidor tiene MP_WEBHOOK_SECRET, exige la firma x-signature de Mercado Pago (401 sin ella)."
+    },
+    {
+      "name": "Cambiar de rol",
+      "description": "Para revisar la API con cada uno de los tres roles. Los tres primeros requests cambian la sesion de toda la coleccion (la variable accessToken): despues de ejecutar uno, cualquier otro request de la coleccion corre con ese rol. Los tres ultimos muestran la diferencia de permisos entre roles. Se pueden ejecutar sueltos y en cualquier orden.",
+      "item": [
+        {
+          "name": "Entrar como postulante (USER)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('postulanteEmail', 'postulante' + Date.now() + '@rumbou.com');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) { const b = pm.response.json(); pm.collectionVariables.set('accessToken', b.accessToken); pm.collectionVariables.set('refreshToken', b.refreshToken); }",
+                  "pm.test('201: la coleccion pasa a correr como USER (plan gratuito, sin permisos de administracion)', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{postulanteEmail}}\",\n  \"password\": \"Password123\",\n  \"nombre\": \"Postulante de prueba\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Crea una cuenta nueva y deja toda la coleccion corriendo como USER. El registro publico siempre asigna USER: es el postulante con plan gratuito, que no puede usar los endpoints de administracion ni las funciones PRO. Cada ejecucion crea una cuenta distinta."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{postulanteEmail}}\",\n  \"password\": \"Password123\",\n  \"nombre\": \"Postulante de prueba\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/register",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "register"
+                  ]
+                },
+                "description": "Crea una cuenta nueva y deja toda la coleccion corriendo como USER. El registro publico siempre asigna USER: es el postulante con plan gratuito, que no puede usar los endpoints de administracion ni las funciones PRO. Cada ejecucion crea una cuenta distinta."
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"accessToken\": \"eyJhbGciOiJIUzUxMiJ9...\",\n  \"refreshToken\": \"eyJhbGciOiJIUzUxMiJ9...\",\n  \"tokenType\": \"Bearer\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Entrar como revisor (REVIEWER)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Si todavia no hay cuenta de revisor, se crea sola: registro publico (queda USER)",
+                  "// y la cuenta de evaluacion (ADMIN) la promueve a REVIEWER. Luego este request inicia sesion.",
+                  "if (!pm.collectionVariables.get('revisorEmail')) {",
+                  "    const base = pm.variables.get('baseUrl') + '/api/v1';",
+                  "    const pedir = (camino, method, cuerpo, token) => ({",
+                  "        url: base + camino,",
+                  "        method,",
+                  "        header: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: 'Bearer ' + token } : {}),",
+                  "        body: cuerpo ? { mode: 'raw', raw: JSON.stringify(cuerpo) } : undefined",
+                  "    });",
+                  "    const email = 'revisor' + Date.now() + '@rumbou.com';",
+                  "    pm.sendRequest(pedir('/auth/register', 'POST', { email, password: 'Password123', nombre: 'Revisor de prueba' }), () => {",
+                  "        const admin = { email: pm.collectionVariables.get('adminEmail'), password: pm.collectionVariables.get('adminPassword') };",
+                  "        pm.sendRequest(pedir('/auth/login', 'POST', admin), (errLogin, login) => {",
+                  "            const token = login.json().accessToken;",
+                  "            pm.sendRequest(pedir('/usuarios?email=' + encodeURIComponent(email), 'GET', null, token), (errBusqueda, usuario) => {",
+                  "                pm.sendRequest(pedir('/usuarios/' + usuario.json().id + '/rol', 'PATCH', { role: 'REVIEWER' }, token), () => {",
+                  "                    pm.collectionVariables.set('revisorEmail', email);",
+                  "                });",
+                  "            });",
+                  "        });",
+                  "    });",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) { const b = pm.response.json(); pm.collectionVariables.set('accessToken', b.accessToken); pm.collectionVariables.set('refreshToken', b.refreshToken); }",
+                  "if (pm.response.code === 401) { pm.collectionVariables.set('revisorEmail', ''); }",
+                  "pm.test('200: la coleccion pasa a correr como REVIEWER (si da 401, la cuenta no existia en esta base: ejecutalo otra vez y se crea sola)', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{revisorEmail}}\",\n  \"password\": \"Password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Deja toda la coleccion corriendo como REVIEWER, el rol que revisa y aprueba preguntas sin administrar el sistema. La primera vez crea la cuenta de revisor automaticamente (necesita que exista la cuenta de evaluacion ADMIN, que el seed crea) y guarda su correo en la variable revisorEmail; las siguientes veces solo inicia sesion con ella."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{revisorEmail}}\",\n  \"password\": \"Password123\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "login"
+                  ]
+                },
+                "description": "Deja toda la coleccion corriendo como REVIEWER, el rol que revisa y aprueba preguntas sin administrar el sistema. La primera vez crea la cuenta de revisor automaticamente (necesita que exista la cuenta de evaluacion ADMIN, que el seed crea) y guarda su correo en la variable revisorEmail; las siguientes veces solo inicia sesion con ella."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"accessToken\": \"eyJhbGciOiJIUzUxMiJ9...\",\n  \"refreshToken\": \"eyJhbGciOiJIUzUxMiJ9...\",\n  \"tokenType\": \"Bearer\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Entrar como administrador (ADMIN)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) { const b = pm.response.json(); pm.collectionVariables.set('accessToken', b.accessToken); pm.collectionVariables.set('refreshToken', b.refreshToken); }",
+                  "pm.test('200: la coleccion pasa a correr como ADMIN', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Deja toda la coleccion corriendo como ADMIN con la cuenta de evaluacion (evaluador@rumbou.app), que el seed crea al arrancar. El ADMIN puede todo, incluido el CRUD de preguntas y el cambio de roles, y no tiene limites de plan."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "login"
+                  ]
+                },
+                "description": "Deja toda la coleccion corriendo como ADMIN con la cuenta de evaluacion (evaluador@rumbou.app), que el seed crea al arrancar. El ADMIN puede todo, incluido el CRUD de preguntas y el cambio de roles, y no tiene limites de plan."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"accessToken\": \"eyJhbGciOiJIUzUxMiJ9...\",\n  \"refreshToken\": \"eyJhbGciOiJIUzUxMiJ9...\",\n  \"tokenType\": \"Bearer\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Ver mi rol actual",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const rol = pm.response.code === 200 ? pm.response.json().role : 'sin sesion';",
+                  "pm.test('200: la sesion actual es ' + rol, () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/usuarios/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "usuarios",
+                "me"
+              ]
+            },
+            "description": "Muestra con que cuenta y rol esta corriendo la coleccion en este momento (campo role)."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/usuarios/me",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "usuarios",
+                    "me"
+                  ]
+                },
+                "description": "Muestra con que cuenta y rol esta corriendo la coleccion en este momento (campo role)."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": 1,\n  \"email\": \"evaluador@rumbou.app\",\n  \"nombre\": \"Administrador\",\n  \"role\": \"ADMIN\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Aprobar pregunta (REVIEWER o ADMIN)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Toma la primera pregunta del banco para no depender de otros requests.",
+                  "pm.sendRequest({ url: pm.variables.get('baseUrl') + '/api/v1/preguntas?size=1', method: 'GET', header: { Authorization: 'Bearer ' + pm.collectionVariables.get('accessToken') } }, (err, res) => {",
+                  "    if (!err && res.code === 200 && res.json().content.length) { pm.collectionVariables.set('preguntaRevisionId', res.json().content[0].id); }",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('REVIEWER o ADMIN: 200; USER: 403', () => pm.expect([200, 403]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/preguntas/{{preguntaRevisionId}}/aprobar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "preguntas",
+                "{{preguntaRevisionId}}",
+                "aprobar"
+              ]
+            },
+            "description": "Aprobar preguntas es la tarea del REVIEWER (tambien la puede hacer el ADMIN). Como USER responde 403. Actua sobre una pregunta del banco que ya esta aprobada, asi que no cambia datos."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/preguntas/{{preguntaRevisionId}}/aprobar",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "preguntas",
+                    "{{preguntaRevisionId}}",
+                    "aprobar"
+                  ]
+                },
+                "description": "Aprobar preguntas es la tarea del REVIEWER (tambien la puede hacer el ADMIN). Como USER responde 403. Actua sobre una pregunta del banco que ya esta aprobada, asi que no cambia datos."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": 1,\n  \"temaId\": 10,\n  \"temaNombre\": \"Actitud\",\n  \"enunciado\": \"Cuando una persona manifiesta sentir un profundo rechazo o desagrado emocional hacia el consumo de comida chatarra, ¿a qué componente de la actitud se hace referencia principalmente?\",\n  \"alternativas\": [\n    \"Cognitivo\",\n    \"Afectivo\",\n    \"Conductual\",\n    \"Conativo\",\n    \"Reactivo\"\n  ],\n  \"claveCorrecta\": 1,\n  \"explicacion\": \"El componente afectivo de la actitud abarca los sentimientos, emociones y evaluaciones de agrado o desagrado que experimenta un individuo frente al objeto de la actitud.\",\n  \"dificultad\": \"FACIL\",\n  \"origen\": \"IA_APROBADA\",\n  \"aprobada\": true\n}"
+            }
+          ]
+        },
+        {
+          "name": "Buscar usuario por email (solo ADMIN)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('ADMIN: 200; REVIEWER y USER: 403', () => pm.expect([200, 403]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/usuarios?email={{adminEmail}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "usuarios"
+              ],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "{{adminEmail}}"
+                }
+              ]
+            },
+            "description": "Endpoint exclusivo del ADMIN. Sirve para comprobar la diferencia de permisos: como REVIEWER o USER responde 403 aunque la sesion sea valida."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/usuarios?email={{adminEmail}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "usuarios"
+                  ],
+                  "query": [
+                    {
+                      "key": "email",
+                      "value": "{{adminEmail}}"
+                    }
+                  ]
+                },
+                "description": "Endpoint exclusivo del ADMIN. Sirve para comprobar la diferencia de permisos: como REVIEWER o USER responde 403 aunque la sesion sea valida."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": 1,\n  \"email\": \"evaluador@rumbou.app\",\n  \"nombre\": \"Administrador\",\n  \"role\": \"ADMIN\"\n}"
+            }
+          ]
+        }
+      ]
     }
   ]
 }
