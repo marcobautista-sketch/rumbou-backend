@@ -38,7 +38,6 @@ public class GamificacionServiceImpl implements GamificacionService {
         this.currentUserService = currentUserService;
     }
 
-    // XP, racha y logros del usuario autenticado.
     @Transactional(readOnly = true)
     @Override
     public GamificacionResponse obtenerResumen() {

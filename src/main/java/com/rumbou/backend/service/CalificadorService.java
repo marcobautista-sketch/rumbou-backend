@@ -14,10 +14,6 @@ import java.util.Map;
 @Service
 public class CalificadorService {
 
-    public double calcularPuntajeBloque(int correctas, int incorrectas, EsquemaCalificacion esquema) {
-        return (correctas * esquema.getValorAcierto()) - (incorrectas * esquema.getValorPenalidad());
-    }
-
     // PSP: escala el puntaje de un simulacro (completo o por tema) al maximo oficial de la universidad.
     public double calcularPsp(double puntajeObtenido, double puntajeMaximoDelSimulacro, Universidad universidad) {
         if (puntajeMaximoDelSimulacro == 0) {
