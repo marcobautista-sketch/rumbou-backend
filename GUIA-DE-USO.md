@@ -19,7 +19,7 @@ Esta guía explica cómo probar RumboU de punta a punta con la colección [`post
 
 | Qué | Dónde |
 |---|---|
-| API local (la que usa la colección) | `http://localhost:8080`. Se levanta con `docker compose up -d` y `./mvnw spring-boot:run "-Dspring-boot.run.profiles=seed"` (README, apéndice A). El seed crea la cuenta de evaluación con rol `ADMIN` |
+| API local (la que usa la colección) | `http://localhost:8080`. Se levanta con `docker compose up -d` y luego `./mvnw spring-boot:run` o el botón *Run* del IDE sobre `BackendApplication` (README, apéndice A). Al arrancar se cargan los datos y se crea la cuenta de evaluación con rol `ADMIN` |
 | Health check (sin token) | `GET /api/v1/health` → `{"status":"ok", ...}` |
 | Correos en local | `http://localhost:8025` (Mailpit, incluido en el `docker-compose`): ahí llegan los correos de bienvenida, recuperación de contraseña y pago |
 | API desplegada (AWS) | `http://184.194.122.22`, en la variable `baseUrlAws` |
@@ -55,18 +55,33 @@ El rol vive en la base de datos **y dentro del token**. Por eso, si a un usuario
 
 **Importante:** iniciar sesión no verifica el rol; solo verifica correo y contraseña. Un `200` en el login no significa que la cuenta sea administradora: eso se ve en **Mi perfil** (`"role"`) o cuando un request de administración responde `403`.
 
-### Las tres formas de entrar
+### Cambiar de rol
 
-1. **Registrar usuario** — crea una cuenta `USER` nueva. La colección genera el correo automáticamente (`postulante<fecha>@rumbou.com`, contraseña `Password123`) y lo guarda en la variable `email`. Toda contraseña debe tener entre 8 y 72 caracteres, con al menos una mayúscula, una minúscula y un número.
-2. **Login** — entra con ese mismo correo. Útil para renovar tokens.
-3. **Login como administrador** — el mismo endpoint de login, pero con la **cuenta de evaluación** del curso, que tiene rol `ADMIN` (en local la crea el seed; en AWS ya existe):
+La carpeta **Cambiar de rol** de la colección tiene un request por rol. Al ejecutar uno, **toda la colección pasa a correr con ese rol**: cualquier request que se ejecute después usa esa sesión. No hay que escribir correos ni contraseñas.
 
-   | Campo | Valor |
-   |---|---|
-   | `adminEmail` | `evaluador@rumbou.app` |
-   | `adminPassword` | `RumboU-Evaluador-2026` |
+| Para probar como | Ejecutar | Qué hace |
+|---|---|---|
+| Postulante (`USER`) | **Entrar como postulante (USER)** | Registra una cuenta nueva (el registro público siempre da `USER`) e inicia sesión con ella |
+| Revisor (`REVIEWER`) | **Entrar como revisor (REVIEWER)** | La primera vez crea la cuenta de revisor sola: la registra y la cuenta de evaluación la promueve a `REVIEWER`. Las siguientes veces solo inicia sesión |
+| Administrador (`ADMIN`) | **Entrar como administrador (ADMIN)** | Inicia sesión con la cuenta de evaluación, que el seed crea al arrancar |
 
-   A partir de ese request, toda la colección corre como administrador. Cualquier otra cuenta con rol `ADMIN` también sirve: basta con cambiar esas dos variables.
+Para confirmar el rol en cualquier momento está **Ver mi rol actual**. Los otros dos requests de la carpeta muestran la diferencia de permisos:
+
+| Request | `USER` | `REVIEWER` | `ADMIN` |
+|---|---|---|---|
+| Aprobar pregunta (REVIEWER o ADMIN) | `403` | `200` | `200` |
+| Buscar usuario por email (solo ADMIN) | `403` | `403` | `200` |
+
+La cuenta de evaluación es:
+
+| Campo | Valor |
+|---|---|
+| `adminEmail` | `evaluador@rumbou.app` |
+| `adminPassword` | `RumboU-Evaluador-2026` |
+
+Las cuentas de prueba que crea la colección usan la contraseña `Password123`. Toda contraseña debe tener entre 8 y 72 caracteres, con al menos una mayúscula, una minúscula y un número.
+
+**Al correr la colección completa**, el flujo principal registra un postulante nuevo (`USER`), inicia sesión como administrador en "Login como administrador" y, en "Cambiar rol (ADMIN)", promueve a `ADMIN` al postulante de esa corrida para mostrar la gestión de roles. Desde ese punto la corrida sigue como `ADMIN`, por eso los requests de administración y PRO responden `200`. Para ver las respuestas de otro rol, basta con ejecutar uno de los requests de **Cambiar de rol** y repetir el request que interese.
 
 ### Recuperar la contraseña
 
@@ -91,6 +106,8 @@ Se ven en la colección → pestaña **Variables**. Las que empiezan con id las 
 | `ofertaAcademicaId`, `ofertaAcademicaIdAlterna` | vacío | Listar ofertas académicas |
 | `objetivoId` | vacío | Crear objetivo |
 | `objetivoIdAlterno` | vacío | Crear un segundo objetivo (PRO o ADMIN); Desactivar objetivo lo desactiva también, para que cada corrida deje la cuenta como estaba |
+| `postulanteEmail`, `revisorEmail` | vacío | Entrar como postulante / Entrar como revisor (carpeta Cambiar de rol) |
+| `preguntaRevisionId` | vacío | Aprobar pregunta (REVIEWER o ADMIN): se toma sola del banco |
 | `simulacroId`, `preguntaId`, `respuestaUsuarioId` | vacío | Iniciar simulacro (y Crear pregunta, para las operaciones de administración) |
 | `suscripcionId` | vacío | Crear suscripción PRO |
 | `resetToken` | vacío | Pegar a mano el token recibido por correo |
@@ -171,6 +188,16 @@ Valores posibles: `dificultad` = `FACIL`, `MEDIA`, `DIFICIL`; `origen` = `SEMILL
 | Crear suscripción PRO | — | `201` `{id, plan: PRO, estado: PENDIENTE, fechaInicio, fechaFin, linkPago}` con el enlace de pago de Mercado Pago (S/ 39 al mes). Con credenciales de prueba, Mercado Pago exige que el pagador sea una cuenta de prueba: el servidor usa la de `MP_TEST_PAYER_EMAIL`. `502` si falta `MP_ACCESS_TOKEN` o Mercado Pago rechaza la solicitud |
 | Mi suscripción | `GET /suscripciones/me` | `200` con la suscripción más reciente y su estado (`PENDIENTE`, `ACTIVA`, `VENCIDA`, `CANCELADA`). `404` si nunca creó una |
 | Webhook de Mercado Pago | `{action: "payment.approved", paymentId, mercadoPagoPreapprovalId, externalReference}` (público, lo llama Mercado Pago) | `200`. Es idempotente: el mismo `paymentId` dos veces no activa dos veces. Al aprobarse, activa la suscripción y envía el correo de pago. Si el servidor tiene `MP_WEBHOOK_SECRET`, exige los headers `x-signature` y `x-request-id` de Mercado Pago; sin firma válida responde `401` |
+
+### Cambiar de rol
+| Request | Envía | Devuelve |
+|---|---|---|
+| Entrar como postulante (USER) | `{email, password, nombre}` con un correo nuevo | `201` con tokens; la colección pasa a `USER` |
+| Entrar como revisor (REVIEWER) | `{email: revisorEmail, password}` | `200` con tokens; la colección pasa a `REVIEWER`. Si la cuenta no existe, se crea antes automáticamente |
+| Entrar como administrador (ADMIN) | `{email: adminEmail, password: adminPassword}` | `200` con tokens; la colección pasa a `ADMIN` |
+| Ver mi rol actual | `GET /usuarios/me` | `200` con el `role` de la sesión |
+| Aprobar pregunta (REVIEWER o ADMIN) | `PATCH /preguntas/{id}/aprobar` sobre una pregunta del banco | `200` como `REVIEWER` o `ADMIN`; `403` como `USER` |
+| Buscar usuario por email (solo ADMIN) | `GET /usuarios?email=` | `200` como `ADMIN`; `403` como `REVIEWER` o `USER` |
 
 ---
 
