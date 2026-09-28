@@ -18,4 +18,13 @@ La API se desplegó en AWS (laboratorio de AWS Academy, región `us-east-1`): un
 | Archivo | Qué muestra |
 | --- | --- |
 | [`estado-del-servidor.txt`](estado-del-servidor.txt) | Salida tomada dentro de la instancia: id y tipo de instancia, IP pública, sistema operativo y Java, servicio `rumbou` activo, nginx, nombres de las variables de entorno (sin valores), conexión a RDS con el conteo de datos cargados, health por la IP pública y correos enviados por SMTP |
-| [`reporte-postman-aws.html`](reporte-postman-aws.html) | Reporte de la colección completa ejecutada contra `http://184.194.122.22`: 35 de 35 validaciones correctas, incluidos el tutor de IA con Gemini (`200`) y la suscripción PRO con Mercado Pago (`201`). Los tokens están ocultos. Se abre en el navegador |
+| [`reporte-postman-aws.html`](reporte-postman-aws.html) | Reporte de la colección completa ejecutada contra `http://184.194.122.22`: 41 de 41 validaciones correctas, incluidos el tutor de IA con Gemini (`200`) y la suscripción PRO con Mercado Pago (`201`). Los tokens están ocultos. Se abre en el navegador |
+
+## Colección de Postman ejecutada contra AWS
+
+| Captura | Qué muestra |
+| --- | --- |
+| [Health check](07-postman-health-aws.png) | `GET /api/v1/health` contra `http://184.194.122.22`: `200 OK` |
+| [Registro](08-postman-registro-aws.png) | Registro de usuario contra AWS: `201 Created` con los tokens |
+| [Colección completa](09-postman-coleccion-completa-aws.png) | Runner de Postman contra AWS: 41 de 41 tests aprobados, 0 fallidos |
+| [Suscripción PRO](10-postman-suscripcion-pro-aws.png) | `201 Created` con el enlace de pago real de Mercado Pago |
