@@ -41,6 +41,8 @@ RumboU no usa sesiones ni cookies: usa **JSON Web Tokens (JWT)**. Al registrarse
 | `accessToken` | 15 minutos | Va en cada request, en el header `Authorization: Bearer <token>` |
 | `refreshToken` | 7 días | Se envía a `POST /auth/refresh` para obtener un `accessToken` nuevo sin volver a escribir la contraseña |
 
+La web no guarda el refresh token en JavaScript: lo recibe además en la cookie `rumbou_refresh` (`HttpOnly`, `Secure`, `SameSite=Strict`, solo para `/api/v1/auth`). `POST /auth/refresh` acepta esa cookie sin cuerpo y `POST /auth/logout` la borra. El móvil sigue enviando el token en el cuerpo.
+
 La colección hace esto sola: los requests de registro, login y refresh guardan los tokens en las variables `accessToken` y `refreshToken`, y la autorización Bearer está configurada a nivel de colección, así que **no hay que copiar ningún token a mano**. Si un request responde `401` después de un rato, basta con ejecutar **Refrescar token** (o Login) de nuevo.
 
 ### Roles
@@ -171,7 +173,7 @@ Al iniciar, cada pregunta llega como `{respuestaUsuarioId, preguntaId, enunciado
 ### Preguntas
 | Request | Envía | Devuelve |
 |---|---|---|
-| Listar preguntas | `?temaId=&dificultad=&origen=&aprobada=&page=&size=` (todos opcionales; `size` máximo 50) | `200` página de preguntas aprobadas. Solo `ADMIN` o `REVIEWER` pueden pedir `aprobada=false` |
+| Listar preguntas | `?temaId=&dificultad=&origen=&aprobada=&page=&size=` (todos opcionales; `size` máximo 100) | `200` página de preguntas aprobadas. Solo `ADMIN` o `REVIEWER` pueden pedir `aprobada=false` |
 | Obtener pregunta por id | — | `200` `{id, temaId, tema, enunciado, alternativas, dificultad}` sin clave ni explicación |
 | Tutor de IA (PRO) | `/preguntas/{preguntaId}/tutor-ia` | `200` `{preguntaId, explicacion}` generada por Gemini; descuenta 1 de las 30 consultas diarias. `403` con plan gratuito o al superar el tope; `502` si el servidor no tiene `GEMINI_API_KEY` (no descuenta cupo) |
 | Crear pregunta (ADMIN) | `{temaId, enunciado, alternativas[5], claveCorrecta (0-4), explicacion, dificultad, origen, aprobada}` | `201` con la pregunta completa (con clave y explicación). Guarda `preguntaId`: los requests siguientes actúan sobre **esta** pregunta de prueba, no sobre el banco |
