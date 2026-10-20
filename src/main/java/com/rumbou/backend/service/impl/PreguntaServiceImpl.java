@@ -32,7 +32,7 @@ import java.util.List;
 @Service
 public class PreguntaServiceImpl implements PreguntaService {
 
-    private static final int TAMANO_PAGINA_MAXIMO = 50;
+    private static final int TAMANO_PAGINA_MAXIMO = 100;
 
     private final PreguntaRepository preguntaRepository;
     private final TemaRepository temaRepository;

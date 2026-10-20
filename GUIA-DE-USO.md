@@ -171,7 +171,7 @@ Al iniciar, cada pregunta llega como `{respuestaUsuarioId, preguntaId, enunciado
 ### Preguntas
 | Request | Envía | Devuelve |
 |---|---|---|
-| Listar preguntas | `?temaId=&dificultad=&origen=&aprobada=&page=&size=` (todos opcionales; `size` máximo 50) | `200` página de preguntas aprobadas. Solo `ADMIN` o `REVIEWER` pueden pedir `aprobada=false` |
+| Listar preguntas | `?temaId=&dificultad=&origen=&aprobada=&page=&size=` (todos opcionales; `size` máximo 100) | `200` página de preguntas aprobadas. Solo `ADMIN` o `REVIEWER` pueden pedir `aprobada=false` |
 | Obtener pregunta por id | — | `200` `{id, temaId, tema, enunciado, alternativas, dificultad}` sin clave ni explicación |
 | Tutor de IA (PRO) | `/preguntas/{preguntaId}/tutor-ia` | `200` `{preguntaId, explicacion}` generada por Gemini; descuenta 1 de las 30 consultas diarias. `403` con plan gratuito o al superar el tope; `502` si el servidor no tiene `GEMINI_API_KEY` (no descuenta cupo) |
 | Crear pregunta (ADMIN) | `{temaId, enunciado, alternativas[5], claveCorrecta (0-4), explicacion, dificultad, origen, aprobada}` | `201` con la pregunta completa (con clave y explicación). Guarda `preguntaId`: los requests siguientes actúan sobre **esta** pregunta de prueba, no sobre el banco |
