@@ -14,7 +14,8 @@ public final class UsuarioMapper {
     }
 
     public static UsuarioResponse toResponse(Usuario usuario) {
-        return new UsuarioResponse(usuario.getId(), usuario.getEmail(), usuario.getNombre(), usuario.getRole());
+        return new UsuarioResponse(usuario.getId(), usuario.getEmail(), usuario.getNombre(),
+                usuario.getApellidos(), usuario.getTelefono(), usuario.getRole());
     }
 
     public static GamificacionResponse toGamificacionResponse(Usuario usuario, List<UsuarioLogro> logros) {

@@ -1,5 +1,7 @@
 package com.rumbou.backend.service.impl;
 
+import com.rumbou.backend.dto.request.ActualizarPerfilRequest;
+import com.rumbou.backend.dto.request.CambiarContrasenaRequest;
 import com.rumbou.backend.dto.response.UsuarioResponse;
 import com.rumbou.backend.entity.Role;
 import com.rumbou.backend.entity.Usuario;
@@ -34,6 +36,28 @@ public class UsuarioServiceImpl implements UsuarioService {
     @Override
     public UsuarioResponse obtenerPerfil() {
         return UsuarioMapper.toResponse(currentUserService.getUsuario());
+    }
+
+    @Transactional
+    @Override
+    public UsuarioResponse actualizarPerfil(ActualizarPerfilRequest request) {
+        Usuario usuario = currentUserService.getUsuario();
+        usuario.setNombre(request.nombre().trim());
+        usuario.setApellidos(textoOpcional(request.apellidos()));
+        usuario.setTelefono(textoOpcional(request.telefono()));
+        return UsuarioMapper.toResponse(usuarioRepository.save(usuario));
+    }
+
+    // 400 y no 401: la sesion sigue siendo valida aunque la contrasena actual no coincida.
+    @Transactional
+    @Override
+    public void cambiarContrasena(CambiarContrasenaRequest request) {
+        Usuario usuario = currentUserService.getUsuario();
+        if (!passwordEncoder.matches(request.contrasenaActual(), usuario.getPasswordHash())) {
+            throw new InvalidOperationException("La contrasena actual no es correcta");
+        }
+        usuario.setPasswordHash(passwordEncoder.encode(request.contrasenaNueva()));
+        usuarioRepository.save(usuario);
     }
 
     @Transactional(readOnly = true)
@@ -81,5 +105,9 @@ public class UsuarioServiceImpl implements UsuarioService {
         existente.setRole(Role.ADMIN);
         usuarioRepository.save(existente);
         log.info("Usuario {} promovido a administrador", email);
+    }
+
+    private String textoOpcional(String valor) {
+        return valor == null || valor.isBlank() ? null : valor.trim();
     }
 }
