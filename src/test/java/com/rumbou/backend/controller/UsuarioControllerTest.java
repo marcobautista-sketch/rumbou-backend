@@ -67,7 +67,7 @@ class UsuarioControllerTest {
     @Test
     void meDevuelveLosDatosDelUsuarioDelToken() throws Exception {
         given(usuarioService.obtenerPerfil())
-                .willReturn(new UsuarioResponse(7L, "postulante@rumbou.com", "Ana", Role.USER));
+                .willReturn(new UsuarioResponse(7L, "postulante@rumbou.com", "Ana", null, null, Role.USER));
 
         mockMvc.perform(get("/api/v1/usuarios/me").with(user(usuarioConRol(7L, Role.USER))))
                 .andExpect(status().isOk())
@@ -98,7 +98,7 @@ class UsuarioControllerTest {
     @Test
     void unAdminPuedePromoverAOtroUsuario() throws Exception {
         given(usuarioService.cambiarRol(eq(2L), eq(Role.ADMIN)))
-                .willReturn(new UsuarioResponse(2L, "ana@rumbou.com", "Ana", Role.ADMIN));
+                .willReturn(new UsuarioResponse(2L, "ana@rumbou.com", "Ana", null, null, Role.ADMIN));
 
         mockMvc.perform(patch("/api/v1/usuarios/2/rol")
                         .with(user(usuarioConRol(1L, Role.ADMIN)))
@@ -135,7 +135,7 @@ class UsuarioControllerTest {
     @Test
     void unAdminPuedeBuscarUnUsuarioPorEmail() throws Exception {
         given(usuarioService.buscarPorEmail("ana@rumbou.com"))
-                .willReturn(new UsuarioResponse(2L, "ana@rumbou.com", "Ana", Role.USER));
+                .willReturn(new UsuarioResponse(2L, "ana@rumbou.com", "Ana", null, null, Role.USER));
 
         mockMvc.perform(get("/api/v1/usuarios").param("email", "ana@rumbou.com")
                         .with(user(usuarioConRol(1L, Role.ADMIN))))
