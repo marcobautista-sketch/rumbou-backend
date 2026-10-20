@@ -2,6 +2,7 @@ package com.rumbou.backend.service.impl;
 
 import com.rumbou.backend.dto.response.AreaResponse;
 import com.rumbou.backend.dto.response.TemaResponse;
+import com.rumbou.backend.entity.Area;
 import com.rumbou.backend.exception.ResourceNotFoundException;
 import com.rumbou.backend.mapper.AreaMapper;
 import com.rumbou.backend.repository.AreaRepository;
@@ -36,11 +37,11 @@ public class AreaServiceImpl implements AreaService {
     @Transactional(readOnly = true)
     @Override
     public List<TemaResponse> listarTemas(Long areaId) {
-        if (!areaRepository.existsById(areaId)) {
-            throw new ResourceNotFoundException("No existe un area con id " + areaId);
-        }
+        Area area = areaRepository.findById(areaId)
+                .orElseThrow(() -> new ResourceNotFoundException("No existe un area con id " + areaId));
+        String siglas = area.getUniversidad().getSiglas();
         return estructuraExamenRepository.findByAreaIdOrderByOrden(areaId).stream()
-                .map(estructura -> AreaMapper.toTemaResponse(estructura.getTema()))
+                .map(estructura -> AreaMapper.toTemaResponse(estructura, siglas))
                 .toList();
     }
 }

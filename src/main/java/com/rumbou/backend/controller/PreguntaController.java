@@ -2,6 +2,7 @@ package com.rumbou.backend.controller;
 
 import com.rumbou.backend.dto.request.AprobarLoteRequest;
 import com.rumbou.backend.dto.request.CreatePreguntaRequest;
+import com.rumbou.backend.dto.request.TutorIaRequest;
 import com.rumbou.backend.dto.request.UpdatePreguntaRequest;
 import com.rumbou.backend.dto.response.PreguntaAdminResponse;
 import com.rumbou.backend.dto.response.PreguntaResponse;
@@ -52,6 +53,13 @@ public class PreguntaController {
         return ResponseEntity.ok(preguntaService.obtener(id));
     }
 
+    // Con la clave y la explicacion, para el formulario de edicion y la revision.
+    @GetMapping("/{id}/completa")
+    @PreAuthorize("hasAnyRole('ADMIN', 'REVIEWER')")
+    public ResponseEntity<PreguntaAdminResponse> obtenerCompleta(@PathVariable Long id) {
+        return ResponseEntity.ok(preguntaService.obtenerCompleta(id));
+    }
+
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<PreguntaAdminResponse> crear(@Valid @RequestBody CreatePreguntaRequest request) {
@@ -86,7 +94,9 @@ public class PreguntaController {
 
     // Sin @PreAuthorize: es un limite de plan, y eso lo decide PlanService dentro del servicio.
     @PostMapping("/{id}/tutor-ia")
-    public ResponseEntity<TutorIaResponse> tutorIa(@PathVariable Long id) {
-        return ResponseEntity.ok(preguntaService.pedirExplicacionTutorIa(id));
+    public ResponseEntity<TutorIaResponse> tutorIa(@PathVariable Long id,
+                                                   @Valid @RequestBody(required = false) TutorIaRequest request) {
+        Integer alternativaMarcada = request == null ? null : request.alternativaMarcada();
+        return ResponseEntity.ok(preguntaService.pedirExplicacionTutorIa(id, alternativaMarcada));
     }
 }

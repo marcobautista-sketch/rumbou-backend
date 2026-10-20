@@ -1,5 +1,7 @@
 package com.rumbou.backend.service;
 
+import com.rumbou.backend.dto.request.ActualizarPerfilRequest;
+import com.rumbou.backend.dto.request.CambiarContrasenaRequest;
 import com.rumbou.backend.dto.response.UsuarioResponse;
 import com.rumbou.backend.entity.Role;
 import com.rumbou.backend.entity.Usuario;
@@ -136,5 +138,42 @@ class UsuarioServiceTest {
 
         assertThatThrownBy(() -> usuarioService.buscarPorEmail("nadie@rumbou.com"))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void actualizarPerfilGuardaLosDatosLimpios() {
+        Usuario ana = usuario(1L, "ana@rumbou.com", Role.USER);
+        when(currentUserService.getUsuario()).thenReturn(ana);
+
+        UsuarioResponse respuesta = usuarioService.actualizarPerfil(
+                new ActualizarPerfilRequest("  Ana Lucia ", " Quispe Rojas ", "  "));
+
+        assertThat(respuesta.nombre()).isEqualTo("Ana Lucia");
+        assertThat(respuesta.apellidos()).isEqualTo("Quispe Rojas");
+        assertThat(respuesta.telefono()).isNull();
+    }
+
+    @Test
+    void cambiarContrasenaConLaActualIncorrectaEsUn400() {
+        Usuario ana = usuario(1L, "ana@rumbou.com", Role.USER);
+        when(currentUserService.getUsuario()).thenReturn(ana);
+        when(passwordEncoder.matches("Equivocada1", "hash")).thenReturn(false);
+
+        assertThatThrownBy(() -> usuarioService.cambiarContrasena(
+                new CambiarContrasenaRequest("Equivocada1", "NuevaClave2026")))
+                .isInstanceOf(InvalidOperationException.class);
+        verify(usuarioRepository, never()).save(any(Usuario.class));
+    }
+
+    @Test
+    void cambiarContrasenaGuardaLaNuevaCifrada() {
+        Usuario ana = usuario(1L, "ana@rumbou.com", Role.USER);
+        when(currentUserService.getUsuario()).thenReturn(ana);
+        when(passwordEncoder.matches("ClaveActual1", "hash")).thenReturn(true);
+        when(passwordEncoder.encode("NuevaClave2026")).thenReturn("hash-nuevo");
+
+        usuarioService.cambiarContrasena(new CambiarContrasenaRequest("ClaveActual1", "NuevaClave2026"));
+
+        assertThat(ana.getPasswordHash()).isEqualTo("hash-nuevo");
     }
 }

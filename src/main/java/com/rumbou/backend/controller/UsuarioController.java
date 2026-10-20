@@ -1,5 +1,7 @@
 package com.rumbou.backend.controller;
 
+import com.rumbou.backend.dto.request.ActualizarPerfilRequest;
+import com.rumbou.backend.dto.request.CambiarContrasenaRequest;
 import com.rumbou.backend.dto.request.CambiarRolRequest;
 import com.rumbou.backend.dto.response.GamificacionResponse;
 import com.rumbou.backend.dto.response.UsuarioResponse;
@@ -11,6 +13,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -31,6 +34,17 @@ public class UsuarioController {
     @GetMapping("/me")
     public ResponseEntity<UsuarioResponse> me() {
         return ResponseEntity.ok(usuarioService.obtenerPerfil());
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<UsuarioResponse> actualizarPerfil(@Valid @RequestBody ActualizarPerfilRequest request) {
+        return ResponseEntity.ok(usuarioService.actualizarPerfil(request));
+    }
+
+    @PatchMapping("/me/contrasena")
+    public ResponseEntity<Void> cambiarContrasena(@Valid @RequestBody CambiarContrasenaRequest request) {
+        usuarioService.cambiarContrasena(request);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/me/gamificacion")

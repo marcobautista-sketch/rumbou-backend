@@ -69,6 +69,12 @@ public class PreguntaServiceImpl implements PreguntaService {
         return PreguntaMapper.toResponse(obtenerVisibleParaElUsuario(id));
     }
 
+    @Transactional(readOnly = true)
+    @Override
+    public PreguntaAdminResponse obtenerCompleta(Long id) {
+        return PreguntaMapper.toAdminResponse(obtenerEntidad(id));
+    }
+
     @Transactional
     @Override
     public PreguntaAdminResponse aprobar(Long id) {
@@ -126,12 +132,12 @@ public class PreguntaServiceImpl implements PreguntaService {
     // Consulta PRO real: se pregunta a Gemini en el momento y se descuenta del cupo
     // diario, sin cachear (la explicacion estatica la cachea TutorIaExplicacionListener).
     @Override
-    public TutorIaResponse pedirExplicacionTutorIa(Long id) {
+    public TutorIaResponse pedirExplicacionTutorIa(Long id, Integer alternativaMarcada) {
         Pregunta pregunta = obtenerVisibleParaElUsuario(id);
         planService.puedeAcceder(currentUserService.getUsuario(), Funcionalidad.TUTOR_IA);
 
         String explicacion = geminiClient.explicar(
-                pregunta.getEnunciado(), pregunta.getAlternativas(), pregunta.getClaveCorrecta());
+                pregunta.getEnunciado(), pregunta.getAlternativas(), pregunta.getClaveCorrecta(), alternativaMarcada);
 
         planService.registrarUso(currentUserService.getUsuario(), Funcionalidad.TUTOR_IA);
         return new TutorIaResponse(pregunta.getId(), explicacion);

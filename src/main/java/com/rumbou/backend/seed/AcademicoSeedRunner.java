@@ -24,6 +24,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 // Carga el catalogo academico desde src/main/resources/seed/ (profile "seed"):
@@ -90,7 +91,7 @@ public class AcademicoSeedRunner implements CommandLineRunner {
     }
 
     private void sembrarAreas() {
-        for (Fila fila : leer("areas.csv", 3)) {
+        for (Fila fila : leer("areas.csv", 6)) {
             Universidad universidad = buscarUniversidad(fila, 0);
             String codigo = fila.texto(1);
             Area area = areaRepository.findByUniversidadIdAndCodigo(universidad.getId(), codigo)
@@ -98,6 +99,9 @@ public class AcademicoSeedRunner implements CommandLineRunner {
             area.setUniversidad(universidad);
             area.setCodigo(codigo);
             area.setNombre(fila.texto(2));
+            area.setProcesoProximo(fila.texto(3));
+            area.setFechaProximoExamen(LocalDate.parse(fila.texto(4)));
+            area.setFechaExamenConfirmada(Boolean.parseBoolean(fila.texto(5)));
             areaRepository.save(area);
         }
     }

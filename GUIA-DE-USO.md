@@ -128,7 +128,7 @@ Los códigos entre paréntesis son los que aceptan los tests de la colección. T
 ### Autenticación
 | Request | Envía | Devuelve |
 |---|---|---|
-| Registrar usuario | `{email, password, nombre}` | `201` con `accessToken`, `refreshToken`, `tokenType`. `409` si el correo ya existe; `400` si falta un campo, el correo es inválido o la contraseña no cumple la política |
+| Registrar usuario | `{email, password, nombre}` y opcionalmente `apellidos` y `telefono` (celular de 9 dígitos que empieza con 9) | `201` con `accessToken`, `refreshToken`, `tokenType`. `409` si el correo ya existe; `400` si falta un campo, el correo es inválido o la contraseña no cumple la política |
 | Login | `{email, password}` | `200` con tokens. `401` si las credenciales no coinciden |
 | Refrescar token | `{refreshToken}` | `200` con tokens nuevos. `401` si el refresh token es inválido, venció o es un access token |
 | Olvidé mi contraseña | `{email}` | `204` siempre, exista o no el correo |
@@ -138,7 +138,9 @@ Los códigos entre paréntesis son los que aceptan los tests de la colección. T
 ### Usuarios
 | Request | Envía | Devuelve |
 |---|---|---|
-| Mi perfil | — | `200` `{id, email, nombre, role}`. Nunca incluye la contraseña |
+| Mi perfil | — | `200` `{id, email, nombre, apellidos, telefono, role}`. Nunca incluye la contraseña |
+| Editar mi perfil | `PUT /usuarios/me` con `{nombre, apellidos, telefono}` | `200` con el perfil actualizado. `400` si el celular no tiene 9 dígitos o no empieza con 9 |
+| Cambiar mi contraseña | `PATCH /usuarios/me/contrasena` con `{contrasenaActual, contrasenaNueva}` | `204`. `400` si la contraseña actual no coincide o la nueva no cumple la política |
 | Mi gamificación | `GET /usuarios/me/gamificacion` | `200` `{xpTotal, xpSemanal, rachaActual, rachaMaxima, ultimaActividad, logros[]}`; cada logro trae `{id, nombre, descripcion, fechaDesbloqueo}`. Se actualiza al finalizar cada simulacro |
 | Buscar usuario por email (ADMIN) | `?email=` | `200` con el usuario (`403` como USER, `404` si no existe) |
 | Cambiar rol (ADMIN) | `{"role": "ADMIN"}`, `"REVIEWER"` o `"USER"` sobre `/usuarios/{usuarioId}/rol` | `200` con el usuario actualizado. `400` si un admin intenta quitarse su propio rol, `403` como USER |
@@ -147,8 +149,8 @@ Los códigos entre paréntesis son los que aceptan los tests de la colección. T
 | Request | Envía | Devuelve |
 |---|---|---|
 | Listar ofertas académicas | filtros opcionales `universidad`, `area`, `carrera` (texto parcial) | `200` lista de `{id, universidad, areaId, area, areaNombre, carrera, facultad, procesoAdmision, puntajeUltimoIngresante, vacantes}`. Guarda `ofertaAcademicaId` y `areaId` |
-| Listar áreas | `GET /areas` | `200` lista de `{id, universidad, codigo, nombre}`: UNI General, UNMSM B y UNMSM C |
-| Listar temas de un área | `GET /areas/{areaId}/temas` | `200` lista de `{id, nombre}` en el orden del examen real: son los `temaId` válidos para un simulacro `POR_TEMA` de esa área. `404` si el área no existe |
+| Listar áreas | `GET /areas` | `200` lista de `{id, universidad, codigo, nombre, procesoProximo, fechaProximoExamen, fechaExamenConfirmada}`: UNI General, UNMSM B y UNMSM C. Mientras la universidad no publica su cronograma, la fecha es una estimación (`fechaExamenConfirmada: false`) |
+| Listar temas de un área | `GET /areas/{areaId}/temas` | `200` lista de `{id, nombre, cantidadPreguntas, subtemas[]}` en el orden del examen real; los subtemas salen del temario oficial de la universidad del área. Son los `temaId` válidos para un simulacro `POR_TEMA` de esa área. `404` si el área no existe |
 
 ### Simulacros
 | Request | Envía | Devuelve |
@@ -177,7 +179,8 @@ Al iniciar, cada pregunta llega como `{respuestaUsuarioId, preguntaId, enunciado
 |---|---|---|
 | Listar preguntas | `?temaId=&dificultad=&origen=&aprobada=&page=&size=` (todos opcionales; `size` máximo 100) | `200` página de preguntas aprobadas. Solo `ADMIN` o `REVIEWER` pueden pedir `aprobada=false` |
 | Obtener pregunta por id | — | `200` `{id, temaId, tema, enunciado, alternativas, dificultad}` sin clave ni explicación |
-| Tutor de IA (PRO) | `/preguntas/{preguntaId}/tutor-ia` | `200` `{preguntaId, explicacion}` generada por Gemini; descuenta 1 de las 30 consultas diarias. `403` con plan gratuito o al superar el tope; `502` si el servidor no tiene `GEMINI_API_KEY` (no descuenta cupo) |
+| Pregunta completa (ADMIN o REVIEWER) | `GET /preguntas/{preguntaId}/completa` | `200` con la clave, la explicación, el origen y si está aprobada, para editarla o revisarla. `403` como USER |
+| Tutor de IA (PRO) | `/preguntas/{preguntaId}/tutor-ia`, opcionalmente con `{alternativaMarcada}` para que explique primero la trampa de esa opción | `200` `{preguntaId, explicacion}` generada por Gemini; descuenta 1 de las 30 consultas diarias. `403` con plan gratuito o al superar el tope; `502` si el servidor no tiene `GEMINI_API_KEY` (no descuenta cupo) |
 | Crear pregunta (ADMIN) | `{temaId, enunciado, alternativas[5], claveCorrecta (0-4), explicacion, dificultad, origen, aprobada}` | `201` con la pregunta completa (con clave y explicación). Guarda `preguntaId`: los requests siguientes actúan sobre **esta** pregunta de prueba, no sobre el banco |
 | Actualizar pregunta (ADMIN) | mismo cuerpo, reemplaza todos los campos | `200` |
 | Aprobar pregunta (ADMIN o REVIEWER) | `PATCH /preguntas/{id}/aprobar` | `200` con `aprobada: true` |
@@ -185,6 +188,12 @@ Al iniciar, cada pregunta llega como `{respuestaUsuarioId, preguntaId, enunciado
 | Eliminar pregunta (ADMIN) | — | `204`. `409` si la pregunta ya salió en algún simulacro: en ese caso se desaprueba con `PUT` |
 
 Valores posibles: `dificultad` = `FACIL`, `MEDIA`, `DIFICIL`; `origen` = `SEMILLA` (creada a mano o cargada por el seed), `IA_APROBADA` (generada con IA y aprobada por una persona).
+
+### Desafío diario
+| Request | Envía | Devuelve |
+|---|---|---|
+| Desafío de hoy | `GET /desafios/hoy` | `200` con una pregunta del tema donde el postulante tiene menos aciertos (o de uno que aún no practicó), la misma durante todo el día. La clave y la explicación llegan recién al responder |
+| Responder el desafío | `POST /desafios/hoy/respuesta` con `{alternativaMarcada}` (0 a 4) | `200` con la corrección: +50 XP si acierta, +10 si falla; el quinto desafío de la semana suma un bono de 100 XP. Mantiene la racha. `409` si ya respondió hoy |
 
 ### Suscripciones
 | Request | Envía | Devuelve |
