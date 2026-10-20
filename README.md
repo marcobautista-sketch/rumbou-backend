@@ -218,7 +218,7 @@ Rutas bajo `/api/v1`. 🔒 requiere token; 🛡️ `ADMIN` o `REVIEWER`; 👑 so
 | Recurso | Endpoints |
 | --- | --- |
 | Sistema | `GET /health` |
-| Autenticación | `POST /auth/register`, `/login`, `/refresh`, `/forgot-password`, `/reset-password` |
+| Autenticación | `POST /auth/register`, `/login`, `/refresh`, `/logout`, `/forgot-password`, `/reset-password` |
 | Usuarios | 🔒 `GET /usuarios/me`, `GET /usuarios/me/gamificacion` · 👑 `GET /usuarios?email=`, `PATCH /usuarios/{id}/rol` |
 | Catálogo | 🔒 `GET /ofertas-academicas` |
 | Simulacros | 🔒 `POST /simulacros`, `GET /simulacros`, `GET /simulacros/{id}`, `POST /simulacros/{id}/respuestas`, `POST /simulacros/{id}/finalizar` |
