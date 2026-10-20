@@ -7,6 +7,8 @@ public record UsuarioResponse(
         Long id,
         String email,
         String nombre,
+        String apellidos,
+        String telefono,
         Role role
 ) {
 }

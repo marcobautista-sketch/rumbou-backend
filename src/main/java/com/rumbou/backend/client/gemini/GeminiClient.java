@@ -255,6 +255,12 @@ public class GeminiClient {
 
     // A diferencia de resolver(), aqui si le damos la clave: el objetivo es explicar, no validar.
     public String explicar(String enunciado, List<String> alternativas, int claveCorrecta) {
+        return explicar(enunciado, alternativas, claveCorrecta, null);
+    }
+
+    // Con la alternativa que marco el postulante, empieza por la trampa de ese distractor.
+    public String explicar(String enunciado, List<String> alternativas, int claveCorrecta,
+                           Integer alternativaMarcada) {
         StringBuilder prompt = new StringBuilder();
         prompt.append("Explica en un parrafo breve, para un postulante que respondio mal esta pregunta ");
         prompt.append("de un examen de admision, por que la alternativa correcta es la correcta.\n\n");
@@ -263,6 +269,10 @@ public class GeminiClient {
             prompt.append(i).append(") ").append(alternativas.get(i)).append("\n");
         }
         prompt.append("\nLa alternativa correcta es la numero ").append(claveCorrecta).append(".");
+        if (alternativaMarcada != null && alternativaMarcada != claveCorrecta) {
+            prompt.append("\nEl postulante marco la alternativa numero ").append(alternativaMarcada)
+                    .append(". Empieza explicando por que esa opcion resulta tentadora y cual es la trampa.");
+        }
 
         ObjectNode schema = objectMapper.createObjectNode();
         schema.put("type", "OBJECT");

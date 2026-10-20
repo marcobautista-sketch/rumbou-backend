@@ -1,7 +1,10 @@
 # Areas academicas por universidad.
 # UNI tiene una unica area GENERAL: asi el codigo nunca pregunta por la universidad, siempre trabaja con area.
 # De UNMSM solo entran las areas B y C (alcance definido del proyecto).
-universidad|codigo|nombre
-UNI|GENERAL|General
-UNMSM|B|Ciencias Básicas
-UNMSM|C|Ingenierías
+# fecha_examen es la del proximo proceso. Mientras la universidad no publica su cronograma es una
+# estimacion (fecha_confirmada=false) basada en el proceso anterior: UNI 2026-1 rindio del 16 al 20
+# de febrero de 2026 y UNMSM 2026-II tomo las areas B y C el 8 de marzo de 2026.
+universidad|codigo|nombre|proximo_proceso|fecha_examen|fecha_confirmada
+UNI|GENERAL|General|2027-1|2027-02-15|false
+UNMSM|B|Ciencias Básicas|2027-II|2027-03-07|false
+UNMSM|C|Ingenierías|2027-II|2027-03-07|false

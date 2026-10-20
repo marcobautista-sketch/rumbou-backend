@@ -69,6 +69,8 @@ public class AuthServiceImpl implements AuthService {
                 request.nombre(),
                 Role.USER
         );
+        usuario.setApellidos(textoOpcional(request.apellidos()));
+        usuario.setTelefono(textoOpcional(request.telefono()));
         usuarioRepository.save(usuario);
 
         eventPublisher.publishEvent(new UsuarioRegistradoEvent(
@@ -151,6 +153,10 @@ public class AuthServiceImpl implements AuthService {
         } catch (JwtException | IllegalArgumentException ex) {
             throw new InvalidTokenException("El refresh token es invalido o expiro");
         }
+    }
+
+    private String textoOpcional(String valor) {
+        return valor == null || valor.isBlank() ? null : valor.trim();
     }
 
     private String normalizarEmail(String email) {

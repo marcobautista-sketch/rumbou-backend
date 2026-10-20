@@ -7,4 +7,6 @@ public interface GamificacionService {
     GamificacionResponse obtenerResumen();
 
     void procesarSimulacroFinalizado(Long usuarioId);
+
+    void registrarActividad(Long usuarioId, int xp);
 }
