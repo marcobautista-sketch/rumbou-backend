@@ -74,6 +74,8 @@ public final class SimulacroMapper {
         return new RespuestaDetalleResponse(
                 respuesta.getId(),
                 pregunta.getId(),
+                pregunta.getTema().getId(),
+                pregunta.getTema().getNombre(),
                 pregunta.getEnunciado(),
                 pregunta.getAlternativas(),
                 respuesta.getAlternativaMarcada(),
