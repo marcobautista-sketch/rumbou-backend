@@ -87,7 +87,7 @@ Las cuentas de prueba que crea la colección usan la contraseña `Password123`. 
 
 ### Recuperar la contraseña
 
-`POST /auth/forgot-password` responde `204` (sin cuerpo) **siempre**, exista o no el correo (para no revelar qué cuentas están registradas), y dispara un correo con un token de un solo uso que vence a los 30 minutos. `POST /auth/reset-password` recibe ese token y la contraseña nueva. En local los correos llegan a Mailpit (`http://localhost:8025`); en AWS se envían de verdad por Gmail. En la colección, "Resetear contraseña" responde `400` porque usa un token de ejemplo; para probarlo de verdad, abre el correo "Recupera tu contraseña" en Mailpit, copia el token en la variable `resetToken` y vuelve a ejecutar ese request.
+`POST /auth/forgot-password` responde `204` (sin cuerpo) **siempre**, exista o no el correo (para no revelar qué cuentas están registradas), y dispara un correo con un token de un solo uso que vence a los 30 minutos. `POST /auth/reset-password` recibe ese token y la contraseña nueva. En local los correos llegan a Mailpit (`http://localhost:8025`); en AWS se envían de verdad por Gmail. El enlace del correo abre la página `/reset-password` de la web (en local, `http://localhost:5173/reset-password`; en producción se cambia con `APP_RESET_PASSWORD_URL`). En la colección, "Resetear contraseña" responde `400` porque usa un token de ejemplo; para probarlo de verdad, abre el correo "Recupera tu contraseña" en Mailpit, copia el token en la variable `resetToken` y vuelve a ejecutar ese request.
 
 ---
 
@@ -147,6 +147,8 @@ Los códigos entre paréntesis son los que aceptan los tests de la colección. T
 | Request | Envía | Devuelve |
 |---|---|---|
 | Listar ofertas académicas | filtros opcionales `universidad`, `area`, `carrera` (texto parcial) | `200` lista de `{id, universidad, areaId, area, areaNombre, carrera, facultad, procesoAdmision, puntajeUltimoIngresante, vacantes}`. Guarda `ofertaAcademicaId` y `areaId` |
+| Listar áreas | `GET /areas` | `200` lista de `{id, universidad, codigo, nombre}`: UNI General, UNMSM B y UNMSM C |
+| Listar temas de un área | `GET /areas/{areaId}/temas` | `200` lista de `{id, nombre}` en el orden del examen real: son los `temaId` válidos para un simulacro `POR_TEMA` de esa área. `404` si el área no existe |
 
 ### Simulacros
 | Request | Envía | Devuelve |
@@ -156,7 +158,7 @@ Los códigos entre paréntesis son los que aceptan los tests de la colección. T
 | Responder pregunta | `{preguntaId, alternativaMarcada}` sobre `/simulacros/{simulacroId}/respuestas`. `alternativaMarcada` va de `0` a `4`; `null` deja la pregunta en blanco | `204` (sin cuerpo). `400` si la pregunta no es de ese simulacro, la alternativa no existe o el simulacro ya terminó |
 | Finalizar simulacro | — | `200` `{simulacroId, puntajeObtenido, psp, estado: FINALIZADO}`. Dispara gamificación (racha, XP, logros) y progreso |
 | Listar mis simulacros | `GET /simulacros?page=&size=` | `200` página de `{id, tipo, estado, areaId, area, fechaInicio, fechaFin, puntajeObtenido, psp}`, del más reciente al más antiguo |
-| Ver detalle de un simulacro | `GET /simulacros/{simulacroId}` | `200` `{id, tipo, estado, areaId, fechaInicio, fechaFin, puntajeObtenido, psp, preguntas[]}`. Mientras está `EN_CURSO` no muestra la clave; ya `FINALIZADO`, cada pregunta trae `alternativaMarcada`, `claveCorrecta`, `esCorrecta`, `puntajeAportado` y `explicacion`. `403` si el simulacro es de otra persona |
+| Ver detalle de un simulacro | `GET /simulacros/{simulacroId}` | `200` `{id, tipo, estado, areaId, fechaInicio, fechaFin, puntajeObtenido, psp, preguntas[]}`. Cada pregunta trae su `temaId` y `tema`. Mientras está `EN_CURSO` no muestra la clave; ya `FINALIZADO`, cada pregunta trae `alternativaMarcada`, `claveCorrecta`, `esCorrecta`, `puntajeAportado` y `explicacion`. `403` si el simulacro es de otra persona |
 
 Al iniciar, cada pregunta llega como `{respuestaUsuarioId, preguntaId, enunciado, alternativas[5]}`, **sin** la clave correcta ni la explicación; la corrección se ve con el detalle del simulacro una vez finalizado.
 
