@@ -20,6 +20,8 @@ public interface PreguntaService {
 
     PreguntaResponse obtener(Long id);
 
+    PreguntaAdminResponse obtenerCompleta(Long id);
+
     PreguntaAdminResponse aprobar(Long id);
 
     List<PreguntaAdminResponse> aprobarLote(AprobarLoteRequest request);
@@ -28,7 +30,7 @@ public interface PreguntaService {
 
     PreguntaAdminResponse actualizar(Long id, UpdatePreguntaRequest request);
 
-    TutorIaResponse pedirExplicacionTutorIa(Long id);
+    TutorIaResponse pedirExplicacionTutorIa(Long id, Integer alternativaMarcada);
 
     void eliminar(Long id);
 }

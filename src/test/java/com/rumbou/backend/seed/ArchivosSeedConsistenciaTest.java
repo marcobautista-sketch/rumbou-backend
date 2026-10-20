@@ -29,7 +29,7 @@ class ArchivosSeedConsistenciaTest {
     @BeforeAll
     static void leerArchivos() {
         universidades = ArchivoSeed.leer("universidades.csv", 4);
-        areas = ArchivoSeed.leer("areas.csv", 3);
+        areas = ArchivoSeed.leer("areas.csv", 6);
         esquemas = ArchivoSeed.leer("esquemas.csv", 6);
         temas = ArchivoSeed.leer("temas.csv", 3);
         estructura = ArchivoSeed.leer("estructura-examen.csv", 6);

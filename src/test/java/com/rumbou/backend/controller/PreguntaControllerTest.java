@@ -113,7 +113,7 @@ class PreguntaControllerTest {
 
     @Test
     void unUsuarioAutenticadoPuedePedirleAlTutorIaUnaExplicacion() throws Exception {
-        given(preguntaService.pedirExplicacionTutorIa(any()))
+        given(preguntaService.pedirExplicacionTutorIa(any(), any()))
                 .willReturn(new TutorIaResponse(1L, "Porque 2 + 2 = 4"));
 
         mockMvc.perform(post("/api/v1/preguntas/1/tutor-ia")
