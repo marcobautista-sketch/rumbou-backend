@@ -193,4 +193,12 @@ class AuthControllerTest {
 
         verify(authService).refresh("refresh-movil");
     }
+
+    @Test
+    void logoutBorraLaCookieDelRefreshToken() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/logout"))
+                .andExpect(status().isNoContent())
+                .andExpect(cookie().maxAge(RefreshTokenCookie.NOMBRE, 0))
+                .andExpect(cookie().value(RefreshTokenCookie.NOMBRE, ""));
+    }
 }

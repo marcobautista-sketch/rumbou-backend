@@ -41,6 +41,8 @@ RumboU no usa sesiones ni cookies: usa **JSON Web Tokens (JWT)**. Al registrarse
 | `accessToken` | 15 minutos | Va en cada request, en el header `Authorization: Bearer <token>` |
 | `refreshToken` | 7 días | Se envía a `POST /auth/refresh` para obtener un `accessToken` nuevo sin volver a escribir la contraseña |
 
+La web no guarda el refresh token en JavaScript: lo recibe además en la cookie `rumbou_refresh` (`HttpOnly`, `Secure`, `SameSite=Strict`, solo para `/api/v1/auth`). `POST /auth/refresh` acepta esa cookie sin cuerpo y `POST /auth/logout` la borra. El móvil sigue enviando el token en el cuerpo.
+
 La colección hace esto sola: los requests de registro, login y refresh guardan los tokens en las variables `accessToken` y `refreshToken`, y la autorización Bearer está configurada a nivel de colección, así que **no hay que copiar ningún token a mano**. Si un request responde `401` después de un rato, basta con ejecutar **Refrescar token** (o Login) de nuevo.
 
 ### Roles
