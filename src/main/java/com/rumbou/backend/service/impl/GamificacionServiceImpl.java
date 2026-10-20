@@ -52,11 +52,24 @@ public class GamificacionServiceImpl implements GamificacionService {
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
 
-        actualizarRachaYxp(usuario);
+        actualizarRachaYxp(usuario, XP_POR_SIMULACRO);
         evaluarLogros(usuario);
     }
 
-    private void actualizarRachaYxp(Usuario usuario) {
+    // Actividad que no es un simulacro (el desafio diario): suma XP y racha, pero no el logro
+    // de primer simulacro.
+    @Transactional
+    @Override
+    public void registrarActividad(Long usuarioId, int xp) {
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
+
+        actualizarRachaYxp(usuario, xp);
+        evaluarLogrosPorCondicion(usuario, TipoLogro.RACHA_DIAS);
+        evaluarLogrosPorCondicion(usuario, TipoLogro.XP_TOTAL);
+    }
+
+    private void actualizarRachaYxp(Usuario usuario, int xp) {
         LocalDate hoy = LocalDate.now();
         int nuevaRacha = calcularNuevaRacha(usuario.getCurrentStreak(), usuario.getLastActivityDate(), hoy);
 
@@ -65,8 +78,8 @@ public class GamificacionServiceImpl implements GamificacionService {
         if (nuevaRacha > usuario.getLongestStreak()) {
             usuario.setLongestStreak(nuevaRacha);
         }
-        usuario.setXpTotal(usuario.getXpTotal() + XP_POR_SIMULACRO);
-        usuario.setXpSemanal(usuario.getXpSemanal() + XP_POR_SIMULACRO);
+        usuario.setXpTotal(usuario.getXpTotal() + xp);
+        usuario.setXpSemanal(usuario.getXpSemanal() + xp);
     }
 
     // Racha: hoy no cambia, ayer +1, antes se reinicia.
