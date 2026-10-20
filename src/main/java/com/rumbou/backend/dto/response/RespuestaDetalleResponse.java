@@ -7,6 +7,8 @@ import java.util.List;
 public record RespuestaDetalleResponse(
         Long respuestaUsuarioId,
         Long preguntaId,
+        Long temaId,
+        String tema,
         String enunciado,
         List<String> alternativas,
         Integer alternativaMarcada,
