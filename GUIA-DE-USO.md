@@ -148,7 +148,7 @@ Los códigos entre paréntesis son los que aceptan los tests de la colección. T
 ### Catálogo académico
 | Request | Envía | Devuelve |
 |---|---|---|
-| Listar ofertas académicas | filtros opcionales `universidad`, `area`, `carrera` (texto parcial) | `200` lista de `{id, universidad, areaId, area, areaNombre, carrera, facultad, procesoAdmision, puntajeUltimoIngresante, vacantes}`. Guarda `ofertaAcademicaId` y `areaId` |
+| Listar ofertas académicas (público, sin token) | filtros opcionales `universidad`, `area`, `carrera` (texto parcial) | `200` lista de `{id, universidad, areaId, area, areaNombre, carrera, facultad, procesoAdmision, puntajeUltimoIngresante, vacantes}`. Guarda `ofertaAcademicaId` y `areaId` |
 | Listar áreas | `GET /areas` | `200` lista de `{id, universidad, codigo, nombre, procesoProximo, fechaProximoExamen, fechaExamenConfirmada}`: UNI General, UNMSM B y UNMSM C. Mientras la universidad no publica su cronograma, la fecha es una estimación (`fechaExamenConfirmada: false`) |
 | Listar temas de un área | `GET /areas/{areaId}/temas` | `200` lista de `{id, nombre, cantidadPreguntas, subtemas[]}` en el orden del examen real; los subtemas salen del temario oficial de la universidad del área. Son los `temaId` válidos para un simulacro `POR_TEMA` de esa área. `404` si el área no existe |
 
