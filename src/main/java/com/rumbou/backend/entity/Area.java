@@ -7,6 +7,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+import java.time.LocalDate;
+
 @Entity
 @Table(name = "areas")
 public class Area extends BaseEntity {
@@ -20,6 +22,14 @@ public class Area extends BaseEntity {
 
     @Column(nullable = false)
     private String nombre;
+
+    @Column(length = 20)
+    private String procesoProximo;
+
+    private LocalDate fechaProximoExamen;
+
+    // false mientras la universidad no publica su cronograma: la fecha es una estimacion.
+    private Boolean fechaExamenConfirmada;
 
     public Area() {
     }
@@ -52,5 +62,29 @@ public class Area extends BaseEntity {
 
     public void setNombre(String nombre) {
         this.nombre = nombre;
+    }
+
+    public String getProcesoProximo() {
+        return procesoProximo;
+    }
+
+    public void setProcesoProximo(String procesoProximo) {
+        this.procesoProximo = procesoProximo;
+    }
+
+    public LocalDate getFechaProximoExamen() {
+        return fechaProximoExamen;
+    }
+
+    public void setFechaProximoExamen(LocalDate fechaProximoExamen) {
+        this.fechaProximoExamen = fechaProximoExamen;
+    }
+
+    public Boolean getFechaExamenConfirmada() {
+        return fechaExamenConfirmada;
+    }
+
+    public void setFechaExamenConfirmada(Boolean fechaExamenConfirmada) {
+        this.fechaExamenConfirmada = fechaExamenConfirmada;
     }
 }

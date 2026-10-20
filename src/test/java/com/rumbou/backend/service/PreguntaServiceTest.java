@@ -175,10 +175,10 @@ class PreguntaServiceTest {
         Usuario usuario = usuarioConId(10L);
         given(currentUserService.getUsuario()).willReturn(usuario);
         given(preguntaRepository.findById(1L)).willReturn(Optional.of(pregunta));
-        given(geminiClient.explicar(pregunta.getEnunciado(), pregunta.getAlternativas(), pregunta.getClaveCorrecta()))
+        given(geminiClient.explicar(pregunta.getEnunciado(), pregunta.getAlternativas(), pregunta.getClaveCorrecta(), null))
                 .willReturn("Porque 2 + 2 = 4");
 
-        TutorIaResponse respuesta = preguntaService.pedirExplicacionTutorIa(1L);
+        TutorIaResponse respuesta = preguntaService.pedirExplicacionTutorIa(1L, null);
 
         assertThat(respuesta.preguntaId()).isEqualTo(1L);
         assertThat(respuesta.explicacion()).isEqualTo("Porque 2 + 2 = 4");
@@ -195,10 +195,10 @@ class PreguntaServiceTest {
         willThrow(new ForbiddenException("El tutor de IA es exclusivo del plan PRO"))
                 .given(planService).puedeAcceder(usuario, Funcionalidad.TUTOR_IA);
 
-        assertThatThrownBy(() -> preguntaService.pedirExplicacionTutorIa(1L))
+        assertThatThrownBy(() -> preguntaService.pedirExplicacionTutorIa(1L, null))
                 .isInstanceOf(ForbiddenException.class);
 
-        verify(geminiClient, never()).explicar(any(), any(), any(Integer.class));
+        verify(geminiClient, never()).explicar(any(), any(), any(Integer.class), any());
         verify(planService, never()).registrarUso(any(), any());
     }
 
@@ -208,10 +208,10 @@ class PreguntaServiceTest {
         Usuario usuario = usuarioConId(10L);
         given(currentUserService.getUsuario()).willReturn(usuario);
         given(preguntaRepository.findById(1L)).willReturn(Optional.of(pregunta));
-        given(geminiClient.explicar(any(), any(), any(Integer.class)))
+        given(geminiClient.explicar(any(), any(), any(Integer.class), any()))
                 .willThrow(new GeminiException("Gemini no respondio"));
 
-        assertThatThrownBy(() -> preguntaService.pedirExplicacionTutorIa(1L))
+        assertThatThrownBy(() -> preguntaService.pedirExplicacionTutorIa(1L, null))
                 .isInstanceOf(GeminiException.class);
 
         verify(planService, never()).registrarUso(any(), any());
@@ -224,11 +224,11 @@ class PreguntaServiceTest {
         given(currentUserService.getUsuario()).willReturn(usuario);
         given(preguntaRepository.findById(1L)).willReturn(Optional.of(pregunta));
 
-        assertThatThrownBy(() -> preguntaService.pedirExplicacionTutorIa(1L))
+        assertThatThrownBy(() -> preguntaService.pedirExplicacionTutorIa(1L, null))
                 .isInstanceOf(ResourceNotFoundException.class);
 
         verify(planService, never()).puedeAcceder(any(), any());
-        verify(geminiClient, never()).explicar(any(), any(), any(Integer.class));
+        verify(geminiClient, never()).explicar(any(), any(), any(Integer.class), any());
     }
 
     @Test
@@ -238,9 +238,9 @@ class PreguntaServiceTest {
         Usuario usuario = usuarioConId(10L);
         given(currentUserService.getUsuario()).willReturn(usuario);
         given(preguntaRepository.findById(1L)).willReturn(Optional.of(pregunta));
-        given(geminiClient.explicar(any(), any(), any(Integer.class))).willReturn("Explicacion");
+        given(geminiClient.explicar(any(), any(), any(Integer.class), any())).willReturn("Explicacion");
 
-        TutorIaResponse respuesta = preguntaService.pedirExplicacionTutorIa(1L);
+        TutorIaResponse respuesta = preguntaService.pedirExplicacionTutorIa(1L, null);
 
         assertThat(respuesta.explicacion()).isEqualTo("Explicacion");
     }
@@ -275,5 +275,18 @@ class PreguntaServiceTest {
         PreguntaResponse respuesta = preguntaService.obtener(1L);
 
         assertThat(respuesta.id()).isEqualTo(1L);
+    }
+
+    @Test
+    void elTutorRecibeLaAlternativaQueMarcoElPostulante() {
+        Pregunta pregunta = preguntaConId(1L, true);
+        given(currentUserService.getUsuario()).willReturn(usuarioConId(10L));
+        given(preguntaRepository.findById(1L)).willReturn(Optional.of(pregunta));
+        given(geminiClient.explicar(pregunta.getEnunciado(), pregunta.getAlternativas(), pregunta.getClaveCorrecta(), 3))
+                .willReturn("La D es tentadora porque...");
+
+        TutorIaResponse respuesta = preguntaService.pedirExplicacionTutorIa(1L, 3);
+
+        assertThat(respuesta.explicacion()).isEqualTo("La D es tentadora porque...");
     }
 }
