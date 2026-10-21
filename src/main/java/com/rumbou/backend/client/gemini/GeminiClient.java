@@ -4,6 +4,7 @@ import com.rumbou.backend.entity.Dificultad;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +19,7 @@ import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -289,10 +291,70 @@ public class GeminiClient {
         return explicacion;
     }
 
+    // Multimodal: la foto del procedimiento escrito a mano viaja junto con la pregunta y su clave.
+    public RevisionSolucionDto revisarSolucion(String enunciado, List<String> alternativas, int claveCorrecta,
+                                               String explicacion, byte[] imagen, String tipoImagen) {
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("La imagen es la foto del procedimiento que un postulante escribio a mano ");
+        prompt.append("para resolver esta pregunta de un examen de admision:\n\n");
+        prompt.append(enunciado).append("\n");
+        for (int i = 0; i < alternativas.size(); i++) {
+            prompt.append(i).append(") ").append(alternativas.get(i)).append("\n");
+        }
+        prompt.append("\nLa alternativa correcta es la numero ").append(claveCorrecta).append(".\n");
+        if (explicacion != null && !explicacion.isBlank()) {
+            prompt.append("Solucion de referencia: ").append(explicacion).append("\n");
+        }
+        prompt.append("""
+
+                Revisa el procedimiento paso a paso y elige el veredicto:
+                - CORRECTA: el razonamiento es valido y llega a la alternativa correcta.
+                - PARCIAL: el planteamiento va bien, pero hay un error de calculo o quedo sin terminar.
+                - INCORRECTA: el planteamiento o el resultado no son correctos.
+                - ILEGIBLE: la foto no se lee o no muestra una solucion de esta pregunta.
+                En "retroalimentacion", en un parrafo breve y hablandole al postulante, indica el \
+                primer paso donde esta el error y como corregirlo; si es correcta, que hizo bien.
+                """);
+
+        ObjectNode schema = objectMapper.createObjectNode();
+        schema.put("type", "OBJECT");
+        ObjectNode properties = schema.putObject("properties");
+        ObjectNode veredicto = properties.putObject("veredicto");
+        veredicto.put("type", "STRING");
+        veredicto.putArray("enum").add("CORRECTA").add("PARCIAL").add("INCORRECTA").add("ILEGIBLE");
+        properties.putObject("retroalimentacion").put("type", "STRING");
+        schema.putArray("required").add("veredicto").add("retroalimentacion");
+
+        JsonNode respuesta = llamar(prompt.toString(), imagen, tipoImagen, schema);
+        RevisionSolucionDto revision;
+        try {
+            revision = objectMapper.convertValue(respuesta, RevisionSolucionDto.class);
+        } catch (IllegalArgumentException ex) {
+            throw new GeminiException("Gemini devolvio una revision con formato invalido", ex);
+        }
+        // Igual que en explicar(): una revision vacia no debe gastar el cupo diario.
+        if (revision.veredicto() == null || revision.retroalimentacion() == null
+                || revision.retroalimentacion().isBlank()) {
+            throw new GeminiException("Gemini devolvio una revision vacia");
+        }
+        return revision;
+    }
+
     private JsonNode llamar(String prompt, ObjectNode responseSchema) {
+        return llamar(prompt, null, null, responseSchema);
+    }
+
+    // Con imagen, la foto va como una segunda parte del mensaje, en base64 (inlineData).
+    private JsonNode llamar(String prompt, byte[] imagen, String tipoImagen, ObjectNode responseSchema) {
         ObjectNode body = objectMapper.createObjectNode();
         ObjectNode content = body.putArray("contents").addObject();
-        content.putArray("parts").addObject().put("text", prompt);
+        ArrayNode parts = content.putArray("parts");
+        parts.addObject().put("text", prompt);
+        if (imagen != null) {
+            ObjectNode inlineData = parts.addObject().putObject("inlineData");
+            inlineData.put("mimeType", tipoImagen);
+            inlineData.put("data", Base64.getEncoder().encodeToString(imagen));
+        }
 
         ObjectNode generationConfig = body.putObject("generationConfig");
         generationConfig.put("responseMimeType", "application/json");
