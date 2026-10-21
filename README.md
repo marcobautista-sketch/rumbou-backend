@@ -205,7 +205,7 @@ A tener en cuenta:
 - Para probar cada rol, la colección trae la carpeta "Cambiar de rol" (guía de uso, sección 2).
 - En local, "Tutor de IA" y "Crear suscripción PRO" responden 502 porque las claves de Gemini y Mercado Pago no están en el repositorio; su funcionamiento en AWS consta en [`docs/despliegue-aws`](docs/despliegue-aws).
 
-Variables de entorno: `SPRING_DATASOURCE_*`, `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `GEMINI_API_KEY`, `YOUTUBE_API_KEY`, `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `MP_BACK_URL`, `MP_TEST_PAYER_EMAIL`, `CORS_ALLOWED_ORIGINS`, `APP_RESET_PASSWORD_URL`, `SHOW_SQL` y `MAIL_*`. Todas tienen valor de desarrollo.
+Variables de entorno: `SPRING_DATASOURCE_*`, `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `GEMINI_API_KEY`, `YOUTUBE_API_KEY` (también la usa Google Books, o `GOOGLE_BOOKS_API_KEY`), `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `MP_BACK_URL`, `MP_TEST_PAYER_EMAIL`, `CORS_ALLOWED_ORIGINS`, `APP_RESET_PASSWORD_URL`, `SHOW_SQL` y `MAIL_*`. Todas tienen valor de desarrollo.
 
 ### B. Despliegue
 
@@ -224,7 +224,7 @@ Rutas bajo `/api/v1`. 🔒 requiere token; 🛡️ `ADMIN` o `REVIEWER`; 👑 so
 | Simulacros | 🔒 `POST /simulacros`, `GET /simulacros`, `GET /simulacros/{id}`, `POST /simulacros/{id}/respuestas`, `POST /simulacros/{id}/finalizar` |
 | Progreso | 🔒 `POST /objetivos`, `GET /objetivos`, `DELETE /objetivos/{id}`, `GET /progreso/dominio-temas`, `GET /progreso/historial` |
 | Desafío diario | 🔒 `GET /desafios/hoy`, `POST /desafios/hoy/respuesta` |
-| Videos por tema | 🔒 `GET /temas/{id}/videos` |
+| Plan de estudio | 🔒 `GET /temas/{id}/videos`, `GET /temas/{id}/libros` |
 | Preguntas | 🔒 `GET /preguntas`, `GET /preguntas/{id}`, `POST /preguntas/{id}/tutor-ia`, `POST /preguntas/{id}/revisar-solucion` · 🛡️ `GET /preguntas/{id}/completa`, `PATCH /preguntas/{id}/aprobar`, `PATCH /preguntas/aprobar-lote` · 👑 `POST`, `PUT`, `DELETE /preguntas` |
 | Suscripciones | 🔒 `POST /suscripciones`, `GET /suscripciones/me` · `POST /webhooks/mercadopago` (público, firmado) |
 
