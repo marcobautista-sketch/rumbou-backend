@@ -195,6 +195,8 @@ Valores posibles: `dificultad` = `FACIL`, `MEDIA`, `DIFICIL`; `origen` = `SEMILL
 |---|---|---|
 | Desafío de hoy | `GET /desafios/hoy` | `200` con una pregunta del tema donde el postulante tiene menos aciertos (o de uno que aún no practicó), la misma durante todo el día. La clave y la explicación llegan recién al responder |
 | Responder el desafío | `POST /desafios/hoy/respuesta` con `{alternativaMarcada}` (0 a 4) | `200` con la corrección: +50 XP si acierta, +10 si falla; el quinto desafío de la semana suma un bono de 100 XP. Mantiene la racha. `409` si ya respondió hoy |
+| Videos para repasar un tema | `GET /temas/{temaId}/videos` | `200` `{temaId, tema, videos[], busquedaUrl}`: hasta 3 clases de YouTube en español (`{videoId, titulo, canal, miniaturaUrl, url}`) para el plan de estudio. Se guardan un día por tema para cuidar la cuota gratuita. Sin `YOUTUBE_API_KEY` o con YouTube caído responde `200` con `videos` vacío y solo el enlace de búsqueda. `404` si el tema no existe |
+| Libros para repasar un tema | `GET /temas/{temaId}/libros` | `200` `{temaId, tema, consulta, libros[]}`: hasta 3 libros en español de Google Books (`{titulo, autores[], anio, portadaUrl, url}`). `consulta` son los términos de búsqueda afinados del tema; si `libros` llega vacío (Google Books caído o sin clave), la web y el app buscan esa consulta en Open Library. `404` si el tema no existe |
 
 ### Suscripciones
 | Request | Envía | Devuelve |
