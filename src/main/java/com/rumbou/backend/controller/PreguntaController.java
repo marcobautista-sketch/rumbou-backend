@@ -44,8 +44,9 @@ public class PreguntaController {
                                                             @RequestParam(required = false) Dificultad dificultad,
                                                             @RequestParam(required = false) OrigenPregunta origen,
                                                             @RequestParam(required = false) Boolean aprobada,
+                                                            @RequestParam(required = false) String texto,
                                                             Pageable pageable) {
-        return ResponseEntity.ok(preguntaService.buscar(temaId, dificultad, origen, aprobada, pageable));
+        return ResponseEntity.ok(preguntaService.buscar(temaId, dificultad, origen, aprobada, texto, pageable));
     }
 
     @GetMapping("/{id}")

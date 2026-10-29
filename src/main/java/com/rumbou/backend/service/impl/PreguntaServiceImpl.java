@@ -57,9 +57,11 @@ public class PreguntaServiceImpl implements PreguntaService {
     @Transactional(readOnly = true)
     @Override
     public Page<PreguntaResponse> buscar(Long temaId, Dificultad dificultad, OrigenPregunta origen,
-                                          Boolean aprobada, Pageable pageable) {
+                                          Boolean aprobada, String texto, Pageable pageable) {
         Boolean aprobadaEfectiva = currentUserService.puedeRevisarPreguntas() ? aprobada : Boolean.TRUE;
-        return preguntaRepository.buscar(temaId, dificultad, origen, aprobadaEfectiva, limitarTamano(pageable))
+        String textoBuscado = texto == null || texto.isBlank() ? null : texto.trim();
+        return preguntaRepository.buscar(temaId, dificultad, origen, aprobadaEfectiva, textoBuscado,
+                        limitarTamano(pageable))
                 .map(PreguntaMapper::toResponse);
     }
 
