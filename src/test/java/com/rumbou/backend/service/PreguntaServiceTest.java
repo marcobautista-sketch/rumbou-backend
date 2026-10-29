@@ -112,25 +112,25 @@ class PreguntaServiceTest {
 
     @Test
     void unNoAdminSiempreBuscaSoloAprobadasAunquePidaLoContrario() {
-        given(preguntaRepository.buscar(any(), any(), any(), org.mockito.ArgumentMatchers.eq(Boolean.TRUE), any()))
+        given(preguntaRepository.buscar(any(), any(), any(), org.mockito.ArgumentMatchers.eq(Boolean.TRUE), any(), any()))
                 .willReturn(org.springframework.data.domain.Page.empty());
 
-        preguntaService.buscar(null, null, null, Boolean.FALSE, org.springframework.data.domain.Pageable.unpaged());
+        preguntaService.buscar(null, null, null, Boolean.FALSE, null, org.springframework.data.domain.Pageable.unpaged());
 
         org.mockito.Mockito.verify(preguntaRepository)
-                .buscar(any(), any(), any(), org.mockito.ArgumentMatchers.eq(Boolean.TRUE), any());
+                .buscar(any(), any(), any(), org.mockito.ArgumentMatchers.eq(Boolean.TRUE), any(), any());
     }
 
     @Test
     void unAdminBuscaConElFiltroQuePida() {
         given(currentUserService.puedeRevisarPreguntas()).willReturn(true);
-        given(preguntaRepository.buscar(any(), any(), any(), org.mockito.ArgumentMatchers.isNull(), any()))
+        given(preguntaRepository.buscar(any(), any(), any(), org.mockito.ArgumentMatchers.isNull(), any(), any()))
                 .willReturn(org.springframework.data.domain.Page.empty());
 
-        preguntaService.buscar(null, null, null, null, org.springframework.data.domain.Pageable.unpaged());
+        preguntaService.buscar(null, null, null, null, null, org.springframework.data.domain.Pageable.unpaged());
 
         org.mockito.Mockito.verify(preguntaRepository)
-                .buscar(any(), any(), any(), org.mockito.ArgumentMatchers.isNull(), any());
+                .buscar(any(), any(), any(), org.mockito.ArgumentMatchers.isNull(), any(), any());
     }
 
     @Test

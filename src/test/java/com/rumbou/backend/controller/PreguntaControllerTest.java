@@ -102,13 +102,25 @@ class PreguntaControllerTest {
 
     @Test
     void unUsuarioAutenticadoPuedeListarPreguntas() throws Exception {
-        given(preguntaService.buscar(any(), any(), any(), any(), any()))
+        given(preguntaService.buscar(any(), any(), any(), any(), any(), any()))
                 .willReturn(org.springframework.data.domain.Page.empty());
 
         mockMvc.perform(get("/api/v1/preguntas?aprobada=false").with(user(usuarioConRol(Role.USER))))
                 .andExpect(status().isOk());
 
-        verify(preguntaService).buscar(any(), any(), any(), any(), any());
+        verify(preguntaService).buscar(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void elTextoDeBusquedaLlegaAlServicio() throws Exception {
+        given(preguntaService.buscar(any(), any(), any(), any(), any(), any()))
+                .willReturn(org.springframework.data.domain.Page.empty());
+
+        mockMvc.perform(get("/api/v1/preguntas?texto=triangulo").with(user(usuarioConRol(Role.USER))))
+                .andExpect(status().isOk());
+
+        verify(preguntaService).buscar(any(), any(), any(), any(),
+                org.mockito.ArgumentMatchers.eq("triangulo"), any());
     }
 
     @Test
