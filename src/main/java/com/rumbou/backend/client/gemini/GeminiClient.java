@@ -332,6 +332,50 @@ public class GeminiClient {
         return revision;
     }
 
+    // Asistente por voz o texto: la respuesta se lee en voz alta, por eso va corta y sin formato.
+    // Con audio, Gemini tambien transcribe la pregunta (acepta wav, m4a/aac, mp3, ogg y webm).
+    public RespuestaAsistenteDto asistir(String datosPostulante, String conversacion, String pregunta,
+                                         byte[] audio, String tipoAudio) {
+        StringBuilder prompt = new StringBuilder("""
+                Eres el asistente de RumboU, una app peruana para prepararse para el examen de admision \
+                de la UNI y de San Marcos. Respondes en espanol, en 2 a 4 oraciones, de forma clara y \
+                motivadora. Tu respuesta se leera en voz alta: no uses markdown, listas, emojis ni LaTeX, \
+                y escribe las formulas con palabras. Usa los datos del postulante cuando pregunte por su \
+                progreso, sus objetivos o su proximo examen, y no inventes datos que no esten aqui. Si te \
+                pide resolver un ejercicio, explica la idea clave paso a paso y en breve. Si la pregunta \
+                no tiene relacion con estudiar o con la app, redirigelo con amabilidad.
+
+                Datos del postulante:
+                """);
+        prompt.append(datosPostulante);
+        if (!conversacion.isBlank()) {
+            prompt.append("\nConversacion previa:\n").append(conversacion);
+        }
+        if (audio != null) {
+            prompt.append("\nLa nueva pregunta llega en el audio adjunto. En \"transcripcion\" escribe ")
+                    .append("exactamente lo que dijo; si no se entiende, deja la transcripcion vacia y ")
+                    .append("pidele en \"respuesta\" que repita.");
+        } else {
+            prompt.append("\nNueva pregunta del postulante: ").append(pregunta)
+                    .append("\nEn \"transcripcion\" repite la pregunta tal cual.");
+        }
+
+        ObjectNode schema = objectMapper.createObjectNode();
+        schema.put("type", "OBJECT");
+        ObjectNode properties = schema.putObject("properties");
+        properties.putObject("transcripcion").put("type", "STRING");
+        properties.putObject("respuesta").put("type", "STRING");
+        schema.putArray("required").add("transcripcion").add("respuesta");
+
+        JsonNode resultado = llamar(prompt.toString(), audio, tipoAudio, schema);
+        String respuesta = resultado.path("respuesta").asText("");
+        // Una respuesta vacia no debe gastar el cupo diario del tutor.
+        if (respuesta.isBlank()) {
+            throw new GeminiException("Gemini devolvio una respuesta vacia del asistente");
+        }
+        return new RespuestaAsistenteDto(resultado.path("transcripcion").asText(""), respuesta);
+    }
+
     // En los textos que lee el postulante, las alternativas van con la letra que ve en pantalla (A-E).
     private static void agregarPreguntaConLetras(StringBuilder prompt, String enunciado, List<String> alternativas,
                                                  int claveCorrecta) {
@@ -351,16 +395,17 @@ public class GeminiClient {
         return llamar(prompt, null, null, responseSchema);
     }
 
-    // Con imagen, la foto va como una segunda parte del mensaje, en base64 (inlineData).
-    private JsonNode llamar(String prompt, byte[] imagen, String tipoImagen, ObjectNode responseSchema) {
+    // Con un archivo (la foto de la solucion o el audio del asistente), va como una segunda parte
+    // del mensaje, en base64 (inlineData).
+    private JsonNode llamar(String prompt, byte[] archivo, String tipoArchivo, ObjectNode responseSchema) {
         ObjectNode body = objectMapper.createObjectNode();
         ObjectNode content = body.putArray("contents").addObject();
         ArrayNode parts = content.putArray("parts");
         parts.addObject().put("text", prompt);
-        if (imagen != null) {
+        if (archivo != null) {
             ObjectNode inlineData = parts.addObject().putObject("inlineData");
-            inlineData.put("mimeType", tipoImagen);
-            inlineData.put("data", Base64.getEncoder().encodeToString(imagen));
+            inlineData.put("mimeType", tipoArchivo);
+            inlineData.put("data", Base64.getEncoder().encodeToString(archivo));
         }
 
         ObjectNode generationConfig = body.putObject("generationConfig");
