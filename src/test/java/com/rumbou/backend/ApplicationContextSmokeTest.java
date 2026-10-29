@@ -56,6 +56,13 @@ class ApplicationContextSmokeTest {
                 .andExpect(jsonPath("$.timestamp").exists());
     }
 
+    // El registro en 3 pasos lo usa antes de que exista la cuenta: el catalogo de carreras no pide token.
+    @Test
+    void elCatalogoDeCarrerasEsPublicoParaElRegistro() throws Exception {
+        mockMvc.perform(get("/api/v1/ofertas-academicas"))
+                .andExpect(status().isOk());
+    }
+
     @Test
     void elRestoDeLaApiSigueExigiendoToken() throws Exception {
         mockMvc.perform(get("/api/v1/preguntas"))
