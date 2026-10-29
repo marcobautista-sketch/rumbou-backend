@@ -47,7 +47,7 @@ class PreguntaRepositoryTest extends AbstractContainerBaseTest {
     @Test
     void filtraPorTema() {
         Page<Pregunta> resultado = preguntaRepository.buscar(
-                temaAlgebra.getId(), null, null, null, PageRequest.of(0, 10));
+                temaAlgebra.getId(), null, null, null, null, PageRequest.of(0, 10));
 
         assertThat(resultado.getContent()).hasSize(2);
         assertThat(resultado.getContent())
@@ -57,7 +57,7 @@ class PreguntaRepositoryTest extends AbstractContainerBaseTest {
     @Test
     void filtraPorDificultadYAprobada() {
         Page<Pregunta> resultado = preguntaRepository.buscar(
-                null, Dificultad.FACIL, null, true, PageRequest.of(0, 10));
+                null, Dificultad.FACIL, null, true, null, PageRequest.of(0, 10));
 
         assertThat(resultado.getContent()).hasSize(1);
         assertThat(resultado.getContent().get(0).getEnunciado())
@@ -67,7 +67,7 @@ class PreguntaRepositoryTest extends AbstractContainerBaseTest {
     @Test
     void filtraPorOrigen() {
         Page<Pregunta> resultado = preguntaRepository.buscar(
-                null, null, OrigenPregunta.IA_APROBADA, null, PageRequest.of(0, 10));
+                null, null, OrigenPregunta.IA_APROBADA, null, null, PageRequest.of(0, 10));
 
         assertThat(resultado.getContent()).hasSize(1);
         assertThat(resultado.getContent().get(0).getOrigen()).isEqualTo(OrigenPregunta.IA_APROBADA);
@@ -76,10 +76,30 @@ class PreguntaRepositoryTest extends AbstractContainerBaseTest {
     @Test
     void sinFiltrosDevuelveTodasPaginadas() {
         Page<Pregunta> resultado = preguntaRepository.buscar(
-                null, null, null, null, PageRequest.of(0, 2));
+                null, null, null, null, null, PageRequest.of(0, 2));
 
         assertThat(resultado.getTotalElements()).isEqualTo(3);
         assertThat(resultado.getContent()).hasSize(2);
+    }
+
+    @Test
+    void buscaTextoEnElEnunciadoSinDistinguirMayusculas() {
+        Page<Pregunta> resultado = preguntaRepository.buscar(
+                null, null, null, null, "GEOMETRIA", PageRequest.of(0, 10));
+
+        assertThat(resultado.getContent()).hasSize(1);
+        assertThat(resultado.getContent().get(0).getEnunciado())
+                .isEqualTo("Pregunta media aprobada de geometria");
+    }
+
+    @Test
+    void elTextoSeCombinaConLosDemasFiltros() {
+        Page<Pregunta> resultado = preguntaRepository.buscar(
+                temaAlgebra.getId(), null, null, true, "algebra", PageRequest.of(0, 10));
+
+        assertThat(resultado.getContent()).hasSize(1);
+        assertThat(resultado.getContent().get(0).getEnunciado())
+                .isEqualTo("Pregunta facil aprobada de algebra");
     }
 
     @Test

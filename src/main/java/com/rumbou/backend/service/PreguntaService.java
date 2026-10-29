@@ -16,7 +16,7 @@ import java.util.List;
 public interface PreguntaService {
 
     Page<PreguntaResponse> buscar(Long temaId, Dificultad dificultad, OrigenPregunta origen,
-        Boolean aprobada, Pageable pageable);
+        Boolean aprobada, String texto, Pageable pageable);
 
     PreguntaResponse obtener(Long id);
 
