@@ -26,17 +26,20 @@ public interface PreguntaRepository extends JpaRepository<Pregunta, Long> {
     @Query("SELECT p FROM Pregunta p JOIN FETCH p.tema WHERE p.aprobada = true")
     List<Pregunta> findByAprobadaTrueConTema();
 
-    // Cada parametro es opcional (null = no filtrar por ese campo).
+    // Cada parametro es opcional (null = no filtrar por ese campo). El texto se busca dentro del
+    // enunciado sin distinguir mayusculas; el CAST evita que Postgres lo tome como bytea cuando es null.
     @Query("""
             SELECT p FROM Pregunta p
             WHERE (:temaId IS NULL OR p.tema.id = :temaId)
             AND (:dificultad IS NULL OR p.dificultad = :dificultad)
             AND (:origen IS NULL OR p.origen = :origen)
             AND (:aprobada IS NULL OR p.aprobada = :aprobada)
+            AND (:texto IS NULL OR LOWER(p.enunciado) LIKE LOWER(CONCAT('%', CAST(:texto AS string), '%')))
             """)
     Page<Pregunta> buscar(@Param("temaId") Long temaId,
                            @Param("dificultad") Dificultad dificultad,
                            @Param("origen") OrigenPregunta origen,
                            @Param("aprobada") Boolean aprobada,
+                           @Param("texto") String texto,
                            Pageable pageable);
 }
