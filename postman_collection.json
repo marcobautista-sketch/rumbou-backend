@@ -66,7 +66,7 @@
     },
     {
       "key": "baseUrlAws",
-      "value": "http://184.194.122.22",
+      "value": "https://184-194-122-22.sslip.io",
       "type": "string",
       "description": "API desplegada en AWS (EC2 + RDS)."
     },
@@ -127,6 +127,23 @@
       "value": "",
       "type": "string",
       "description": "Pregunta que usa \"Aprobar pregunta (REVIEWER o ADMIN)\"; se toma sola del banco."
+    },
+    {
+      "key": "baseUrlWeb",
+      "value": "https://rumbou-frontend.vercel.app",
+      "description": "La misma API a traves de Vercel: sirve en redes que bloquean sslip.io"
+    },
+    {
+      "key": "perfilNombre",
+      "value": ""
+    },
+    {
+      "key": "perfilApellidos",
+      "value": ""
+    },
+    {
+      "key": "perfilTelefono",
+      "value": ""
     }
   ],
   "item": [
@@ -744,6 +761,63 @@
               "body": "{\n  \"accessToken\": \"eyJhbGciOiJIUzUxMiJ9...\",\n  \"refreshToken\": \"eyJhbGciOiJIUzUxMiJ9...\",\n  \"tokenType\": \"Bearer\"\n}"
             }
           ]
+        },
+        {
+          "name": "Cerrar sesion",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('204 sin cuerpo: la cookie del refresh se borra', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Borra la cookie httpOnly `rumbou_refresh` que usa la web (Max-Age=0). El access token vence solo a los 15 minutos; la app movil borra sus tokens de SecureStore."
+          },
+          "response": [
+            {
+              "name": "204 No Content",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/logout",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "logout"
+                  ]
+                }
+              },
+              "status": "No Content",
+              "code": 204,
+              "_postman_previewlanguage": "text",
+              "header": [],
+              "cookie": [],
+              "body": ""
+            }
+          ]
         }
       ],
       "description": "Registro, login, refresh y recuperacion de contrasena. Son publicos (auth: noauth). La contrasena debe tener 8 a 72 caracteres con mayuscula, minuscula y numero; si no, 400. Credenciales o tokens invalidos responden 401."
@@ -812,6 +886,175 @@
               ],
               "cookie": [],
               "body": "{\n  \"id\": 11,\n  \"email\": \"evaluador@rumbou.app\",\n  \"nombre\": \"Administrador\",\n  \"role\": \"ADMIN\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Editar mi perfil",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Reenvia los datos actuales: la coleccion deja la cuenta igual que como la encontro.",
+                  "pm.sendRequest({ url: pm.variables.get('baseUrl') + '/api/v1/usuarios/me', header: { Authorization: 'Bearer ' + pm.collectionVariables.get('accessToken') } }, (err, res) => {",
+                  "    const yo = res.json();",
+                  "    pm.collectionVariables.set('perfilNombre', JSON.stringify(yo.nombre));",
+                  "    pm.collectionVariables.set('perfilApellidos', JSON.stringify(yo.apellidos ?? null));",
+                  "    pm.collectionVariables.set('perfilTelefono', JSON.stringify(yo.telefono ?? null));",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 con el perfil actualizado', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": {{perfilNombre}},\n  \"apellidos\": {{perfilApellidos}},\n  \"telefono\": {{perfilTelefono}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/usuarios/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "usuarios",
+                "me"
+              ]
+            },
+            "description": "Reemplaza nombre, apellidos y celular (9 digitos que empiezan en 9; apellidos y celular son opcionales). El script previo copia los datos actuales de `GET /usuarios/me`, asi la corrida no cambia la cuenta. Con un celular invalido responde 400."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "PUT",
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/usuarios/me",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "usuarios",
+                    "me"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": 1,\n  \"email\": \"evaluador@rumbou.app\",\n  \"nombre\": \"Administrador\",\n  \"apellidos\": null,\n  \"telefono\": null,\n  \"role\": \"ADMIN\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Cambiar contrasena (contrasena actual incorrecta)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 porque la contrasena actual no coincide', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contrasenaActual\": \"NoEsLaClave1\",\n  \"contrasenaNueva\": \"OtraClaveSegura2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/usuarios/me/contrasena",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "usuarios",
+                "me",
+                "contrasena"
+              ]
+            },
+            "description": "Con la contrasena actual correcta responde 204; la nueva debe tener de 8 a 72 caracteres con mayuscula, minuscula y numero. Aqui se envia una incorrecta a proposito para no cambiar la clave de la cuenta: responde 400."
+          },
+          "response": [
+            {
+              "name": "400 Bad Request",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/usuarios/me/contrasena",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "usuarios",
+                    "me",
+                    "contrasena"
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"timestamp\": \"2026-10-29T07:41:45.99119419\",\n  \"status\": 400,\n  \"error\": \"Bad Request\",\n  \"message\": \"La contrasena actual no es correcta\",\n  \"path\": \"/api/v1/usuarios/me/contrasena\"\n}"
             }
           ]
         },
@@ -1148,6 +1391,133 @@
               ],
               "cookie": [],
               "body": "[\n  {\n    \"id\": 1,\n    \"universidad\": \"UNI\",\n    \"areaId\": 1,\n    \"area\": \"GENERAL\",\n    \"areaNombre\": \"General\",\n    \"carrera\": \"Arquitectura\",\n    \"facultad\": \"Facultad de Arquitectura, Urbanismo y Artes\",\n    \"procesoAdmision\": \"2026-II\",\n    \"puntajeUltimoIngresante\": 1073.7,\n    \"vacantes\": 23\n  },\n  {\n    \"id\": 7,\n    \"universidad\": \"UNI\",\n    \"areaId\": 1,\n    \"area\": \"GENERAL\",\n    \"areaNombre\": \"General\",\n    \"carrera\": \"Ciencia de la Computación\",\n    \"facultad\": \"Facultad de Ciencias\",\n    \"procesoAdmision\": \"2026-II\",\n    \"puntajeUltimoIngresante\": 993.6,\n    \"vacantes\": 10\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Listar areas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 con las areas y la fecha del proximo examen', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json()[0]).to.have.property('fechaProximoExamen');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/areas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "areas"
+              ]
+            },
+            "description": "Areas de cada universidad con el proximo proceso de admision y su fecha (`fechaExamenConfirmada` es false mientras la universidad no publica su cronograma)."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/areas",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "areas"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "[\n  {\n    \"id\": 1,\n    \"universidad\": \"UNI\",\n    \"codigo\": \"GENERAL\",\n    \"nombre\": \"General\",\n    \"procesoProximo\": \"2027-1\",\n    \"fechaProximoExamen\": \"2027-02-15\",\n    \"fechaExamenConfirmada\": false\n  },\n  {\n    \"id\": 2,\n    \"universidad\": \"UNMSM\",\n    \"codigo\": \"B\",\n    \"nombre\": \"Ciencias Básicas\",\n    \"procesoProximo\": \"2027-II\",\n    \"fechaProximoExamen\": \"2027-03-07\",\n    \"fechaExamenConfirmada\": false\n  },\n  {\n    \"id\": 3,\n    \"universidad\": \"UNMSM\",\n    \"codigo\": \"C\",\n    \"nombre\": \"Ingenierías\",\n    \"procesoProximo\": \"2027-II\",\n    \"fechaProximoExamen\": \"2027-03-07\",\n    \"fechaExamenConfirmada\": false\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Temas de un area",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 con los temas del area', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/areas/{{areaId}}/temas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "areas",
+                "{{areaId}}",
+                "temas"
+              ]
+            },
+            "description": "Temas que entran en el examen del area, con la cantidad de preguntas del banco y los subtemas del temario oficial. La web los usa para armar un simulacro por tema."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/areas/{{areaId}}/temas",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "areas",
+                    "{{areaId}}",
+                    "temas"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "[\n  {\n    \"id\": 1,\n    \"nombre\": \"Razonamiento Matemático\",\n    \"cantidadPreguntas\": 32,\n    \"subtemas\": [\n      \"Análisis de figuras\",\n      \"Razonamiento lógico\",\n      \"Sucesiones y distribuciones numéricas\",\n      \"Suficiencia de datos\",\n      \"Razonamiento numérico\",\n      \"Áreas y perímetros\",\n      \"Operadores matemáticos\",\n      \"Tablas y gráficos estadísticos\"\n    ]\n  },\n  {\n    \"id\": 2,\n    \"nombre\": \"Razonamiento Verbal\",\n    \"cantidadPreguntas\": 32,\n    \"subtemas\": [\n      \"Definiciones\",\n      \"Analogías\",\n      \"Precisión léxica en contexto\",\n      \"Antonimia contextual\",\n      \"Conectores lógico-textuales\",\n      \"Información eliminada\",\n      \"Plan de redacción\",\n      \"Inclusión de enunciado\",\n      \"Coherencia y cohesión textual\",\n      \"Comprensión de lectura\"\n    ]\n  },\n  {\n    \"id\": 3,\n    \"nombre\": \"Humanidades\",\n    \"cantidadPreguntas\": 36,\n    \"subtemas\": [\n      \"Lenguaje/lengua/habla\",\n      \"Escritura y ortografía\",\n      \"Sílaba y acentuación\",\n      \"Puntuación\",\n      \"Semántica\",\n      \"Morfología\",\n      \"Normas de corrección idiomática\",\n      \"Oración simple y compuesta\",\n      \"Vicios del lenguaje. teoría literaria\",\n      \"Literatura griega\",\n      \"Medieval\",\n      \"Renacimiento/Barroco\",\n      \"Romanticismo y Realismo\",\n      \"Narrativa contemporánea\",\n      \"Generación del 98 y 27\",\n      \"Modernismo y Boom latinoamericano\",\n      \"Literatura peruana . proceso de hominización y poblamiento de América\",\n      \"Culturas andinas hasta el Tahuantinsuyo\",\n      \"Culturas antiguas\",\n      \"Edad Media\",\n      \"Renacimiento y expansión europea\",\n      \"Conquista y Virreinato\",\n      \"Revoluciones burguesas\",\n      \"Independencia del Perú\",\n      \"S. XIX\",\n      \"Entreguerras y guerras mundiales\",\n      \"República Aristocrática y Patria Nueva\",\n      \"Guerra Fría y descolonización\",\n      \"Autoritarismo y democracia en el Perú\",\n      \"Globalización\",\n      \"Retorno al régimen constitucional . teoría geográfica y cartografía\",\n      \"Ecosistemas y áreas protegidas\",\n      \"Geomorfología del Perú\",\n      \"Mar peruano\",\n      \"Hidrografía\",\n      \"Regiones naturales y ecorregiones\",\n      \"Actividades económicas\",\n      \"Geografía humana y migraciones\",\n      \"Perú en el contexto geopolítico\",\n      \"Integración internacional\",\n      \"Estado peruano y participación ciudadana\",\n      \"Convivencia y diversidad cultural. definición y doctrinas económicas\",\n      \"Necesidades, bienes y factores productivos\",\n      \"Teoría del mercado y modelos de mercado\",\n      \"Teoría de la empresa\",\n      \"Sistema monetario y financiero\",\n      \"Sector público\",\n      \"Indicadores macroeconómicos\",\n      \"Comercio internacional\",\n      \"Organismos financieros internacionales\",\n      \"Integración económica. nivel básico. origen y disciplinas filosóficas\",\n      \"Filosofía antigua\",\n      \"Filosofía moderna\",\n      \"Filosofía contemporánea\",\n      \"Axiología\",\n      \"Ética y política\",\n      \"Gnoseología\",\n      \"Epistemología. la proposición\",\n      \"Formalización y tablas de verdad\",\n      \"La inferencia y el silogismo categórico. definición y métodos\",\n      \"Factores biológicos\",\n      \"Psicoanálisis\",\n      \"Procesos cognitivos\",\n      \"Aprendizaje y motivación\",\n      \"Pensamiento y lenguaje\",\n      \"Personalidad\",\n      \"Socialización\",\n      \"Sexualidad\",\n      \"Salud psicológica\"\n    ]\n  },\n  {\n    \"id\": 4,\n    \"nombre\": \"Aritmética\",\n    \"cantidadPreguntas\": 10,\n    \"subtemas\": [\n      \"Razones y proporciones\",\n      \"Magnitudes proporcionales\",\n      \"Interés simple y compuesto\",\n      \"Mezcla y aleación\",\n      \"Estadística\",\n      \"Probabilidad\",\n      \"Numeración\",\n      \"Números naturales y enteros\",\n      \"Divisibilidad\",\n      \"Números primos\",\n      \"Números racionales e irracionales\",\n      \"Potenciación y radicación\",\n      \"Lógica, conjuntos, números reales, ecuaciones e inecuaciones\",\n      \"Ecuaciones e inecuaciones de segundo grado\",\n      \"Funciones\",\n      \"Funciones polinomiales\",\n      \"Función exponencial y logarítmica\",\n      \"Matrices y determinantes\",\n      \"Sistemas de ecuaciones e inecuaciones\",\n      \"Introducción a la programación lineal\",\n      \"Sucesiones y series numéricas\"\n    ]\n  },\n  {\n    \"id\": 5,\n    \"nombre\": \"Álgebra\",\n    \"cantidadPreguntas\": 10,\n    \"subtemas\": [\n      \"Razones y proporciones\",\n      \"Magnitudes proporcionales\",\n      \"Interés simple y compuesto\",\n      \"Mezcla y aleación\",\n      \"Estadística\",\n      \"Probabilidad\",\n      \"Numeración\",\n      \"Números naturales y enteros\",\n      \"Divisibilidad\",\n      \"Números primos\",\n      \"Números racionales e irracionales\",\n      \"Potenciación y radicación\",\n      \"Lógica, conjuntos, números reales, ecuaciones e inecuaciones\",\n      \"Ecuaciones e inecuaciones de segundo grado\",\n      \"Funciones\",\n      \"Funciones polinomiales\",\n      \"Función exponencial y logarítmica\",\n      \"Matrices y determinantes\",\n      \"Sistemas de ecuaciones e inecuaciones\",\n      \"Introducción a la programación lineal\",\n      \"Sucesiones y series numéricas\"\n    ]\n  },\n  {\n    \"id\": 6,\n    \"nombre\": \"Geometría\",\n    \"cantidadPreguntas\": 10,\n    \"subtemas\": [\n      \"Nociones básicas\",\n      \"Triángulos y congruencia\",\n      \"Polígonos y cuadriláteros\",\n      \"Circunferencia\",\n      \"Proporcionalidad\",\n      \"Relaciones métricas en el triángulo y la circunferencia\",\n      \"Polígonos regulares convexos\",\n      \"Longitud de la circunferencia\",\n      \"Áreas de regiones poligonales y circulares\",\n      \"Geometría del espacio\",\n      \"Ángulos diedros\",\n      \"Ángulos sólidos/poliedros\",\n      \"Poliedros geométricos\",\n      \"Prisma\",\n      \"Pirámide\",\n      \"Cilindro\",\n      \"Cono\",\n      \"Esfera\",\n      \"Ángulo trigonométrico\",\n      \"Razones trigonométricas\",\n      \"Identidades trigonométricas\",\n      \"Funciones trigonométricas y sus inversas\",\n      \"Ecuaciones e inecuaciones trigonométricas\",\n      \"Resolución de triángulos\",\n      \"Secciones cónicas\"\n    ]\n  },\n  {\n    \"id\": 7,\n    \"nombre\": \"Trigonometría\",\n    \"cantidadPreguntas\": 10,\n    \"subtemas\": [\n      \"Nociones básicas\",\n      \"Triángulos y congruencia\",\n      \"Polígonos y cuadriláteros\",\n      \"Circunferencia\",\n      \"Proporcionalidad\",\n      \"Relaciones métricas en el triángulo y la circunferencia\",\n      \"Polígonos regulares convexos\",\n      \"Longitud de la circunferencia\",\n      \"Áreas de regiones poligonales y circulares\",\n      \"Geometría del espacio\",\n      \"Ángulos diedros\",\n      \"Ángulos sólidos/poliedros\",\n      \"Poliedros geométricos\",\n      \"Prisma\",\n      \"Pirámide\",\n      \"Cilindro\",\n      \"Cono\",\n      \"Esfera\",\n      \"Ángulo trigonométrico\",\n      \"Razones trigonométricas\",\n      \"Identidades trigonométricas\",\n      \"Funciones trigonométricas y sus inversas\",\n      \"Ecuaciones e inecuaciones trigonométricas\",\n      \"Resolución de triángulos\",\n      \"Secciones cónicas\"\n    ]\n  },\n  {\n    \"id\": 8,\n    \"nombre\": \"Física\",\n    \"cantidadPreguntas\": 20,\n    \"subtemas\": [\n      \"Cantidades físicas y vectores\",\n      \"Cinemática\",\n      \"Leyes de Newton\",\n      \"Gravitación universal\",\n      \"Trabajo y energía\",\n      \"Impulso y cantidad de movimiento\",\n      \"Oscilaciones\",\n      \"Ondas mecánicas\",\n      \"Fluidos\",\n      \"Temperatura y calor\",\n      \"Termodinámica\",\n      \"Electrostática\",\n      \"Corriente eléctrica\",\n      \"Electromagnetismo\",\n      \"Ondas electromagnéticas\",\n      \"Óptica geométrica\",\n      \"Física moderna\"\n    ]\n  },\n  {\n    \"id\": 9,\n    \"nombre\": \"Química\",\n    \"cantidadPreguntas\": 20,\n    \"subtemas\": [\n      \"Química y materia\",\n      \"Estructura atómica\",\n      \"Tabla periódica moderna\",\n      \"Enlace químico\",\n      \"Nomenclatura química inorgánica\",\n      \"Estequiometría\",\n      \"Estados de agregación de la materia\",\n      \"Soluciones y coloides\",\n      \"Equilibrio químico\",\n      \"Ácidos y bases\",\n      \"Electroquímica\",\n      \"Química orgánica\",\n      \"Ecología y contaminación ambiental\",\n      \"Química aplicada\"\n    ]\n  }\n]"
             }
           ]
         }
@@ -2266,6 +2636,145 @@
           ]
         },
         {
+          "name": "Pregunta completa (ADMIN o REVIEWER)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 como ADMIN o REVIEWER; 403 como USER', () => pm.expect([200, 403]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/preguntas/{{preguntaId}}/completa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "preguntas",
+                "{{preguntaId}}",
+                "completa"
+              ]
+            },
+            "description": "Incluye `claveCorrecta` y `explicacion`, que el detalle normal oculta. La usan el formulario de edicion y la revision de preguntas."
+          },
+          "response": [
+            {
+              "name": "200 OK (como ADMIN)",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/preguntas/{{preguntaId}}/completa",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "preguntas",
+                    "{{preguntaId}}",
+                    "completa"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": 49,\n  \"temaId\": 4,\n  \"temaNombre\": \"Aritmética\",\n  \"enunciado\": \"Determine la cantidad de divisores compuestos que posee el número 360.\",\n  \"alternativas\": [\n    \"18\",\n    \"19\",\n    \"20\",\n    \"22\",\n    \"24\"\n  ],\n  \"claveCorrecta\": 2,\n  \"explicacion\": \"La descomposición canónica de 360 es 2³ × 3² × 5¹. El total de divisores es (3+1)(2+1)(1+1) = 24. Sus divisores primos son 3 (el 2, 3 y 5) y tiene 1 divisor simple adicional (el 1). Por lo tanto, divisores compuestos = 24 - 3 - 1 = 20.\",\n  \"dificultad\": \"MEDIA\",\n  \"origen\": \"IA_APROBADA\",\n  \"aprobada\": true\n}"
+            }
+          ]
+        },
+        {
+          "name": "Revisar la solucion en papel (foto)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 (PRO o ADMIN), 403 (sin plan) o 502 (proveedor)', () => pm.expect([200, 403, 502]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "imagen",
+                  "type": "file",
+                  "src": "postman/solucion-ejemplo.jpg",
+                  "description": "JPG, PNG, WEBP o HEIC, hasta 5 MB"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/preguntas/{{preguntaId}}/revisar-solucion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "preguntas",
+                "{{preguntaId}}",
+                "revisar-solucion"
+              ]
+            },
+            "description": "Sensor de camara: Gemini lee la foto del procedimiento escrito a mano y responde `veredicto` (CORRECTA, PARCIAL, INCORRECTA o ILEGIBLE) y en que paso esta el error. Cuenta como una consulta al tutor (PRO o ADMIN). La foto de ejemplo esta en la carpeta `postman/` del repositorio."
+          },
+          "response": [
+            {
+              "name": "200 OK (foto de un procedimiento con un error de calculo)",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/preguntas/{{preguntaId}}/revisar-solucion",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "preguntas",
+                    "{{preguntaId}}",
+                    "revisar-solucion"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"preguntaId\": 44,\n  \"veredicto\": \"PARCIAL\",\n  \"retroalimentacion\": \"Realizaste correctamente la descomposición canónica de 360 y planteaste muy bien la fórmula para calcular la cantidad de divisores obteniendo (3 + 1)(2 + 1)(1 + 1) = 4 · 3 · 2. Sin embargo, cometiste un error de cálculo en la multiplicación final, ya que 4 · 3 · 2 es igual a 24 y no a 20. Por lo tanto, la alternativa correcta es la C.\"\n}"
+            }
+          ]
+        },
+        {
           "name": "Crear pregunta (ADMIN)",
           "request": {
             "method": "POST",
@@ -2633,6 +3142,453 @@
         }
       ],
       "description": "Banco de preguntas. Un USER solo ve preguntas aprobadas y sin clave; el ADMIN gestiona el CRUD. Una pregunta que ya salio en un simulacro no se puede borrar (409): se desaprueba con PUT."
+    },
+    {
+      "name": "Desafio diario",
+      "description": "Una pregunta al dia del tema mas debil del postulante, con XP y bono semanal.",
+      "item": [
+        {
+          "name": "Desafio de hoy",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 con la pregunta del dia', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/desafios/hoy",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "desafios",
+                "hoy"
+              ]
+            },
+            "description": "La misma pregunta durante todo el dia. La clave y la explicacion llegan recien al responder."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/desafios/hoy",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "desafios",
+                    "hoy"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"fecha\": \"2026-10-29\",\n  \"preguntaId\": 49,\n  \"temaId\": 4,\n  \"tema\": \"Aritmética\",\n  \"enunciado\": \"Determine la cantidad de divisores compuestos que posee el número 360.\",\n  \"alternativas\": [\n    \"18\",\n    \"19\",\n    \"20\",\n    \"22\",\n    \"24\"\n  ],\n  \"respondido\": false,\n  \"alternativaMarcada\": null,\n  \"esCorrecta\": null,\n  \"claveCorrecta\": null,\n  \"explicacion\": null,\n  \"xpGanado\": null,\n  \"xpPorAcierto\": 50,\n  \"desafiosDeLaSemana\": 0,\n  \"metaSemanal\": 5\n}"
+            }
+          ]
+        },
+        {
+          "name": "Responder el desafio",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 con la correccion; 409 si ya se respondio hoy', () => pm.expect([200, 409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"alternativaMarcada\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/desafios/hoy/respuesta",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "desafios",
+                "hoy",
+                "respuesta"
+              ]
+            },
+            "description": "+50 XP si acierta, +10 si falla; el quinto desafio de la semana suma un bono de 100 XP y mantiene la racha. 409 si ya respondio hoy."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/desafios/hoy/respuesta",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "desafios",
+                    "hoy",
+                    "respuesta"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"fecha\": \"2026-10-29\",\n  \"preguntaId\": 49,\n  \"temaId\": 4,\n  \"tema\": \"Aritmética\",\n  \"enunciado\": \"Determine la cantidad de divisores compuestos que posee el número 360.\",\n  \"alternativas\": [\n    \"18\",\n    \"19\",\n    \"20\",\n    \"22\",\n    \"24\"\n  ],\n  \"respondido\": true,\n  \"alternativaMarcada\": 0,\n  \"esCorrecta\": false,\n  \"claveCorrecta\": 2,\n  \"explicacion\": \"La descomposición canónica de 360 es 2³ × 3² × 5¹. El total de divisores es (3+1)(2+1)(1+1) = 24. Sus divisores primos son 3 (el 2, 3 y 5) y tiene 1 divisor simple adicional (el 1). Por lo tanto, divisores compuestos = 24 - 3 - 1 = 20.\",\n  \"xpGanado\": 10,\n  \"xpPorAcierto\": 50,\n  \"desafiosDeLaSemana\": 1,\n  \"metaSemanal\": 5\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Plan de estudio",
+      "description": "Material para repasar los temas donde mas falla el postulante. Las claves de Google viven solo en el servidor.",
+      "item": [
+        {
+          "name": "Videos de un tema (YouTube)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 con videos y el enlace de busqueda', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json()).to.have.property('busquedaUrl');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/temas/{{temaId}}/videos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "temas",
+                "{{temaId}}",
+                "videos"
+              ]
+            },
+            "description": "Hasta 3 clases en espanol de la YouTube Data API, guardadas un dia por tema. Sin clave o sin cuota responde 200 con `videos` vacio y `busquedaUrl`."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/temas/{{temaId}}/videos",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "temas",
+                    "{{temaId}}",
+                    "videos"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"temaId\": 1,\n  \"tema\": \"Razonamiento Matemático\",\n  \"videos\": [\n    {\n      \"videoId\": \"9XV9OSnF8gU\",\n      \"titulo\": \"OPERADORES MATEMÁTICOS | RAZONAMIENTO MATEMÁTICO\",\n      \"canal\": \"Juan Meneses - RM\",\n      \"miniaturaUrl\": \"https://i.ytimg.com/vi/9XV9OSnF8gU/mqdefault.jpg\",\n      \"url\": \"https://www.youtube.com/watch?v=9XV9OSnF8gU\"\n    },\n    {\n      \"videoId\": \"0R_dJOXMFZE\",\n      \"titulo\": \"EDADES | RAZONAMIENTO MATEMÁTICO (Teoría y ejemplos)\",\n      \"canal\": \"Álgebra con LALO\",\n      \"miniaturaUrl\": \"https://i.ytimg.com/vi/0R_dJOXMFZE/mqdefault.jpg\",\n      \"url\": \"https://www.youtube.com/watch?v=0R_dJOXMFZE\"\n    },\n    {\n      \"videoId\": \"btlpcxAVl14\",\n      \"titulo\": \"FIJAS SAN MARCOS | Formato DECO | REPASO DE RAZONAMIENTO MATEMÁTICO\",\n      \"canal\": \"Juan Meneses - RM\",\n      \"miniaturaUrl\": \"https://i.ytimg.com/vi/btlpcxAVl14/mqdefault.jpg\",\n      \"url\": \"https://www.youtube.com/watch?v=btlpcxAVl14\"\n    }\n  ],\n  \"busquedaUrl\": \"https://www.youtube.com/results?search_query=Razonamiento+Matem%C3%A1tico+preuniversitario\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Libros de un tema (Google Books)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 con la consulta afinada del tema', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json()).to.have.property('consulta');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/temas/{{temaId}}/libros",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "temas",
+                "{{temaId}}",
+                "libros"
+              ]
+            },
+            "description": "Hasta 3 libros en espanol de Google Books (con reintentos ante el 503). `consulta` son los terminos afinados del tema: si `libros` llega vacio, la web y el app buscan esa consulta en Open Library."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/temas/{{temaId}}/libros",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "temas",
+                    "{{temaId}}",
+                    "libros"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"temaId\": 1,\n  \"tema\": \"Razonamiento Matemático\",\n  \"consulta\": \"Razonamiento Matemático\",\n  \"libros\": [\n    {\n      \"titulo\": \"Sobre la naturaleza del razonamiento matemático. Consideraciones sobre los fundamentos de la Matemática\",\n      \"autores\": [\n        \"Th Skolem\"\n      ],\n      \"anio\": \"1952\",\n      \"portadaUrl\": null,\n      \"url\": \"http://books.google.com/books?id=39mMAQAACAAJ&dq=intitle:Razonamiento+Matem%C3%A1tico&hl=&as_pt=BOOKS&source=gbs_api\"\n    },\n    {\n      \"titulo\": \"Razonamiento matemático\",\n      \"autores\": [\n        \"Manuel Coveñas Naquiche\"\n      ],\n      \"anio\": \"1991\",\n      \"portadaUrl\": null,\n      \"url\": \"http://books.google.com/books?id=OkTAxgEACAAJ&dq=intitle:Razonamiento+Matem%C3%A1tico&hl=&as_pt=BOOKS&source=gbs_api\"\n    },\n    {\n      \"titulo\": \"Razonamiento matemático\",\n      \"autores\": [\n        \"José G. Rodríguez Ahumada\"\n      ],\n      \"anio\": \"1997\",\n      \"portadaUrl\": \"https://books.google.com/books/content?id=qiYRAAAACAAJ&printsec=frontcover&img=1&zoom=1&source=gbs_api\",\n      \"url\": \"http://books.google.com/books?id=qiYRAAAACAAJ&dq=intitle:Razonamiento+Matem%C3%A1tico&hl=&as_pt=BOOKS&source=gbs_api\"\n    }\n  ]\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Asistente",
+      "description": "Asistente de estudio que conoce los objetivos, el proximo examen y los temas debiles del postulante. Cuenta como una consulta al tutor (PRO o ADMIN).",
+      "item": [
+        {
+          "name": "Pregunta escrita",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 (PRO o ADMIN), 403 (sin plan) o 502 (proveedor)', () => pm.expect([200, 403, 502]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mensaje\": \"¿Cuándo es mi próximo examen?\",\n  \"historial\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/asistente/mensajes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "asistente",
+                "mensajes"
+              ]
+            },
+            "description": "`historial` lleva hasta 6 mensajes previos `{rol: POSTULANTE|ASISTENTE, texto}` para que entienda repreguntas. La respuesta viene en 2 a 4 oraciones, sin formato, porque el app la lee en voz alta."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/asistente/mensajes",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "asistente",
+                    "mensajes"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"transcripcion\": \"¿Cuándo es mi próximo examen?\",\n  \"respuesta\": \"Hola Administrador, actualmente no tienes registrada una fecha para tu próximo examen de admisión en tu perfil. Te sugiero definir tu carrera objetivo y la universidad a la que postularás para que podamos ayudarte a dar ese gran paso. Mientras tanto, sigue practicando diariamente con RumboU para mejorar tu rendimiento y alcanzar la vacante que deseas.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Pregunta por voz (microfono)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 (PRO o ADMIN), 403 (sin plan) o 502 (proveedor)', () => pm.expect([200, 403, 502]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "audio",
+                  "type": "file",
+                  "src": "postman/pregunta-voz.m4a",
+                  "description": "WAV, M4A/AAC, MP3, OGG o WEBM, hasta 5 MB"
+                },
+                {
+                  "key": "historial",
+                  "value": "[]",
+                  "type": "text",
+                  "description": "Opcional: el mismo historial de la pregunta escrita, como texto JSON"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/asistente/voz",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "asistente",
+                "voz"
+              ]
+            },
+            "description": "Sensor de microfono: Gemini transcribe la pregunta hablada (`transcripcion`) y la responde (`respuesta`). El audio de ejemplo esta en la carpeta `postman/` del repositorio."
+          },
+          "response": [
+            {
+              "name": "200 OK (audio M4A como el que graba el celular)",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/asistente/voz",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "asistente",
+                    "voz"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"transcripcion\": \"Hola. ¿Cuándo es mi próximo examen y qué tema debería repasar primero?\",\n  \"respuesta\": \"Hola Administrador, aún no has seleccionado una carrera objetivo en RumboU, por lo que no tenemos registrada la fecha de tu próximo examen. Para comenzar tu repaso, te recomiendo enfocarte en Aritmética o Razonamiento Verbal, que son tus áreas a reforzar. ¡Sigue constante con tu racha diaria y verás grandes progresos!\"\n}"
+            }
+          ]
+        }
+      ]
     },
     {
       "name": "Suscripciones",
