@@ -5,6 +5,7 @@ import com.rumbou.backend.security.JwtAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -54,6 +55,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/webhooks/**").permitAll()
                         .requestMatchers("/api/v1/health").permitAll()
+                        // El catalogo de carreras es informacion publica: el registro lo usa para elegir la meta.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/ofertas-academicas").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
