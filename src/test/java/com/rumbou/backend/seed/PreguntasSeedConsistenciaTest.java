@@ -4,7 +4,9 @@ import com.rumbou.backend.entity.Dificultad;
 import com.rumbou.backend.entity.OrigenPregunta;
 import org.junit.jupiter.api.Test;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -35,6 +37,18 @@ class PreguntasSeedConsistenciaTest {
     void elOrigenEsUnValorValido() {
         for (ArchivoSeed.Fila fila : ArchivoSeed.leer("preguntas.csv", 11)) {
             assertThatCode(() -> OrigenPregunta.valueOf(fila.texto(10))).doesNotThrowAnyException();
+        }
+    }
+
+    @Test
+    void cadaEnunciadoCorregidoEstaEnElBancoYElAnteriorYaNo() {
+        Set<String> banco = new HashSet<>();
+        for (ArchivoSeed.Fila fila : ArchivoSeed.leer("preguntas.csv", 11)) {
+            banco.add(fila.texto(0) + "|" + fila.texto(2));
+        }
+        for (ArchivoSeed.Fila correccion : ArchivoSeed.leer("enunciados-corregidos.csv", 3)) {
+            assertThat(banco).contains(correccion.texto(0) + "|" + correccion.texto(2));
+            assertThat(banco).doesNotContain(correccion.texto(0) + "|" + correccion.texto(1));
         }
     }
 
