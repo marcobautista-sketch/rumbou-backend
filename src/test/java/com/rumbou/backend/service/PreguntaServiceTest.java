@@ -3,6 +3,7 @@ package com.rumbou.backend.service;
 import com.rumbou.backend.client.gemini.GeminiClient;
 import com.rumbou.backend.client.gemini.GeminiException;
 import com.rumbou.backend.dto.request.AprobarLoteRequest;
+import com.rumbou.backend.dto.request.UpdatePreguntaRequest;
 import com.rumbou.backend.dto.response.PreguntaAdminResponse;
 import com.rumbou.backend.dto.response.PreguntaResponse;
 import com.rumbou.backend.dto.response.TutorIaResponse;
@@ -288,5 +289,36 @@ class PreguntaServiceTest {
         TutorIaResponse respuesta = preguntaService.pedirExplicacionTutorIa(1L, 3);
 
         assertThat(respuesta.explicacion()).isEqualTo("La D es tentadora porque...");
+    }
+
+    private Pregunta preguntaConPresentacion() {
+        Pregunta pregunta = preguntaConId(1L, true);
+        pregunta.setPresentacion("{\"enunciado\":\"¿Cuanto es $2 + 2$?\",\"alternativas\":null,\"figura\":null,"
+                + "\"pasos\":[{\"titulo\":\"Suma\",\"detalle\":\"$2 + 2 = 4$\",\"tabla\":[]}]}");
+        given(preguntaRepository.findById(1L)).willReturn(Optional.of(pregunta));
+        given(temaRepository.findById(1L)).willReturn(Optional.of(pregunta.getTema()));
+        return pregunta;
+    }
+
+    @Test
+    void editarElTextoDeLaPreguntaQuitaSuVersionConFormato() {
+        Pregunta pregunta = preguntaConPresentacion();
+
+        preguntaService.actualizar(1L, new UpdatePreguntaRequest(1L, "¿Cuanto es 2 + 3?",
+                List.of("1", "2", "3", "4", "5"), 4, "2 + 3 = 5", Dificultad.FACIL, OrigenPregunta.SEMILLA, true));
+
+        assertThat(pregunta.getPresentacion()).isNull();
+    }
+
+    @Test
+    void editarSoloLaDificultadConservaLaVersionConFormato() {
+        Pregunta pregunta = preguntaConPresentacion();
+
+        PreguntaAdminResponse respuesta = preguntaService.actualizar(1L, new UpdatePreguntaRequest(1L,
+                "¿Cuanto es 2 + 2?", List.of("1", "2", "3", "4", "5"), 3, "2 + 2 = 4",
+                Dificultad.MEDIA, OrigenPregunta.SEMILLA, true));
+
+        assertThat(pregunta.getPresentacion()).isNotNull();
+        assertThat(respuesta.pasos()).hasSize(1);
     }
 }

@@ -3,7 +3,7 @@ package com.rumbou.backend.dto.response;
 import java.time.LocalDate;
 import java.util.List;
 
-// claveCorrecta, esCorrecta, explicacion y xpGanado son null hasta que se responde.
+// claveCorrecta, esCorrecta, explicacion, pasos y xpGanado son null hasta que se responde.
 public record DesafioDiarioResponse(
         LocalDate fecha,
         Long preguntaId,
@@ -19,6 +19,8 @@ public record DesafioDiarioResponse(
         Integer xpGanado,
         int xpPorAcierto,
         long desafiosDeLaSemana,
-        int metaSemanal
+        int metaSemanal,
+        PresentacionResponse presentacion,
+        List<PasoResolucionResponse> pasos
 ) {
 }

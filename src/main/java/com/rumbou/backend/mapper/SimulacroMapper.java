@@ -24,7 +24,8 @@ public final class SimulacroMapper {
                         r.getId(),
                         r.getPregunta().getId(),
                         r.getPregunta().getEnunciado(),
-                        r.getPregunta().getAlternativas()))
+                        r.getPregunta().getAlternativas(),
+                        PresentacionMapper.problema(r.getPregunta())))
                 .toList();
 
         return new SimulacroResponse(
@@ -68,7 +69,7 @@ public final class SimulacroMapper {
                 preguntas);
     }
 
-    // Mientras el simulacro esta en curso no se revela la clave ni la explicacion.
+    // Mientras el simulacro esta en curso no se revela la clave, la explicacion ni los pasos.
     private static RespuestaDetalleResponse toRespuestaDetalle(RespuestaUsuario respuesta, boolean finalizado) {
         Pregunta pregunta = respuesta.getPregunta();
         return new RespuestaDetalleResponse(
@@ -82,6 +83,8 @@ public final class SimulacroMapper {
                 finalizado ? pregunta.getClaveCorrecta() : null,
                 finalizado ? respuesta.getEsCorrecta() : null,
                 finalizado ? respuesta.getPuntajeAportado() : null,
-                finalizado ? pregunta.getExplicacion() : null);
+                finalizado ? pregunta.getExplicacion() : null,
+                PresentacionMapper.problema(pregunta),
+                finalizado ? PresentacionMapper.pasos(pregunta) : null);
     }
 }

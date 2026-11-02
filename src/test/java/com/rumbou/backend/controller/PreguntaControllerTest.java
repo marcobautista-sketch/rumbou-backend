@@ -81,7 +81,7 @@ class PreguntaControllerTest {
     @Test
     void unUsuarioAutenticadoPuedeVerUnaPregunta() throws Exception {
         given(preguntaService.obtener(1L)).willReturn(
-                new PreguntaResponse(1L, 1L, "Algebra", "¿Cuanto es 2 + 2?", List.of("1", "2", "3", "4", "5"), Dificultad.FACIL));
+                new PreguntaResponse(1L, 1L, "Algebra", "¿Cuanto es 2 + 2?", List.of("1", "2", "3", "4", "5"), Dificultad.FACIL, null));
 
         mockMvc.perform(get("/api/v1/preguntas/1").with(user(usuarioConRol(Role.USER))))
                 .andExpect(status().isOk());
@@ -92,7 +92,7 @@ class PreguntaControllerTest {
     @Test
     void unAdminPuedeVerUnaPregunta() throws Exception {
         given(preguntaService.obtener(1L)).willReturn(
-                new PreguntaResponse(1L, 1L, "Algebra", "¿Cuanto es 2 + 2?", List.of("1", "2", "3", "4", "5"), Dificultad.FACIL));
+                new PreguntaResponse(1L, 1L, "Algebra", "¿Cuanto es 2 + 2?", List.of("1", "2", "3", "4", "5"), Dificultad.FACIL, null));
 
         mockMvc.perform(get("/api/v1/preguntas/1").with(user(usuarioConRol(Role.ADMIN))))
                 .andExpect(status().isOk());
@@ -138,7 +138,7 @@ class PreguntaControllerTest {
     void unAdminPuedeAprobarUnaPregunta() throws Exception {
         given(preguntaService.aprobar(1L)).willReturn(
                 new PreguntaAdminResponse(1L, 1L, "Algebra", "¿Cuanto es 2 + 2?",
-                        List.of("1", "2", "3", "4", "5"), 3, "2 + 2 = 4", Dificultad.FACIL, OrigenPregunta.SEMILLA, true));
+                        List.of("1", "2", "3", "4", "5"), 3, "2 + 2 = 4", Dificultad.FACIL, OrigenPregunta.SEMILLA, true, null, null));
 
         mockMvc.perform(patch("/api/v1/preguntas/1/aprobar")
                         .with(user(usuarioConRol(Role.ADMIN)))
@@ -158,9 +158,9 @@ class PreguntaControllerTest {
     void unAdminPuedeAprobarPreguntasEnLote() throws Exception {
         given(preguntaService.aprobarLote(any())).willReturn(List.of(
                 new PreguntaAdminResponse(1L, 1L, "Algebra", "¿Cuanto es 2 + 2?",
-                        List.of("1", "2", "3", "4", "5"), 3, "2 + 2 = 4", Dificultad.FACIL, OrigenPregunta.SEMILLA, true),
+                        List.of("1", "2", "3", "4", "5"), 3, "2 + 2 = 4", Dificultad.FACIL, OrigenPregunta.SEMILLA, true, null, null),
                 new PreguntaAdminResponse(2L, 1L, "Algebra", "¿Cuanto es 3 + 3?",
-                        List.of("1", "2", "3", "4", "6"), 4, "3 + 3 = 6", Dificultad.FACIL, OrigenPregunta.SEMILLA, true)));
+                        List.of("1", "2", "3", "4", "6"), 4, "3 + 3 = 6", Dificultad.FACIL, OrigenPregunta.SEMILLA, true, null, null)));
 
         mockMvc.perform(patch("/api/v1/preguntas/aprobar-lote")
                         .with(user(usuarioConRol(Role.ADMIN)))
@@ -205,7 +205,7 @@ class PreguntaControllerTest {
     void unAdminPuedeCrearUnaPreguntaValida() throws Exception {
         given(preguntaService.crear(any())).willReturn(
                 new PreguntaAdminResponse(1L, 1L, "Algebra", "¿Cuanto es 2 + 2?",
-                        List.of("1", "2", "3", "4", "5"), 3, "2 + 2 = 4", Dificultad.FACIL, OrigenPregunta.SEMILLA, true));
+                        List.of("1", "2", "3", "4", "5"), 3, "2 + 2 = 4", Dificultad.FACIL, OrigenPregunta.SEMILLA, true, null, null));
 
         mockMvc.perform(post("/api/v1/preguntas")
                         .with(csrf())
@@ -246,7 +246,7 @@ class PreguntaControllerTest {
     void unRevisorPuedeAprobarUnaPregunta() throws Exception {
         given(preguntaService.aprobar(1L)).willReturn(
                 new PreguntaAdminResponse(1L, 1L, "Algebra", "¿Cuanto es 2 + 2?",
-                        List.of("1", "2", "3", "4", "5"), 3, "2 + 2 = 4", Dificultad.FACIL, OrigenPregunta.IA_APROBADA, true));
+                        List.of("1", "2", "3", "4", "5"), 3, "2 + 2 = 4", Dificultad.FACIL, OrigenPregunta.IA_APROBADA, true, null, null));
 
         mockMvc.perform(patch("/api/v1/preguntas/1/aprobar")
                         .with(user(usuarioConRol(Role.REVIEWER)))

@@ -28,6 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class PreguntaServiceImpl implements PreguntaService {
@@ -118,6 +119,10 @@ public class PreguntaServiceImpl implements PreguntaService {
     public PreguntaAdminResponse actualizar(Long id, UpdatePreguntaRequest request) {
         Pregunta pregunta = obtenerEntidad(id);
         Tema tema = obtenerTema(request.temaId());
+        // Si cambia el texto, la version con formato ya no le corresponde: vuelve al texto plano.
+        boolean cambioElTexto = !pregunta.getEnunciado().equals(request.enunciado())
+                || !pregunta.getAlternativas().equals(request.alternativas())
+                || !Objects.equals(pregunta.getExplicacion(), request.explicacion());
 
         pregunta.setTema(tema);
         pregunta.setEnunciado(request.enunciado());
@@ -127,6 +132,9 @@ public class PreguntaServiceImpl implements PreguntaService {
         pregunta.setDificultad(request.dificultad());
         pregunta.setOrigen(request.origen());
         pregunta.setAprobada(request.aprobada());
+        if (cambioElTexto) {
+            pregunta.setPresentacion(null);
+        }
 
         return PreguntaMapper.toAdminResponse(pregunta);
     }
