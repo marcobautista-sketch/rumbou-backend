@@ -85,4 +85,16 @@ class ContenidoSeedRunnerTest extends AbstractContainerBaseTest {
         Pregunta pregunta = preguntaRepository.findAll().get(0);
         assertThat(pregunta.getAlternativas()).hasSize(5);
     }
+
+    @Test
+    void cadaFichaDePresentacionesQuedaGuardadaEnSuPregunta() {
+        seed.run();
+        entityManager.flush();
+        entityManager.clear();
+
+        long conFormato = preguntaRepository.findAll().stream()
+                .filter(pregunta -> pregunta.getPresentacion() != null)
+                .count();
+        assertThat(conFormato).isEqualTo(PresentacionesSeed.leer().size());
+    }
 }
