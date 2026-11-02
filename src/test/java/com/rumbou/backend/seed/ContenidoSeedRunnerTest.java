@@ -87,6 +87,30 @@ class ContenidoSeedRunnerTest extends AbstractContainerBaseTest {
     }
 
     @Test
+    void unEnunciadoCorregidoSeAplicaALaPreguntaQueYaExistiaSinDuplicarla() {
+        seed.run();
+        entityManager.flush();
+        entityManager.clear();
+        ArchivoSeed.Fila correccion = ArchivoSeed.leer("enunciados-corregidos.csv", 3).get(0);
+        Long temaId = temaRepository.findByNombre(correccion.texto(0)).orElseThrow().getId();
+        // La base queda como en produccion antes de la correccion: con el enunciado anterior.
+        Pregunta pregunta = preguntaRepository.findByTemaIdAndEnunciado(temaId, correccion.texto(2)).orElseThrow();
+        pregunta.setEnunciado(correccion.texto(1));
+        preguntaRepository.save(pregunta);
+        entityManager.flush();
+        entityManager.clear();
+
+        seed.run();
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(preguntaRepository.count()).isEqualTo(792);
+        Pregunta corregida = preguntaRepository.findById(pregunta.getId()).orElseThrow();
+        assertThat(corregida.getEnunciado()).isEqualTo(correccion.texto(2));
+        assertThat(corregida.getPresentacion()).isNotNull();
+    }
+
+    @Test
     void cadaFichaDePresentacionesQuedaGuardadaEnSuPregunta() {
         seed.run();
         entityManager.flush();
