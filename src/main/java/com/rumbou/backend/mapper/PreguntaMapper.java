@@ -9,7 +9,7 @@ public final class PreguntaMapper {
     private PreguntaMapper() {
     }
 
-    // Vista del postulante: sin clave ni explicacion.
+    // Vista del postulante: sin clave, explicacion ni pasos.
     public static PreguntaResponse toResponse(Pregunta pregunta) {
         return new PreguntaResponse(
                 pregunta.getId(),
@@ -17,7 +17,8 @@ public final class PreguntaMapper {
                 pregunta.getTema().getNombre(),
                 pregunta.getEnunciado(),
                 pregunta.getAlternativas(),
-                pregunta.getDificultad());
+                pregunta.getDificultad(),
+                PresentacionMapper.problema(pregunta));
     }
 
     public static PreguntaAdminResponse toAdminResponse(Pregunta pregunta) {
@@ -31,6 +32,8 @@ public final class PreguntaMapper {
                 pregunta.getExplicacion(),
                 pregunta.getDificultad(),
                 pregunta.getOrigen(),
-                pregunta.isAprobada());
+                pregunta.isAprobada(),
+                PresentacionMapper.problema(pregunta),
+                PresentacionMapper.pasos(pregunta));
     }
 }

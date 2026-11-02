@@ -2,7 +2,7 @@ package com.rumbou.backend.dto.response;
 
 import java.util.List;
 
-// claveCorrecta, esCorrecta, puntajeAportado y explicacion son null mientras el
+// claveCorrecta, esCorrecta, puntajeAportado, explicacion y pasos son null mientras el
 // simulacro sigue en curso: solo se revelan despues de finalizarlo.
 public record RespuestaDetalleResponse(
         Long respuestaUsuarioId,
@@ -15,6 +15,8 @@ public record RespuestaDetalleResponse(
         Integer claveCorrecta,
         Boolean esCorrecta,
         Double puntajeAportado,
-        String explicacion
+        String explicacion,
+        PresentacionResponse presentacion,
+        List<PasoResolucionResponse> pasos
 ) {
 }
