@@ -40,6 +40,11 @@ public class Pregunta extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String explicacion;
 
+    // Version con formato para mostrar (LaTeX, figura opcional y pasos), en JSON. Si es null,
+    // los clientes muestran el texto plano. La carga seed/presentaciones.json y la lee PresentacionMapper.
+    @Column(columnDefinition = "TEXT")
+    private String presentacion;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Dificultad dificultad;
@@ -114,6 +119,14 @@ public class Pregunta extends BaseEntity {
 
     public void setExplicacion(String explicacion) {
         this.explicacion = explicacion;
+    }
+
+    public String getPresentacion() {
+        return presentacion;
+    }
+
+    public void setPresentacion(String presentacion) {
+        this.presentacion = presentacion;
     }
 
     public Dificultad getDificultad() {

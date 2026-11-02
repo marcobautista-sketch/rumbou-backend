@@ -4,7 +4,7 @@ import com.rumbou.backend.entity.Dificultad;
 import com.rumbou.backend.entity.OrigenPregunta;
 import java.util.List;
 
-// Incluye clave y explicacion, a diferencia de PreguntaResponse.
+// Incluye clave, explicacion y pasos, a diferencia de PreguntaResponse.
 public record PreguntaAdminResponse(
         Long id,
         Long temaId,
@@ -15,6 +15,8 @@ public record PreguntaAdminResponse(
         String explicacion,
         Dificultad dificultad,
         OrigenPregunta origen,
-        boolean aprobada
+        boolean aprobada,
+        PresentacionResponse presentacion,
+        List<PasoResolucionResponse> pasos
 ) {
 }
