@@ -21,8 +21,8 @@ import java.util.Optional;
 
 // Carga el banco de preguntas desde src/main/resources/seed/preguntas.csv (profile
 // "seed"), idempotente por clave natural (tema, enunciado), y despues su version con
-// formato desde seed/presentaciones.json. @Order(3): las preguntas se cuelgan de temas
-// que carga AcademicoSeedRunner.
+// formato desde seed/presentaciones.json. Antes aplica seed/enunciados-corregidos.csv.
+// @Order(3): las preguntas se cuelgan de temas que carga AcademicoSeedRunner.
 @Order(3)
 @Component
 @Profile("seed")
@@ -41,9 +41,27 @@ public class ContenidoSeedRunner implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
+        corregirEnunciados();
         sembrarPreguntas();
         sembrarPresentaciones();
         log.info("Seed del banco de preguntas terminado");
+    }
+
+    // Corregir un enunciado en preguntas.csv cambia su clave natural: sin este paso el seed
+    // crearia una pregunta nueva y dejaria la vieja. Aqui la pregunta que ya existe recibe el
+    // enunciado nuevo y conserva su id, asi que sus simulacros y desafios siguen apuntandole.
+    private void corregirEnunciados() {
+        int corregidos = 0;
+        for (Fila fila : ArchivoSeed.leer("enunciados-corregidos.csv", 3)) {
+            Long temaId = buscarTema(fila, 0).getId();
+            String nuevo = fila.texto(2);
+            Optional<Pregunta> pregunta = preguntaRepository.findByTemaIdAndEnunciado(temaId, fila.texto(1));
+            if (pregunta.isPresent() && preguntaRepository.findByTemaIdAndEnunciado(temaId, nuevo).isEmpty()) {
+                pregunta.get().setEnunciado(nuevo);
+                corregidos++;
+            }
+        }
+        log.info("enunciados-corregidos.csv: {} enunciados actualizados", corregidos);
     }
 
     // Una ficha que ya no coincide con ninguna pregunta (por ejemplo, porque se edito el
