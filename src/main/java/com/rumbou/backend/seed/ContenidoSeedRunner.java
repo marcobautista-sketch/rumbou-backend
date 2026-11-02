@@ -4,6 +4,7 @@ import com.rumbou.backend.entity.Dificultad;
 import com.rumbou.backend.entity.OrigenPregunta;
 import com.rumbou.backend.entity.Pregunta;
 import com.rumbou.backend.entity.Tema;
+import com.rumbou.backend.mapper.PresentacionMapper;
 import com.rumbou.backend.repository.PreguntaRepository;
 import com.rumbou.backend.repository.TemaRepository;
 import com.rumbou.backend.seed.ArchivoSeed.Fila;
@@ -16,10 +17,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 // Carga el banco de preguntas desde src/main/resources/seed/preguntas.csv (profile
-// "seed"), idempotente por clave natural (tema, enunciado). @Order(3): las
-// preguntas se cuelgan de temas que carga AcademicoSeedRunner.
+// "seed"), idempotente por clave natural (tema, enunciado), y despues su version con
+// formato desde seed/presentaciones.json. @Order(3): las preguntas se cuelgan de temas
+// que carga AcademicoSeedRunner.
 @Order(3)
 @Component
 @Profile("seed")
@@ -39,7 +42,27 @@ public class ContenidoSeedRunner implements CommandLineRunner {
     @Transactional
     public void run(String... args) {
         sembrarPreguntas();
+        sembrarPresentaciones();
         log.info("Seed del banco de preguntas terminado");
+    }
+
+    // Una ficha que ya no coincide con ninguna pregunta (por ejemplo, porque se edito el
+    // enunciado en preguntas.csv) se avisa y se salta: la pregunta se muestra en texto plano.
+    private void sembrarPresentaciones() {
+        List<PresentacionesSeed.Ficha> fichas = PresentacionesSeed.leer();
+        int aplicadas = 0;
+        for (PresentacionesSeed.Ficha ficha : fichas) {
+            Optional<Pregunta> pregunta = temaRepository.findByNombre(ficha.tema())
+                    .flatMap(tema -> preguntaRepository.findByTemaIdAndEnunciado(tema.getId(), ficha.enunciado()));
+            if (pregunta.isEmpty()) {
+                log.warn("presentaciones.json: no hay pregunta de '{}' con el enunciado '{}'",
+                        ficha.tema(), ficha.enunciado());
+                continue;
+            }
+            pregunta.get().setPresentacion(PresentacionMapper.escribir(ficha.presentacion()));
+            aplicadas++;
+        }
+        log.info("presentaciones.json: {} de {} fichas aplicadas", aplicadas, fichas.size());
     }
 
     // Todo lo que llega al archivo se guarda como aprobado.

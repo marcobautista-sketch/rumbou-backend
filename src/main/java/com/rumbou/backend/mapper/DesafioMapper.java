@@ -9,7 +9,7 @@ public final class DesafioMapper {
     private DesafioMapper() {
     }
 
-    // La clave y la explicacion solo se revelan despues de responder.
+    // La clave, la explicacion y los pasos solo se revelan despues de responder.
     public static DesafioDiarioResponse toResponse(DesafioDiario desafio, long desafiosDeLaSemana,
                                                    int xpPorAcierto, int metaSemanal) {
         Pregunta pregunta = desafio.getPregunta();
@@ -29,6 +29,8 @@ public final class DesafioMapper {
                 desafio.getXpGanado(),
                 xpPorAcierto,
                 desafiosDeLaSemana,
-                metaSemanal);
+                metaSemanal,
+                PresentacionMapper.problema(pregunta),
+                respondido ? PresentacionMapper.pasos(pregunta) : null);
     }
 }
