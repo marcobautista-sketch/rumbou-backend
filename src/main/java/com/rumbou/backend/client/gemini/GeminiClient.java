@@ -42,15 +42,18 @@ public class GeminiClient {
 
     private final String apiKey;
     private final String url;
+    private final boolean habilitado;
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
 
     // Configurable (GEMINI_MODEL): Google retira modelos y no todas las keys ven los mismos.
     public GeminiClient(@Value("${gemini.api-key:}") String apiKey,
                         @Value("${gemini.model:gemini-3.6-flash}") String model,
+                        @Value("${gemini.habilitado:false}") boolean habilitado,
                         ObjectMapper objectMapper) {
         this.apiKey = apiKey;
         this.url = API_BASE + model + ":generateContent";
+        this.habilitado = habilitado;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(20))
                 .build();
@@ -398,6 +401,9 @@ public class GeminiClient {
     // Con un archivo (la foto de la solucion o el audio del asistente), va como una segunda parte
     // del mensaje, en base64 (inlineData).
     private JsonNode llamar(String prompt, byte[] archivo, String tipoArchivo, ObjectNode responseSchema) {
+        if (!habilitado) {
+            throw new GeminiException("La inteligencia artificial esta desactivada");
+        }
         ObjectNode body = objectMapper.createObjectNode();
         ObjectNode content = body.putArray("contents").addObject();
         ArrayNode parts = content.putArray("parts");
