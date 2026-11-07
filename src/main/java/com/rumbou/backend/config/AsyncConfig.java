@@ -12,7 +12,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadPoolExecutor;
 
-// Pool de los listeners @Async (correos y explicaciones de Gemini).
+// Pool de los listeners @Async (correos).
 @Configuration
 @EnableAsync
 public class AsyncConfig implements AsyncConfigurer {

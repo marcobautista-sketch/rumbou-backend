@@ -21,7 +21,6 @@ public class PlanService {
 
     private static final int GRATUITO_SIMULACROS_TEMA_SEMANAL = 3;
     private static final int GRATUITO_SIMULACROS_COMPLETOS_MENSUAL = 1;
-    private static final int PRO_CONSULTAS_TUTOR_IA_DIARIO = 30;
     private static final int GRATUITO_OBJETIVOS_ACTIVOS = 1;
     private static final int PRO_OBJETIVOS_ACTIVOS = 3;
 
@@ -56,15 +55,14 @@ public class PlanService {
         return esPro(usuario.getId()) ? PRO_OBJETIVOS_ACTIVOS : GRATUITO_OBJETIVOS_ACTIVOS;
     }
 
-    // El ADMIN no tiene limites de plan: debe poder probar todo (incluido el tutor
-    // de IA) sin pasar por Mercado Pago. Su uso se sigue registrando.
+    // El ADMIN no tiene limites de plan: debe poder probar todo sin pasar por Mercado
+    // Pago. Su uso se sigue registrando.
     public void puedeAcceder(Usuario usuario, Funcionalidad funcionalidad) {
         if (usuario.getRole() == Role.ADMIN) {
             return;
         }
         boolean pro = esPro(usuario.getId());
         switch (funcionalidad) {
-            case TUTOR_IA -> verificarTutorIa(usuario.getId(), pro);
             case SIMULACRO_TEMA -> {
                 if (!pro) {
                     verificarSimulacrosTemaSemanales(usuario.getId());
@@ -75,16 +73,6 @@ public class PlanService {
                     verificarSimulacrosCompletosMensuales(usuario.getId());
                 }
             }
-        }
-    }
-
-    private void verificarTutorIa(Long usuarioId, boolean pro) {
-        if (!pro) {
-            throw new PlanLimitExceededException("El tutor de IA es exclusivo del plan PRO");
-        }
-        int usadas = usoDiarioRepository.sumConsultasTutorIA(usuarioId, LocalDate.now());
-        if (usadas >= PRO_CONSULTAS_TUTOR_IA_DIARIO) {
-            throw new PlanLimitExceededException("Limite alcanzado: 30 consultas al tutor de IA al dia");
         }
     }
 
@@ -110,7 +98,6 @@ public class PlanService {
         switch (funcionalidad) {
             case SIMULACRO_TEMA -> uso.incrementarSimulacrosTema();
             case SIMULACRO_COMPLETO -> uso.incrementarSimulacrosCompletos();
-            case TUTOR_IA -> uso.incrementarConsultasTutorIA();
         }
     }
 }

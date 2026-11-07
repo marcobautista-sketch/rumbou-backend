@@ -1,15 +1,11 @@
 package com.rumbou.backend.service;
 
-import com.rumbou.backend.client.gemini.GeminiClient;
-import com.rumbou.backend.client.gemini.GeminiException;
 import com.rumbou.backend.dto.request.AprobarLoteRequest;
 import com.rumbou.backend.dto.request.UpdatePreguntaRequest;
 import com.rumbou.backend.dto.response.PreguntaAdminResponse;
 import com.rumbou.backend.dto.response.PreguntaResponse;
-import com.rumbou.backend.dto.response.TutorIaResponse;
 import com.rumbou.backend.entity.AreaConocimiento;
 import com.rumbou.backend.entity.Dificultad;
-import com.rumbou.backend.entity.Funcionalidad;
 import com.rumbou.backend.entity.OrigenPregunta;
 import com.rumbou.backend.entity.Pregunta;
 import com.rumbou.backend.entity.Role;
@@ -49,12 +45,6 @@ class PreguntaServiceTest {
     private TemaRepository temaRepository;
 
     @Mock
-    private GeminiClient geminiClient;
-
-    @Mock
-    private PlanService planService;
-
-    @Mock
     private RespuestaUsuarioRepository respuestaUsuarioRepository;
 
     @Mock
@@ -66,7 +56,7 @@ class PreguntaServiceTest {
     void setUp() {
         MockitoAnnotations.openMocks(this);
         preguntaService = new PreguntaServiceImpl(preguntaRepository, temaRepository, respuestaUsuarioRepository,
-                geminiClient, planService, currentUserService);
+                currentUserService);
     }
 
     private Pregunta preguntaConId(Long id, boolean aprobada) {
@@ -113,25 +103,25 @@ class PreguntaServiceTest {
 
     @Test
     void unNoAdminSiempreBuscaSoloAprobadasAunquePidaLoContrario() {
-        given(preguntaRepository.buscar(any(), any(), any(), org.mockito.ArgumentMatchers.eq(Boolean.TRUE), any(), any()))
+        given(preguntaRepository.buscar(any(), any(), org.mockito.ArgumentMatchers.eq(Boolean.TRUE), any(), any()))
                 .willReturn(org.springframework.data.domain.Page.empty());
 
-        preguntaService.buscar(null, null, null, Boolean.FALSE, null, org.springframework.data.domain.Pageable.unpaged());
+        preguntaService.buscar(null, null, Boolean.FALSE, null, org.springframework.data.domain.Pageable.unpaged());
 
         org.mockito.Mockito.verify(preguntaRepository)
-                .buscar(any(), any(), any(), org.mockito.ArgumentMatchers.eq(Boolean.TRUE), any(), any());
+                .buscar(any(), any(), org.mockito.ArgumentMatchers.eq(Boolean.TRUE), any(), any());
     }
 
     @Test
     void unAdminBuscaConElFiltroQuePida() {
         given(currentUserService.puedeRevisarPreguntas()).willReturn(true);
-        given(preguntaRepository.buscar(any(), any(), any(), org.mockito.ArgumentMatchers.isNull(), any(), any()))
+        given(preguntaRepository.buscar(any(), any(), org.mockito.ArgumentMatchers.isNull(), any(), any()))
                 .willReturn(org.springframework.data.domain.Page.empty());
 
-        preguntaService.buscar(null, null, null, null, null, org.springframework.data.domain.Pageable.unpaged());
+        preguntaService.buscar(null, null, null, null, org.springframework.data.domain.Pageable.unpaged());
 
         org.mockito.Mockito.verify(preguntaRepository)
-                .buscar(any(), any(), any(), org.mockito.ArgumentMatchers.isNull(), any(), any());
+                .buscar(any(), any(), org.mockito.ArgumentMatchers.isNull(), any(), any());
     }
 
     @Test
@@ -171,82 +161,6 @@ class PreguntaServiceTest {
     }
 
     @Test
-    void unUsuarioConCupoRecibeLaExplicacionYGastaUnaConsultaDelDia() {
-        Pregunta pregunta = preguntaConId(1L, true);
-        Usuario usuario = usuarioConId(10L);
-        given(currentUserService.getUsuario()).willReturn(usuario);
-        given(preguntaRepository.findById(1L)).willReturn(Optional.of(pregunta));
-        given(geminiClient.explicar(pregunta.getEnunciado(), pregunta.getAlternativas(), pregunta.getClaveCorrecta(), null))
-                .willReturn("Porque 2 + 2 = 4");
-
-        TutorIaResponse respuesta = preguntaService.pedirExplicacionTutorIa(1L, null);
-
-        assertThat(respuesta.preguntaId()).isEqualTo(1L);
-        assertThat(respuesta.explicacion()).isEqualTo("Porque 2 + 2 = 4");
-        verify(planService).puedeAcceder(usuario, Funcionalidad.TUTOR_IA);
-        verify(planService).registrarUso(usuario, Funcionalidad.TUTOR_IA);
-    }
-
-    @Test
-    void siPlanServiceRechazaElAccesoNuncaSeLlamaAGemini() {
-        Pregunta pregunta = preguntaConId(1L, true);
-        Usuario usuario = usuarioConId(10L);
-        given(currentUserService.getUsuario()).willReturn(usuario);
-        given(preguntaRepository.findById(1L)).willReturn(Optional.of(pregunta));
-        willThrow(new ForbiddenException("El tutor de IA es exclusivo del plan PRO"))
-                .given(planService).puedeAcceder(usuario, Funcionalidad.TUTOR_IA);
-
-        assertThatThrownBy(() -> preguntaService.pedirExplicacionTutorIa(1L, null))
-                .isInstanceOf(ForbiddenException.class);
-
-        verify(geminiClient, never()).explicar(any(), any(), any(Integer.class), any());
-        verify(planService, never()).registrarUso(any(), any());
-    }
-
-    @Test
-    void siGeminiFallaNoSeDescuentaElCupoDelDia() {
-        Pregunta pregunta = preguntaConId(1L, true);
-        Usuario usuario = usuarioConId(10L);
-        given(currentUserService.getUsuario()).willReturn(usuario);
-        given(preguntaRepository.findById(1L)).willReturn(Optional.of(pregunta));
-        given(geminiClient.explicar(any(), any(), any(Integer.class), any()))
-                .willThrow(new GeminiException("Gemini no respondio"));
-
-        assertThatThrownBy(() -> preguntaService.pedirExplicacionTutorIa(1L, null))
-                .isInstanceOf(GeminiException.class);
-
-        verify(planService, never()).registrarUso(any(), any());
-    }
-
-    @Test
-    void unNoAdminNoPuedePedirleAlTutorIaUnaPreguntaSinAprobar() {
-        Pregunta pregunta = preguntaConId(1L, false);
-        Usuario usuario = usuarioConId(10L);
-        given(currentUserService.getUsuario()).willReturn(usuario);
-        given(preguntaRepository.findById(1L)).willReturn(Optional.of(pregunta));
-
-        assertThatThrownBy(() -> preguntaService.pedirExplicacionTutorIa(1L, null))
-                .isInstanceOf(ResourceNotFoundException.class);
-
-        verify(planService, never()).puedeAcceder(any(), any());
-        verify(geminiClient, never()).explicar(any(), any(), any(Integer.class), any());
-    }
-
-    @Test
-    void unAdminSiPuedePedirleAlTutorIaUnaPreguntaSinAprobar() {
-        given(currentUserService.puedeRevisarPreguntas()).willReturn(true);
-        Pregunta pregunta = preguntaConId(1L, false);
-        Usuario usuario = usuarioConId(10L);
-        given(currentUserService.getUsuario()).willReturn(usuario);
-        given(preguntaRepository.findById(1L)).willReturn(Optional.of(pregunta));
-        given(geminiClient.explicar(any(), any(), any(Integer.class), any())).willReturn("Explicacion");
-
-        TutorIaResponse respuesta = preguntaService.pedirExplicacionTutorIa(1L, null);
-
-        assertThat(respuesta.explicacion()).isEqualTo("Explicacion");
-    }
-
-    @Test
     void noSeEliminaUnaPreguntaQueYaSalioEnUnSimulacro() {
         given(preguntaRepository.findById(1L)).willReturn(Optional.of(preguntaConId(1L, true)));
         given(respuestaUsuarioRepository.existsByPreguntaId(1L)).willReturn(true);
@@ -278,19 +192,6 @@ class PreguntaServiceTest {
         assertThat(respuesta.id()).isEqualTo(1L);
     }
 
-    @Test
-    void elTutorRecibeLaAlternativaQueMarcoElPostulante() {
-        Pregunta pregunta = preguntaConId(1L, true);
-        given(currentUserService.getUsuario()).willReturn(usuarioConId(10L));
-        given(preguntaRepository.findById(1L)).willReturn(Optional.of(pregunta));
-        given(geminiClient.explicar(pregunta.getEnunciado(), pregunta.getAlternativas(), pregunta.getClaveCorrecta(), 3))
-                .willReturn("La D es tentadora porque...");
-
-        TutorIaResponse respuesta = preguntaService.pedirExplicacionTutorIa(1L, 3);
-
-        assertThat(respuesta.explicacion()).isEqualTo("La D es tentadora porque...");
-    }
-
     private Pregunta preguntaConPresentacion() {
         Pregunta pregunta = preguntaConId(1L, true);
         pregunta.setPresentacion("{\"enunciado\":\"¿Cuanto es $2 + 2$?\",\"alternativas\":null,\"figura\":null,"
@@ -305,7 +206,7 @@ class PreguntaServiceTest {
         Pregunta pregunta = preguntaConPresentacion();
 
         preguntaService.actualizar(1L, new UpdatePreguntaRequest(1L, "¿Cuanto es 2 + 3?",
-                List.of("1", "2", "3", "4", "5"), 4, "2 + 3 = 5", Dificultad.FACIL, OrigenPregunta.SEMILLA, true));
+                List.of("1", "2", "3", "4", "5"), 4, "2 + 3 = 5", Dificultad.FACIL, true));
 
         assertThat(pregunta.getPresentacion()).isNull();
     }
@@ -316,7 +217,7 @@ class PreguntaServiceTest {
 
         PreguntaAdminResponse respuesta = preguntaService.actualizar(1L, new UpdatePreguntaRequest(1L,
                 "¿Cuanto es 2 + 2?", List.of("1", "2", "3", "4", "5"), 3, "2 + 2 = 4",
-                Dificultad.MEDIA, OrigenPregunta.SEMILLA, true));
+                Dificultad.MEDIA, true));
 
         assertThat(pregunta.getPresentacion()).isNotNull();
         assertThat(respuesta.pasos()).hasSize(1);

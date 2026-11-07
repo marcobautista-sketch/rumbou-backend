@@ -1,14 +1,11 @@
 package com.rumbou.backend.service.impl;
 
-import com.rumbou.backend.client.gemini.GeminiClient;
 import com.rumbou.backend.dto.request.AprobarLoteRequest;
 import com.rumbou.backend.dto.request.CreatePreguntaRequest;
 import com.rumbou.backend.dto.request.UpdatePreguntaRequest;
 import com.rumbou.backend.dto.response.PreguntaAdminResponse;
 import com.rumbou.backend.dto.response.PreguntaResponse;
-import com.rumbou.backend.dto.response.TutorIaResponse;
 import com.rumbou.backend.entity.Dificultad;
-import com.rumbou.backend.entity.Funcionalidad;
 import com.rumbou.backend.entity.OrigenPregunta;
 import com.rumbou.backend.entity.Pregunta;
 import com.rumbou.backend.entity.Tema;
@@ -19,7 +16,6 @@ import com.rumbou.backend.repository.PreguntaRepository;
 import com.rumbou.backend.repository.RespuestaUsuarioRepository;
 import com.rumbou.backend.repository.TemaRepository;
 import com.rumbou.backend.security.CurrentUserService;
-import com.rumbou.backend.service.PlanService;
 import com.rumbou.backend.service.PreguntaService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -38,30 +34,25 @@ public class PreguntaServiceImpl implements PreguntaService {
     private final PreguntaRepository preguntaRepository;
     private final TemaRepository temaRepository;
     private final RespuestaUsuarioRepository respuestaUsuarioRepository;
-    private final GeminiClient geminiClient;
-    private final PlanService planService;
     private final CurrentUserService currentUserService;
 
     public PreguntaServiceImpl(PreguntaRepository preguntaRepository, TemaRepository temaRepository,
-                                RespuestaUsuarioRepository respuestaUsuarioRepository, GeminiClient geminiClient,
-                                PlanService planService, CurrentUserService currentUserService) {
+                                RespuestaUsuarioRepository respuestaUsuarioRepository,
+                                CurrentUserService currentUserService) {
         this.preguntaRepository = preguntaRepository;
         this.temaRepository = temaRepository;
         this.respuestaUsuarioRepository = respuestaUsuarioRepository;
-        this.geminiClient = geminiClient;
-        this.planService = planService;
         this.currentUserService = currentUserService;
     }
 
-    // Quien no revisa preguntas solo ve aprobadas: una pregunta generada por IA no llega
-    // a un postulante sin revision humana.
+    // Quien no revisa preguntas solo ve las aprobadas: ninguna pregunta llega a un postulante
+    // sin revision.
     @Transactional(readOnly = true)
     @Override
-    public Page<PreguntaResponse> buscar(Long temaId, Dificultad dificultad, OrigenPregunta origen,
-                                          Boolean aprobada, String texto, Pageable pageable) {
+    public Page<PreguntaResponse> buscar(Long temaId, Dificultad dificultad, Boolean aprobada, String texto, Pageable pageable) {
         Boolean aprobadaEfectiva = currentUserService.puedeRevisarPreguntas() ? aprobada : Boolean.TRUE;
         String textoBuscado = texto == null || texto.isBlank() ? null : texto.trim();
-        return preguntaRepository.buscar(temaId, dificultad, origen, aprobadaEfectiva, textoBuscado,
+        return preguntaRepository.buscar(temaId, dificultad, aprobadaEfectiva, textoBuscado,
                         limitarTamano(pageable))
                 .map(PreguntaMapper::toResponse);
     }
@@ -107,7 +98,7 @@ public class PreguntaServiceImpl implements PreguntaService {
                 request.claveCorrecta(),
                 request.explicacion(),
                 request.dificultad(),
-                request.origen(),
+                OrigenPregunta.SEMILLA,
                 request.aprobada()
         );
 
@@ -130,27 +121,12 @@ public class PreguntaServiceImpl implements PreguntaService {
         pregunta.setClaveCorrecta(request.claveCorrecta());
         pregunta.setExplicacion(request.explicacion());
         pregunta.setDificultad(request.dificultad());
-        pregunta.setOrigen(request.origen());
         pregunta.setAprobada(request.aprobada());
         if (cambioElTexto) {
             pregunta.setPresentacion(null);
         }
 
         return PreguntaMapper.toAdminResponse(pregunta);
-    }
-
-    // Consulta PRO real: se pregunta a Gemini en el momento y se descuenta del cupo
-    // diario, sin cachear (la explicacion estatica la cachea TutorIaExplicacionListener).
-    @Override
-    public TutorIaResponse pedirExplicacionTutorIa(Long id, Integer alternativaMarcada) {
-        Pregunta pregunta = obtenerVisibleParaElUsuario(id);
-        planService.puedeAcceder(currentUserService.getUsuario(), Funcionalidad.TUTOR_IA);
-
-        String explicacion = geminiClient.explicar(
-                pregunta.getEnunciado(), pregunta.getAlternativas(), pregunta.getClaveCorrecta(), alternativaMarcada);
-
-        planService.registrarUso(currentUserService.getUsuario(), Funcionalidad.TUTOR_IA);
-        return new TutorIaResponse(pregunta.getId(), explicacion);
     }
 
     // Una pregunta que ya salio en algun simulacro no se borra: se perderia el
