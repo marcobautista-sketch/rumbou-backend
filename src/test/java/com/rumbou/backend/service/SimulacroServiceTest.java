@@ -39,6 +39,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class SimulacroServiceTest {
@@ -78,6 +79,7 @@ class SimulacroServiceTest {
         usuario.setId(1L);
         when(currentUserService.getUsuario()).thenReturn(usuario);
         when(currentUserService.getUsuarioId()).thenReturn(1L);
+        when(simulacroRepository.marcarFinalizadoSiEnCurso(100L)).thenReturn(1);
 
         universidad = new Universidad("Universidad de prueba", "UDP", 2000, 100);
         universidad.setId(1L);
@@ -135,6 +137,8 @@ class SimulacroServiceTest {
         assertThat(resultado.puntajeObtenido()).isEqualTo(18.875);
         assertThat(simulacro.getEstado()).isEqualTo(EstadoSimulacro.FINALIZADO);
         assertThat(simulacro.getFechaFin()).isNotNull();
+        assertThatThrownBy(() -> simulacroService.finalizar(100L))
+                .isInstanceOf(InvalidOperationException.class);
         verify(eventPublisher).publishEvent(any(SimulacroFinalizadoEvent.class));
         verify(eventPublisher).publishEvent(any(RespuestaIncorrectaEvent.class));
     }
@@ -174,6 +178,17 @@ class SimulacroServiceTest {
 
         assertThatThrownBy(() -> simulacroService.finalizar(100L))
                 .isInstanceOf(InvalidOperationException.class);
+    }
+
+    @Test
+    void finalizarNoPublicaXpSiOtraSolicitudYaObtuvoElCierre() {
+        when(simulacroRepository.findById(100L)).thenReturn(Optional.of(simulacroEnCurso()));
+        when(simulacroRepository.marcarFinalizadoSiEnCurso(100L)).thenReturn(0);
+
+        assertThatThrownBy(() -> simulacroService.finalizar(100L))
+                .isInstanceOf(InvalidOperationException.class);
+
+        verifyNoInteractions(eventPublisher, respuestaUsuarioRepository, estructuraExamenRepository);
     }
 
     @Test

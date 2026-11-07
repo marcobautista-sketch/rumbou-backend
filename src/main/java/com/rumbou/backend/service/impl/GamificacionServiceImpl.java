@@ -12,9 +12,11 @@ import com.rumbou.backend.repository.UsuarioLogroRepository;
 import com.rumbou.backend.repository.UsuarioRepository;
 import com.rumbou.backend.security.CurrentUserService;
 import com.rumbou.backend.service.GamificacionService;
+import com.rumbou.backend.service.SemanaActividad;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -27,15 +29,18 @@ public class GamificacionServiceImpl implements GamificacionService {
     private final LogroRepository logroRepository;
     private final UsuarioLogroRepository usuarioLogroRepository;
     private final CurrentUserService currentUserService;
+    private final Clock reloj;
 
     public GamificacionServiceImpl(UsuarioRepository usuarioRepository,
                                    LogroRepository logroRepository,
                                    UsuarioLogroRepository usuarioLogroRepository,
-                                   CurrentUserService currentUserService) {
+                                   CurrentUserService currentUserService,
+                                   Clock reloj) {
         this.usuarioRepository = usuarioRepository;
         this.logroRepository = logroRepository;
         this.usuarioLogroRepository = usuarioLogroRepository;
         this.currentUserService = currentUserService;
+        this.reloj = reloj;
     }
 
     @Transactional(readOnly = true)
@@ -43,7 +48,8 @@ public class GamificacionServiceImpl implements GamificacionService {
     public GamificacionResponse obtenerResumen() {
         Usuario usuario = currentUserService.getUsuario();
         return UsuarioMapper.toGamificacionResponse(
-                usuario, usuarioLogroRepository.findByUsuarioIdConLogro(usuario.getId()));
+                usuario, usuarioLogroRepository.findByUsuarioIdConLogro(usuario.getId()),
+                SemanaActividad.xpVigente(usuario, SemanaActividad.inicio(SemanaActividad.hoy(reloj))));
     }
 
     @Transactional
@@ -70,8 +76,11 @@ public class GamificacionServiceImpl implements GamificacionService {
     }
 
     private void actualizarRachaYxp(Usuario usuario, int xp) {
-        LocalDate hoy = LocalDate.now();
-        int nuevaRacha = calcularNuevaRacha(usuario.getCurrentStreak(), usuario.getLastActivityDate(), hoy);
+        LocalDate hoy = SemanaActividad.hoy(reloj);
+        LocalDate ultimaActividad = usuario.getLastActivityDate();
+        int nuevaRacha = calcularNuevaRacha(usuario.getCurrentStreak(), ultimaActividad, hoy);
+        // Normalizar antes de reemplazar la fecha: el saldo anterior puede ser de otra semana.
+        usuario.setXpSemanal(SemanaActividad.xpVigente(usuario, SemanaActividad.inicio(hoy)) + xp);
 
         usuario.setCurrentStreak(nuevaRacha);
         usuario.setLastActivityDate(hoy);
@@ -79,7 +88,6 @@ public class GamificacionServiceImpl implements GamificacionService {
             usuario.setLongestStreak(nuevaRacha);
         }
         usuario.setXpTotal(usuario.getXpTotal() + xp);
-        usuario.setXpSemanal(usuario.getXpSemanal() + xp);
     }
 
     // Racha: hoy no cambia, ayer +1, antes se reinicia.
