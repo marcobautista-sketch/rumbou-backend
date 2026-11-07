@@ -130,6 +130,9 @@ public class SimulacroServiceImpl implements SimulacroService {
     public ResultadoSimulacroResponse finalizar(Long simulacroId) {
         Simulacro simulacro = obtenerSimulacroDelUsuario(simulacroId);
         verificarEnCurso(simulacro);
+        if (simulacroRepository.marcarFinalizadoSiEnCurso(simulacroId) == 0) {
+            throw new InvalidOperationException("Este simulacro ya fue finalizado");
+        }
 
         List<RespuestaUsuario> respuestas = respuestaUsuarioRepository.findBySimulacroId(simulacroId);
         calificar(simulacro, respuestas);
