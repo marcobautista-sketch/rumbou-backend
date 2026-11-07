@@ -34,7 +34,7 @@ class PreguntaRepositoryTest extends AbstractContainerBaseTest {
         entityManager.persist(temaGeometria);
 
         guardar(temaAlgebra, "Pregunta facil aprobada de algebra", Dificultad.FACIL, OrigenPregunta.SEMILLA, true);
-        guardar(temaAlgebra, "Pregunta dificil sin aprobar de algebra", Dificultad.DIFICIL, OrigenPregunta.IA_APROBADA, false);
+        guardar(temaAlgebra, "Pregunta dificil sin aprobar de algebra", Dificultad.DIFICIL, OrigenPregunta.SEMILLA, false);
         guardar(temaGeometria, "Pregunta media aprobada de geometria", Dificultad.MEDIA, OrigenPregunta.SEMILLA, true);
     }
 
@@ -47,7 +47,7 @@ class PreguntaRepositoryTest extends AbstractContainerBaseTest {
     @Test
     void filtraPorTema() {
         Page<Pregunta> resultado = preguntaRepository.buscar(
-                temaAlgebra.getId(), null, null, null, null, PageRequest.of(0, 10));
+                temaAlgebra.getId(), null, null, null, PageRequest.of(0, 10));
 
         assertThat(resultado.getContent()).hasSize(2);
         assertThat(resultado.getContent())
@@ -57,7 +57,7 @@ class PreguntaRepositoryTest extends AbstractContainerBaseTest {
     @Test
     void filtraPorDificultadYAprobada() {
         Page<Pregunta> resultado = preguntaRepository.buscar(
-                null, Dificultad.FACIL, null, true, null, PageRequest.of(0, 10));
+                null, Dificultad.FACIL, true, null, PageRequest.of(0, 10));
 
         assertThat(resultado.getContent()).hasSize(1);
         assertThat(resultado.getContent().get(0).getEnunciado())
@@ -65,18 +65,9 @@ class PreguntaRepositoryTest extends AbstractContainerBaseTest {
     }
 
     @Test
-    void filtraPorOrigen() {
-        Page<Pregunta> resultado = preguntaRepository.buscar(
-                null, null, OrigenPregunta.IA_APROBADA, null, null, PageRequest.of(0, 10));
-
-        assertThat(resultado.getContent()).hasSize(1);
-        assertThat(resultado.getContent().get(0).getOrigen()).isEqualTo(OrigenPregunta.IA_APROBADA);
-    }
-
-    @Test
     void sinFiltrosDevuelveTodasPaginadas() {
         Page<Pregunta> resultado = preguntaRepository.buscar(
-                null, null, null, null, null, PageRequest.of(0, 2));
+                null, null, null, null, PageRequest.of(0, 2));
 
         assertThat(resultado.getTotalElements()).isEqualTo(3);
         assertThat(resultado.getContent()).hasSize(2);
@@ -85,7 +76,7 @@ class PreguntaRepositoryTest extends AbstractContainerBaseTest {
     @Test
     void buscaTextoEnElEnunciadoSinDistinguirMayusculas() {
         Page<Pregunta> resultado = preguntaRepository.buscar(
-                null, null, null, null, "GEOMETRIA", PageRequest.of(0, 10));
+                null, null, null, "GEOMETRIA", PageRequest.of(0, 10));
 
         assertThat(resultado.getContent()).hasSize(1);
         assertThat(resultado.getContent().get(0).getEnunciado())
@@ -95,7 +86,7 @@ class PreguntaRepositoryTest extends AbstractContainerBaseTest {
     @Test
     void elTextoSeCombinaConLosDemasFiltros() {
         Page<Pregunta> resultado = preguntaRepository.buscar(
-                temaAlgebra.getId(), null, null, true, "algebra", PageRequest.of(0, 10));
+                temaAlgebra.getId(), null, true, "algebra", PageRequest.of(0, 10));
 
         assertThat(resultado.getContent()).hasSize(1);
         assertThat(resultado.getContent().get(0).getEnunciado())

@@ -24,9 +24,4 @@ public interface UsoDiarioRepository extends JpaRepository<UsoDiario, Long> {
             """)
     int sumSimulacrosCompletosDesde(@Param("usuarioId") Long usuarioId, @Param("desde") LocalDate desde);
 
-    @Query("""
-            select coalesce(sum(u.consultasTutorIA), 0) from UsoDiario u
-            where u.usuario.id = :usuarioId and u.fecha = :fecha
-            """)
-    int sumConsultasTutorIA(@Param("usuarioId") Long usuarioId, @Param("fecha") LocalDate fecha);
 }

@@ -16,7 +16,6 @@ import com.rumbou.backend.entity.RespuestaUsuario;
 import com.rumbou.backend.entity.Simulacro;
 import com.rumbou.backend.entity.TipoSimulacro;
 import com.rumbou.backend.entity.Usuario;
-import com.rumbou.backend.event.RespuestaIncorrectaEvent;
 import com.rumbou.backend.event.SimulacroFinalizadoEvent;
 import com.rumbou.backend.exception.ForbiddenException;
 import com.rumbou.backend.exception.InvalidOperationException;
@@ -138,7 +137,7 @@ public class SimulacroServiceImpl implements SimulacroService {
         calificar(simulacro, respuestas);
         simulacroRepository.save(simulacro);
 
-        publicarEventos(simulacro, respuestas);
+        publicarEventos(simulacro);
         return SimulacroMapper.toResultado(simulacro);
     }
 
@@ -160,16 +159,11 @@ public class SimulacroServiceImpl implements SimulacroService {
         simulacro.setFechaFin(LocalDateTime.now());
     }
 
-    private void publicarEventos(Simulacro simulacro, List<RespuestaUsuario> respuestas) {
+    private void publicarEventos(Simulacro simulacro) {
         Long usuarioId = simulacro.getUsuario().getId();
         eventPublisher.publishEvent(new SimulacroFinalizadoEvent(
                 simulacro.getId(), usuarioId, simulacro.getArea().getId(),
                 simulacro.getTipo(), simulacro.getPuntajeObtenido(), simulacro.getPsp()));
-
-        respuestas.stream()
-                .filter(respuesta -> Boolean.FALSE.equals(respuesta.getEsCorrecta()))
-                .forEach(respuesta -> eventPublisher.publishEvent(new RespuestaIncorrectaEvent(
-                        respuesta.getId(), respuesta.getPregunta().getId(), usuarioId)));
     }
 
     // Un tema en dos bloques del area no se puede calificar (no se sabria con

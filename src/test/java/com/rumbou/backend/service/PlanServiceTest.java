@@ -101,30 +101,6 @@ class PlanServiceTest {
         assertThat(planService.esPro(7L)).isFalse();
     }
 
-    // ---- TUTOR_IA ----
-
-    @Test
-    void proPuedeConsultarElTutorConMenosDe30Consultas() {
-        activarPro();
-        when(usoDiarioRepository.sumConsultasTutorIA(anyLong(), any(LocalDate.class))).thenReturn(29);
-
-        planService.puedeAcceder(usuarioConId(7), Funcionalidad.TUTOR_IA);
-    }
-
-    @Test
-    void proQuedaBloqueadoAlLlegarA30ConsultasAlTutor() {
-        activarPro();
-        when(usoDiarioRepository.sumConsultasTutorIA(anyLong(), any(LocalDate.class))).thenReturn(30);
-
-        assertThatThrownBy(() -> planService.puedeAcceder(usuarioConId(7), Funcionalidad.TUTOR_IA))
-                .isInstanceOf(ForbiddenException.class);
-    }
-
-    @Test
-    void elTutorEsExclusivoDelPlanPro() {
-        assertThatThrownBy(() -> planService.puedeAcceder(usuarioConId(7), Funcionalidad.TUTOR_IA))
-                .isInstanceOf(ForbiddenException.class);
-    }
 
     // ---- SIMULACRO_TEMA ----
 
@@ -173,12 +149,12 @@ class PlanServiceTest {
     // ---- ADMIN sin limites ----
 
     @Test
-    void unAdminSinSuscripcionPuedeUsarElTutorIa() {
+    void unAdminSinSuscripcionNoTieneLimites() {
         when(suscripcionRepository.findFirstByUsuarioIdAndEstadoOrderByFechaInicioDesc(
                 anyLong(), any(EstadoSuscripcion.class)))
                 .thenReturn(Optional.empty());
 
-        planService.puedeAcceder(adminConId(1), Funcionalidad.TUTOR_IA);
+        planService.puedeAcceder(adminConId(1), Funcionalidad.SIMULACRO_COMPLETO);
 
         org.mockito.Mockito.verifyNoInteractions(usoDiarioRepository);
     }
@@ -190,16 +166,6 @@ class PlanServiceTest {
 
         planService.puedeAcceder(adminConId(1), Funcionalidad.SIMULACRO_COMPLETO);
         planService.puedeAcceder(adminConId(1), Funcionalidad.SIMULACRO_TEMA);
-    }
-
-    @Test
-    void unAdminTampocoTieneElTopeDiarioDelTutorIa() {
-        activarPro();
-        when(usoDiarioRepository.sumConsultasTutorIA(anyLong(), any(LocalDate.class))).thenReturn(30);
-
-        assertThatThrownBy(() -> planService.puedeAcceder(usuarioConId(7), Funcionalidad.TUTOR_IA))
-                .isInstanceOf(ForbiddenException.class);
-        planService.puedeAcceder(adminConId(1), Funcionalidad.TUTOR_IA);
     }
 
     @Test
@@ -220,9 +186,9 @@ class PlanServiceTest {
         when(usoDiarioRepository.findByUsuarioIdAndFecha(anyLong(), any(LocalDate.class)))
                 .thenReturn(Optional.of(hoy));
 
-        planService.registrarUso(usuarioConId(7), Funcionalidad.TUTOR_IA);
+        planService.registrarUso(usuarioConId(7), Funcionalidad.SIMULACRO_COMPLETO);
 
-        assertThat(hoy.getConsultasTutorIA()).isEqualTo(1);
+        assertThat(hoy.getSimulacrosCompletos()).isEqualTo(1);
         assertThat(hoy.getSimulacrosTema()).isZero();
     }
 
