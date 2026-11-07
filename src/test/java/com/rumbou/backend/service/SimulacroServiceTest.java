@@ -16,7 +16,6 @@ import com.rumbou.backend.entity.Tema;
 import com.rumbou.backend.entity.TipoSimulacro;
 import com.rumbou.backend.entity.Universidad;
 import com.rumbou.backend.entity.Usuario;
-import com.rumbou.backend.event.RespuestaIncorrectaEvent;
 import com.rumbou.backend.event.SimulacroFinalizadoEvent;
 import com.rumbou.backend.exception.InvalidOperationException;
 import com.rumbou.backend.exception.ForbiddenException;
@@ -140,7 +139,6 @@ class SimulacroServiceTest {
         assertThatThrownBy(() -> simulacroService.finalizar(100L))
                 .isInstanceOf(InvalidOperationException.class);
         verify(eventPublisher).publishEvent(any(SimulacroFinalizadoEvent.class));
-        verify(eventPublisher).publishEvent(any(RespuestaIncorrectaEvent.class));
     }
 
     @Test

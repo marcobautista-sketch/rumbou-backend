@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "RumboU API",
-    "description": "Coleccion de endpoints de RumboU (CS2031 UTEC). Cubre autenticacion, usuarios, catalogo academico, simulacros, progreso, preguntas y suscripciones. Se puede correr completa, en orden, con \"Run collection\".\n\nComo usarla:\n1. baseUrl apunta a la API local (http://localhost:8080). Para levantarla: docker compose up -d y luego ./mvnw spring-boot:run \"-Dspring-boot.run.profiles=seed\" (README, apéndice A). Para usar el despliegue en AWS, cambia baseUrl por el valor de baseUrlAws.\n2. \"Registrar usuario\" crea una cuenta nueva en cada corrida (genera el email solo) y guarda el token; \"Login\" reutiliza ese mismo email. No hay que copiar tokens a mano.\n3. Los requests marcados (ADMIN) necesitan rol ADMIN. Ejecuta \"Login como administrador\": usa la cuenta de evaluacion del curso (evaluador@rumbou.app, ya cargada en las variables adminEmail y adminPassword; en local la crea el profile seed) y desde ahi todos los requests corren como ADMIN. Sin ese login, los requests ADMIN responden 403 y sus tests lo aceptan como resultado valido.\n4. Los requests marcados (plan PRO) responden 403 con el plan gratuito; el ADMIN pasa todos los limites del plan.\n5. Cada request guarda en variables los ids que necesitan los siguientes (usuarioId, areaId, temaId, simulacroId, preguntaId, ofertaAcademicaId, objetivoId).\n6. \"Crear suscripcion PRO\" y \"Tutor de IA\" dependen de credenciales externas (MP_ACCESS_TOKEN, GEMINI_API_KEY) en el servidor; sin ellas responden 502.\n7. La carpeta \"Cambiar de rol\" permite pasar a USER, REVIEWER o ADMIN con un solo request; ver la seccion 2 de GUIA-DE-USO.md.",
+    "description": "Coleccion de endpoints de RumboU (CS2031 UTEC). Cubre autenticacion, usuarios, catalogo academico, simulacros, progreso, preguntas y suscripciones. Se puede correr completa, en orden, con \"Run collection\".\n\nComo usarla:\n1. baseUrl apunta a la API local (http://localhost:8080). Para levantarla: docker compose up -d y luego ./mvnw spring-boot:run \"-Dspring-boot.run.profiles=seed\" (README, apéndice A). Para usar el despliegue en AWS, cambia baseUrl por el valor de baseUrlAws.\n2. \"Registrar usuario\" crea una cuenta nueva en cada corrida (genera el email solo) y guarda el token; \"Login\" reutiliza ese mismo email. No hay que copiar tokens a mano.\n3. Los requests marcados (ADMIN) necesitan rol ADMIN. Ejecuta \"Login como administrador\": usa la cuenta de evaluacion del curso (evaluador@rumbou.app, ya cargada en las variables adminEmail y adminPassword; en local la crea el profile seed) y desde ahi todos los requests corren como ADMIN. Sin ese login, los requests ADMIN responden 403 y sus tests lo aceptan como resultado valido.\n4. Los requests marcados (plan PRO) responden 403 con el plan gratuito; el ADMIN pasa todos los limites del plan.\n5. Cada request guarda en variables los ids que necesitan los siguientes (usuarioId, areaId, temaId, simulacroId, preguntaId, ofertaAcademicaId, objetivoId).\n6. \"Crear suscripcion PRO\" depende de credenciales externas (MP_ACCESS_TOKEN) en el servidor; sin ellas responde 502.\n7. La carpeta \"Cambiar de rol\" permite pasar a USER, REVIEWER o ADMIN con un solo request; ver la seccion 2 de GUIA-DE-USO.md.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -2413,12 +2413,6 @@
                   "description": "FACIL | MEDIA | DIFICIL"
                 },
                 {
-                  "key": "origen",
-                  "value": "IA_APROBADA",
-                  "description": "SEMILLA | IA_APROBADA",
-                  "disabled": true
-                },
-                {
                   "key": "aprobada",
                   "value": "true",
                   "disabled": true
@@ -2470,12 +2464,6 @@
                       "key": "dificultad",
                       "value": "MEDIA",
                       "description": "FACIL | MEDIA | DIFICIL"
-                    },
-                    {
-                      "key": "origen",
-                      "value": "IA_APROBADA",
-                      "description": "SEMILLA | IA_APROBADA",
-                      "disabled": true
                     },
                     {
                       "key": "aprobada",
@@ -2571,71 +2559,6 @@
           ]
         },
         {
-          "name": "Tutor de IA (plan PRO)",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/preguntas/{{preguntaId}}/tutor-ia",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "preguntas",
-                "{{preguntaId}}",
-                "tutor-ia"
-              ]
-            },
-            "description": "Explicacion personalizada de la pregunta generada con Gemini. Exclusiva del plan PRO (el rol ADMIN tambien puede usarla), con tope de 30 consultas al dia controlado por PlanService (403 si el usuario es gratuito o supero el limite). Requiere GEMINI_API_KEY configurada en el servidor; si el proveedor falla responde 502 sin descontar cupo. Un usuario no-admin solo puede consultar preguntas aprobadas."
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Responde 200 (PRO), 403 (sin plan o limite) o 502 (proveedor)', () => pm.expect([200,403,502]).to.include(pm.response.code));"
-                ]
-              }
-            }
-          ],
-          "response": [
-            {
-              "name": "200 OK (como ADMIN o PRO)",
-              "originalRequest": {
-                "method": "POST",
-                "header": [],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/preguntas/{{preguntaId}}/tutor-ia",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "preguntas",
-                    "{{preguntaId}}",
-                    "tutor-ia"
-                  ]
-                },
-                "description": "Explicacion personalizada de la pregunta generada con Gemini. Exclusiva del plan PRO (el rol ADMIN tambien puede usarla), con tope de 30 consultas al dia controlado por PlanService (403 si el usuario es gratuito o supero el limite). Requiere GEMINI_API_KEY configurada en el servidor; si el proveedor falla responde 502 sin descontar cupo. Un usuario no-admin solo puede consultar preguntas aprobadas."
-              },
-              "status": "OK",
-              "code": 200,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "cookie": [],
-              "body": "{\n  \"preguntaId\": 649,\n  \"explicacion\": \"Para resolver la expresión (3 * 4) * 2, se aplica la regla del operador a * b = 2a + 3b - 5 por partes: primero resolvemos el paréntesis obteniendo 3 * 4 = 2(3) + 3(4) - 5 = 13; posteriormente, evaluamos este resultado con el número final mediante 13 * 2 = 2(13) + 3(2) - 5 = 27, demostrando que la alternativa correcta es la número 2.\"\n}"
-            }
-          ]
-        },
-        {
           "name": "Pregunta completa (ADMIN o REVIEWER)",
           "event": [
             {
@@ -2695,82 +2618,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"id\": 49,\n  \"temaId\": 4,\n  \"temaNombre\": \"Aritmética\",\n  \"enunciado\": \"Determine la cantidad de divisores compuestos que posee el número 360.\",\n  \"alternativas\": [\n    \"18\",\n    \"19\",\n    \"20\",\n    \"22\",\n    \"24\"\n  ],\n  \"claveCorrecta\": 2,\n  \"explicacion\": \"La descomposición canónica de 360 es 2³ × 3² × 5¹. El total de divisores es (3+1)(2+1)(1+1) = 24. Sus divisores primos son 3 (el 2, 3 y 5) y tiene 1 divisor simple adicional (el 1). Por lo tanto, divisores compuestos = 24 - 3 - 1 = 20.\",\n  \"dificultad\": \"MEDIA\",\n  \"origen\": \"IA_APROBADA\",\n  \"aprobada\": true\n}"
-            }
-          ]
-        },
-        {
-          "name": "Revisar la solucion en papel (foto)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('200 (PRO o ADMIN), 403 (sin plan) o 502 (proveedor)', () => pm.expect([200, 403, 502]).to.include(pm.response.code));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "imagen",
-                  "type": "file",
-                  "src": "postman/solucion-ejemplo.jpg",
-                  "description": "JPG, PNG, WEBP o HEIC, hasta 5 MB"
-                }
-              ]
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/preguntas/{{preguntaId}}/revisar-solucion",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "preguntas",
-                "{{preguntaId}}",
-                "revisar-solucion"
-              ]
-            },
-            "description": "Sensor de camara: Gemini lee la foto del procedimiento escrito a mano y responde `veredicto` (CORRECTA, PARCIAL, INCORRECTA o ILEGIBLE) y en que paso esta el error. Cuenta como una consulta al tutor (PRO o ADMIN). La foto de ejemplo esta en la carpeta `postman/` del repositorio."
-          },
-          "response": [
-            {
-              "name": "200 OK (foto de un procedimiento con un error de calculo)",
-              "originalRequest": {
-                "method": "POST",
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/preguntas/{{preguntaId}}/revisar-solucion",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "preguntas",
-                    "{{preguntaId}}",
-                    "revisar-solucion"
-                  ]
-                }
-              },
-              "status": "OK",
-              "code": 200,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "cookie": [],
-              "body": "{\n  \"preguntaId\": 44,\n  \"veredicto\": \"PARCIAL\",\n  \"retroalimentacion\": \"Realizaste correctamente la descomposición canónica de 360 y planteaste muy bien la fórmula para calcular la cantidad de divisores obteniendo (3 + 1)(2 + 1)(1 + 1) = 4 · 3 · 2. Sin embargo, cometiste un error de cálculo en la multiplicación final, ya que 4 · 3 · 2 es igual a 24 y no a 20. Por lo tanto, la alternativa correcta es la C.\"\n}"
+              "body": "{\n  \"id\": 49,\n  \"temaId\": 4,\n  \"temaNombre\": \"Aritmética\",\n  \"enunciado\": \"Determine la cantidad de divisores compuestos que posee el número 360.\",\n  \"alternativas\": [\n    \"18\",\n    \"19\",\n    \"20\",\n    \"22\",\n    \"24\"\n  ],\n  \"claveCorrecta\": 2,\n  \"explicacion\": \"La descomposición canónica de 360 es 2³ × 3² × 5¹. El total de divisores es (3+1)(2+1)(1+1) = 24. Sus divisores primos son 3 (el 2, 3 y 5) y tiene 1 divisor simple adicional (el 1). Por lo tanto, divisores compuestos = 24 - 3 - 1 = 20.\",\n  \"dificultad\": \"MEDIA\",\n  \"aprobada\": true\n}"
             }
           ]
         },
@@ -2797,7 +2645,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"temaId\": {{temaId}},\n  \"enunciado\": \"¿Cual es la derivada de x^2?\",\n  \"alternativas\": [\"x\", \"2x\", \"x^2\", \"2\", \"0\"],\n  \"claveCorrecta\": 1,\n  \"explicacion\": \"La derivada de x^n es n*x^(n-1).\",\n  \"dificultad\": \"MEDIA\",\n  \"origen\": \"SEMILLA\",\n  \"aprobada\": true\n}"
+              "raw": "{\n  \"temaId\": {{temaId}},\n  \"enunciado\": \"¿Cual es la derivada de x^2?\",\n  \"alternativas\": [\"x\", \"2x\", \"x^2\", \"2\", \"0\"],\n  \"claveCorrecta\": 1,\n  \"explicacion\": \"La derivada de x^n es n*x^(n-1).\",\n  \"dificultad\": \"MEDIA\",\n  \"aprobada\": true\n}"
             },
             "description": "Requiere role=ADMIN (403 si no). claveCorrecta es el indice 0-4 dentro de alternativas, que debe tener exactamente 5 elementos. El id creado se guarda en preguntaId, asi que Actualizar, Aprobar y Eliminar actuan sobre esta pregunta de prueba y no sobre el banco real."
           },
@@ -2837,7 +2685,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"temaId\": {{temaId}},\n  \"enunciado\": \"¿Cual es la derivada de x^2?\",\n  \"alternativas\": [\"x\", \"2x\", \"x^2\", \"2\", \"0\"],\n  \"claveCorrecta\": 1,\n  \"explicacion\": \"La derivada de x^n es n*x^(n-1).\",\n  \"dificultad\": \"MEDIA\",\n  \"origen\": \"SEMILLA\",\n  \"aprobada\": true\n}"
+                  "raw": "{\n  \"temaId\": {{temaId}},\n  \"enunciado\": \"¿Cual es la derivada de x^2?\",\n  \"alternativas\": [\"x\", \"2x\", \"x^2\", \"2\", \"0\"],\n  \"claveCorrecta\": 1,\n  \"explicacion\": \"La derivada de x^n es n*x^(n-1).\",\n  \"dificultad\": \"MEDIA\",\n  \"aprobada\": true\n}"
                 },
                 "description": "Requiere role=ADMIN (403 si no). claveCorrecta es el indice 0-4 dentro de alternativas, que debe tener exactamente 5 elementos. El id creado se guarda en preguntaId, asi que Actualizar, Aprobar y Eliminar actuan sobre esta pregunta de prueba y no sobre el banco real."
               },
@@ -2851,7 +2699,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"id\": 795,\n  \"temaId\": 1,\n  \"temaNombre\": \"Razonamiento Matemático\",\n  \"enunciado\": \"¿Cual es la derivada de x^2?\",\n  \"alternativas\": [\n    \"x\",\n    \"2x\",\n    \"x^2\",\n    \"2\",\n    \"0\"\n  ],\n  \"claveCorrecta\": 1,\n  \"explicacion\": \"La derivada de x^n es n*x^(n-1).\",\n  \"dificultad\": \"MEDIA\",\n  \"origen\": \"SEMILLA\",\n  \"aprobada\": true\n}"
+              "body": "{\n  \"id\": 795,\n  \"temaId\": 1,\n  \"temaNombre\": \"Razonamiento Matemático\",\n  \"enunciado\": \"¿Cual es la derivada de x^2?\",\n  \"alternativas\": [\n    \"x\",\n    \"2x\",\n    \"x^2\",\n    \"2\",\n    \"0\"\n  ],\n  \"claveCorrecta\": 1,\n  \"explicacion\": \"La derivada de x^n es n*x^(n-1).\",\n  \"dificultad\": \"MEDIA\",\n  \"aprobada\": true\n}"
             }
           ]
         },
@@ -2879,7 +2727,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"temaId\": {{temaId}},\n  \"enunciado\": \"¿Cual es la derivada de x^2? (editado)\",\n  \"alternativas\": [\"x\", \"2x\", \"x^2\", \"2\", \"0\"],\n  \"claveCorrecta\": 1,\n  \"explicacion\": \"La derivada de x^n es n*x^(n-1).\",\n  \"dificultad\": \"MEDIA\",\n  \"origen\": \"SEMILLA\",\n  \"aprobada\": true\n}"
+              "raw": "{\n  \"temaId\": {{temaId}},\n  \"enunciado\": \"¿Cual es la derivada de x^2? (editado)\",\n  \"alternativas\": [\"x\", \"2x\", \"x^2\", \"2\", \"0\"],\n  \"claveCorrecta\": 1,\n  \"explicacion\": \"La derivada de x^n es n*x^(n-1).\",\n  \"dificultad\": \"MEDIA\",\n  \"aprobada\": true\n}"
             },
             "description": "Reemplaza TODOS los campos editables (no es un update parcial). Requiere role=ADMIN."
           },
@@ -2919,7 +2767,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"temaId\": {{temaId}},\n  \"enunciado\": \"¿Cual es la derivada de x^2? (editado)\",\n  \"alternativas\": [\"x\", \"2x\", \"x^2\", \"2\", \"0\"],\n  \"claveCorrecta\": 1,\n  \"explicacion\": \"La derivada de x^n es n*x^(n-1).\",\n  \"dificultad\": \"MEDIA\",\n  \"origen\": \"SEMILLA\",\n  \"aprobada\": true\n}"
+                  "raw": "{\n  \"temaId\": {{temaId}},\n  \"enunciado\": \"¿Cual es la derivada de x^2? (editado)\",\n  \"alternativas\": [\"x\", \"2x\", \"x^2\", \"2\", \"0\"],\n  \"claveCorrecta\": 1,\n  \"explicacion\": \"La derivada de x^n es n*x^(n-1).\",\n  \"dificultad\": \"MEDIA\",\n  \"aprobada\": true\n}"
                 },
                 "description": "Reemplaza TODOS los campos editables (no es un update parcial). Requiere role=ADMIN."
               },
@@ -2933,7 +2781,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"id\": 795,\n  \"temaId\": 1,\n  \"temaNombre\": \"Razonamiento Matemático\",\n  \"enunciado\": \"¿Cual es la derivada de x^2? (editado)\",\n  \"alternativas\": [\n    \"x\",\n    \"2x\",\n    \"x^2\",\n    \"2\",\n    \"0\"\n  ],\n  \"claveCorrecta\": 1,\n  \"explicacion\": \"La derivada de x^n es n*x^(n-1).\",\n  \"dificultad\": \"MEDIA\",\n  \"origen\": \"SEMILLA\",\n  \"aprobada\": true\n}"
+              "body": "{\n  \"id\": 795,\n  \"temaId\": 1,\n  \"temaNombre\": \"Razonamiento Matemático\",\n  \"enunciado\": \"¿Cual es la derivada de x^2? (editado)\",\n  \"alternativas\": [\n    \"x\",\n    \"2x\",\n    \"x^2\",\n    \"2\",\n    \"0\"\n  ],\n  \"claveCorrecta\": 1,\n  \"explicacion\": \"La derivada de x^n es n*x^(n-1).\",\n  \"dificultad\": \"MEDIA\",\n  \"aprobada\": true\n}"
             }
           ]
         },
@@ -2954,7 +2802,7 @@
                 "aprobar"
               ]
             },
-            "description": "Marca aprobada=true. Se usa sobre todo en el panel de revision de preguntas generadas con Gemini (nacen con aprobada=false). Requiere role=ADMIN.\n\nTambien lo puede hacer un REVIEWER: el rol que revisa las preguntas generadas por IA sin administrar el sistema."
+            "description": "Marca aprobada=true. Se usa sobre todo en el panel de revision de preguntas nuevas (nacen con aprobada=false). Requiere role=ADMIN.\n\nTambien lo puede hacer un REVIEWER: el rol que revisa las preguntas sin administrar el sistema."
           },
           "event": [
             {
@@ -2985,7 +2833,7 @@
                     "aprobar"
                   ]
                 },
-                "description": "Marca aprobada=true. Se usa sobre todo en el panel de revision de preguntas generadas con Gemini (nacen con aprobada=false). Requiere role=ADMIN."
+                "description": "Marca aprobada=true. Se usa sobre todo en el panel de revision de preguntas nuevas (nacen con aprobada=false). Requiere role=ADMIN."
               },
               "status": "OK",
               "code": 200,
@@ -2997,7 +2845,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"id\": 795,\n  \"temaId\": 1,\n  \"temaNombre\": \"Razonamiento Matemático\",\n  \"enunciado\": \"¿Cual es la derivada de x^2? (editado)\",\n  \"alternativas\": [\n    \"x\",\n    \"2x\",\n    \"x^2\",\n    \"2\",\n    \"0\"\n  ],\n  \"claveCorrecta\": 1,\n  \"explicacion\": \"La derivada de x^n es n*x^(n-1).\",\n  \"dificultad\": \"MEDIA\",\n  \"origen\": \"SEMILLA\",\n  \"aprobada\": true\n}"
+              "body": "{\n  \"id\": 795,\n  \"temaId\": 1,\n  \"temaNombre\": \"Razonamiento Matemático\",\n  \"enunciado\": \"¿Cual es la derivada de x^2? (editado)\",\n  \"alternativas\": [\n    \"x\",\n    \"2x\",\n    \"x^2\",\n    \"2\",\n    \"0\"\n  ],\n  \"claveCorrecta\": 1,\n  \"explicacion\": \"La derivada de x^n es n*x^(n-1).\",\n  \"dificultad\": \"MEDIA\",\n  \"aprobada\": true\n}"
             }
           ]
         },
@@ -3027,7 +2875,7 @@
                 "aprobar-lote"
               ]
             },
-            "description": "Marca aprobada=true en todas las preguntas indicadas en una sola llamada. Pensado para el panel de revision: despues de generar un lote con Gemini (profile generar-preguntas) y leerlo, se aprueban de un jalon. Devuelve la lista de preguntas aprobadas. Requiere role=ADMIN; ids no puede ir vacio (400).\n\nTambien lo puede hacer un REVIEWER: el rol que revisa las preguntas generadas por IA sin administrar el sistema."
+            "description": "Marca aprobada=true en todas las preguntas indicadas en una sola llamada. Pensado para el panel de revision: despues de leer un lote, se aprueban de un jalon. Devuelve la lista de preguntas aprobadas. Requiere role=ADMIN; ids no puede ir vacio (400).\n\nTambien lo puede hacer un REVIEWER: el rol que revisa las preguntas sin administrar el sistema."
           },
           "event": [
             {
@@ -3067,7 +2915,7 @@
                     "aprobar-lote"
                   ]
                 },
-                "description": "Marca aprobada=true en todas las preguntas indicadas en una sola llamada. Pensado para el panel de revision: despues de generar un lote con Gemini (profile generar-preguntas) y leerlo, se aprueban de un jalon. Devuelve la lista de preguntas aprobadas. Requiere role=ADMIN; ids no puede ir vacio (400)."
+                "description": "Marca aprobada=true en todas las preguntas indicadas en una sola llamada. Pensado para el panel de revision: despues de leer un lote, se aprueban de un jalon. Devuelve la lista de preguntas aprobadas. Requiere role=ADMIN; ids no puede ir vacio (400)."
               },
               "status": "OK",
               "code": 200,
@@ -3079,7 +2927,7 @@
                 }
               ],
               "cookie": [],
-              "body": "[\n  {\n    \"id\": 795,\n    \"temaId\": 1,\n    \"temaNombre\": \"Razonamiento Matemático\",\n    \"enunciado\": \"¿Cual es la derivada de x^2? (editado)\",\n    \"alternativas\": [\n      \"x\",\n      \"2x\",\n      \"x^2\",\n      \"2\",\n      \"0\"\n    ],\n    \"claveCorrecta\": 1,\n    \"explicacion\": \"La derivada de x^n es n*x^(n-1).\",\n    \"dificultad\": \"MEDIA\",\n    \"origen\": \"SEMILLA\",\n    \"aprobada\": true\n  }\n]"
+              "body": "[\n  {\n    \"id\": 795,\n    \"temaId\": 1,\n    \"temaNombre\": \"Razonamiento Matemático\",\n    \"enunciado\": \"¿Cual es la derivada de x^2? (editado)\",\n    \"alternativas\": [\n      \"x\",\n      \"2x\",\n      \"x^2\",\n      \"2\",\n      \"0\"\n    ],\n    \"claveCorrecta\": 1,\n    \"explicacion\": \"La derivada de x^n es n*x^(n-1).\",\n    \"dificultad\": \"MEDIA\",\n    \"aprobada\": true\n  }\n]"
             }
           ]
         },
@@ -3424,167 +3272,6 @@
               ],
               "cookie": [],
               "body": "{\n  \"temaId\": 1,\n  \"tema\": \"Razonamiento Matemático\",\n  \"consulta\": \"Razonamiento Matemático\",\n  \"libros\": [\n    {\n      \"titulo\": \"Sobre la naturaleza del razonamiento matemático. Consideraciones sobre los fundamentos de la Matemática\",\n      \"autores\": [\n        \"Th Skolem\"\n      ],\n      \"anio\": \"1952\",\n      \"portadaUrl\": null,\n      \"url\": \"http://books.google.com/books?id=39mMAQAACAAJ&dq=intitle:Razonamiento+Matem%C3%A1tico&hl=&as_pt=BOOKS&source=gbs_api\"\n    },\n    {\n      \"titulo\": \"Razonamiento matemático\",\n      \"autores\": [\n        \"Manuel Coveñas Naquiche\"\n      ],\n      \"anio\": \"1991\",\n      \"portadaUrl\": null,\n      \"url\": \"http://books.google.com/books?id=OkTAxgEACAAJ&dq=intitle:Razonamiento+Matem%C3%A1tico&hl=&as_pt=BOOKS&source=gbs_api\"\n    },\n    {\n      \"titulo\": \"Razonamiento matemático\",\n      \"autores\": [\n        \"José G. Rodríguez Ahumada\"\n      ],\n      \"anio\": \"1997\",\n      \"portadaUrl\": \"https://books.google.com/books/content?id=qiYRAAAACAAJ&printsec=frontcover&img=1&zoom=1&source=gbs_api\",\n      \"url\": \"http://books.google.com/books?id=qiYRAAAACAAJ&dq=intitle:Razonamiento+Matem%C3%A1tico&hl=&as_pt=BOOKS&source=gbs_api\"\n    }\n  ]\n}"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "Asistente",
-      "description": "Asistente de estudio que conoce los objetivos, el proximo examen y los temas debiles del postulante. Cuenta como una consulta al tutor (PRO o ADMIN).",
-      "item": [
-        {
-          "name": "Pregunta escrita",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('200 (PRO o ADMIN), 403 (sin plan) o 502 (proveedor)', () => pm.expect([200, 403, 502]).to.include(pm.response.code));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"mensaje\": \"¿Cuándo es mi próximo examen?\",\n  \"historial\": []\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/asistente/mensajes",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "asistente",
-                "mensajes"
-              ]
-            },
-            "description": "`historial` lleva hasta 6 mensajes previos `{rol: POSTULANTE|ASISTENTE, texto}` para que entienda repreguntas. La respuesta viene en 2 a 4 oraciones, sin formato, porque el app la lee en voz alta."
-          },
-          "response": [
-            {
-              "name": "200 OK",
-              "originalRequest": {
-                "method": "POST",
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/asistente/mensajes",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "asistente",
-                    "mensajes"
-                  ]
-                }
-              },
-              "status": "OK",
-              "code": 200,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "cookie": [],
-              "body": "{\n  \"transcripcion\": \"¿Cuándo es mi próximo examen?\",\n  \"respuesta\": \"Hola Administrador, actualmente no tienes registrada una fecha para tu próximo examen de admisión en tu perfil. Te sugiero definir tu carrera objetivo y la universidad a la que postularás para que podamos ayudarte a dar ese gran paso. Mientras tanto, sigue practicando diariamente con RumboU para mejorar tu rendimiento y alcanzar la vacante que deseas.\"\n}"
-            }
-          ]
-        },
-        {
-          "name": "Pregunta por voz (microfono)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('200 (PRO o ADMIN), 403 (sin plan) o 502 (proveedor)', () => pm.expect([200, 403, 502]).to.include(pm.response.code));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "audio",
-                  "type": "file",
-                  "src": "postman/pregunta-voz.m4a",
-                  "description": "WAV, M4A/AAC, MP3, OGG o WEBM, hasta 5 MB"
-                },
-                {
-                  "key": "historial",
-                  "value": "[]",
-                  "type": "text",
-                  "description": "Opcional: el mismo historial de la pregunta escrita, como texto JSON"
-                }
-              ]
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/asistente/voz",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "asistente",
-                "voz"
-              ]
-            },
-            "description": "Sensor de microfono: Gemini transcribe la pregunta hablada (`transcripcion`) y la responde (`respuesta`). El audio de ejemplo esta en la carpeta `postman/` del repositorio."
-          },
-          "response": [
-            {
-              "name": "200 OK (audio M4A como el que graba el celular)",
-              "originalRequest": {
-                "method": "POST",
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/asistente/voz",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "asistente",
-                    "voz"
-                  ]
-                }
-              },
-              "status": "OK",
-              "code": 200,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "cookie": [],
-              "body": "{\n  \"transcripcion\": \"Hola. ¿Cuándo es mi próximo examen y qué tema debería repasar primero?\",\n  \"respuesta\": \"Hola Administrador, aún no has seleccionado una carrera objetivo en RumboU, por lo que no tenemos registrada la fecha de tu próximo examen. Para comenzar tu repaso, te recomiendo enfocarte en Aritmética o Razonamiento Verbal, que son tus áreas a reforzar. ¡Sigue constante con tu racha diaria y verás grandes progresos!\"\n}"
             }
           ]
         }
@@ -4253,7 +3940,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"id\": 1,\n  \"temaId\": 10,\n  \"temaNombre\": \"Actitud\",\n  \"enunciado\": \"Cuando una persona manifiesta sentir un profundo rechazo o desagrado emocional hacia el consumo de comida chatarra, ¿a qué componente de la actitud se hace referencia principalmente?\",\n  \"alternativas\": [\n    \"Cognitivo\",\n    \"Afectivo\",\n    \"Conductual\",\n    \"Conativo\",\n    \"Reactivo\"\n  ],\n  \"claveCorrecta\": 1,\n  \"explicacion\": \"El componente afectivo de la actitud abarca los sentimientos, emociones y evaluaciones de agrado o desagrado que experimenta un individuo frente al objeto de la actitud.\",\n  \"dificultad\": \"FACIL\",\n  \"origen\": \"IA_APROBADA\",\n  \"aprobada\": true\n}"
+              "body": "{\n  \"id\": 1,\n  \"temaId\": 10,\n  \"temaNombre\": \"Actitud\",\n  \"enunciado\": \"Cuando una persona manifiesta sentir un profundo rechazo o desagrado emocional hacia el consumo de comida chatarra, ¿a qué componente de la actitud se hace referencia principalmente?\",\n  \"alternativas\": [\n    \"Cognitivo\",\n    \"Afectivo\",\n    \"Conductual\",\n    \"Conativo\",\n    \"Reactivo\"\n  ],\n  \"claveCorrecta\": 1,\n  \"explicacion\": \"El componente afectivo de la actitud abarca los sentimientos, emociones y evaluaciones de agrado o desagrado que experimenta un individuo frente al objeto de la actitud.\",\n  \"dificultad\": \"FACIL\",\n  \"aprobada\": true\n}"
             }
           ]
         },

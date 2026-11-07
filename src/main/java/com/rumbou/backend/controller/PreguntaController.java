@@ -2,13 +2,10 @@ package com.rumbou.backend.controller;
 
 import com.rumbou.backend.dto.request.AprobarLoteRequest;
 import com.rumbou.backend.dto.request.CreatePreguntaRequest;
-import com.rumbou.backend.dto.request.TutorIaRequest;
 import com.rumbou.backend.dto.request.UpdatePreguntaRequest;
 import com.rumbou.backend.dto.response.PreguntaAdminResponse;
 import com.rumbou.backend.dto.response.PreguntaResponse;
-import com.rumbou.backend.dto.response.TutorIaResponse;
 import com.rumbou.backend.entity.Dificultad;
-import com.rumbou.backend.entity.OrigenPregunta;
 import com.rumbou.backend.service.PreguntaService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -42,11 +39,10 @@ public class PreguntaController {
     @GetMapping
     public ResponseEntity<Page<PreguntaResponse>> listar(@RequestParam(required = false) Long temaId,
                                                             @RequestParam(required = false) Dificultad dificultad,
-                                                            @RequestParam(required = false) OrigenPregunta origen,
                                                             @RequestParam(required = false) Boolean aprobada,
                                                             @RequestParam(required = false) String texto,
                                                             Pageable pageable) {
-        return ResponseEntity.ok(preguntaService.buscar(temaId, dificultad, origen, aprobada, texto, pageable));
+        return ResponseEntity.ok(preguntaService.buscar(temaId, dificultad, aprobada, texto, pageable));
     }
 
     @GetMapping("/{id}")
@@ -93,11 +89,4 @@ public class PreguntaController {
         return ResponseEntity.noContent().build();
     }
 
-    // Sin @PreAuthorize: es un limite de plan, y eso lo decide PlanService dentro del servicio.
-    @PostMapping("/{id}/tutor-ia")
-    public ResponseEntity<TutorIaResponse> tutorIa(@PathVariable Long id,
-                                                   @Valid @RequestBody(required = false) TutorIaRequest request) {
-        Integer alternativaMarcada = request == null ? null : request.alternativaMarcada();
-        return ResponseEntity.ok(preguntaService.pedirExplicacionTutorIa(id, alternativaMarcada));
-    }
 }

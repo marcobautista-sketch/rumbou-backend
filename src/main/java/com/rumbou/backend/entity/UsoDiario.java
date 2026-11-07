@@ -19,7 +19,6 @@ public class UsoDiario extends BaseEntity {
 
     private int simulacrosTema;
     private int simulacrosCompletos;
-    private int consultasTutorIA;
 
     @Version
     private Long version;
@@ -45,8 +44,5 @@ public class UsoDiario extends BaseEntity {
     public void setSimulacrosCompletos(int simulacrosCompletos) { this.simulacrosCompletos = simulacrosCompletos; }
     public void incrementarSimulacrosCompletos() { this.simulacrosCompletos++; }
 
-    public int getConsultasTutorIA() { return consultasTutorIA; }
-    public void setConsultasTutorIA(int consultasTutorIA) { this.consultasTutorIA = consultasTutorIA; }
-    public void incrementarConsultasTutorIA() { this.consultasTutorIA++; }
 
 }
