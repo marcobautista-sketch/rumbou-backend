@@ -54,6 +54,9 @@ public class Usuario extends BaseEntity implements UserDetails {
     private int xpTotal;
     private int xpSemanal;
 
+    @Column(name = "alias_liga", length = 20, unique = true)
+    private String aliasLiga;
+
     @Version
     private Long version;
 
@@ -164,6 +167,14 @@ public class Usuario extends BaseEntity implements UserDetails {
 
     public void setXpSemanal(int xpSemanal) {
         this.xpSemanal = xpSemanal;
+    }
+
+    public String getAliasLiga() {
+        return aliasLiga;
+    }
+
+    public void setAliasLiga(String aliasLiga) {
+        this.aliasLiga = aliasLiga;
     }
 
     // Contrato de UserDetails: permite usar Usuario directamente en Spring Security.

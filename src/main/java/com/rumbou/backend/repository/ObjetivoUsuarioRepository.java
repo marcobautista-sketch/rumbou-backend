@@ -1,12 +1,16 @@
 package com.rumbou.backend.repository;
 
 import com.rumbou.backend.entity.ObjetivoUsuario;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 import java.util.Optional;
 
 public interface ObjetivoUsuarioRepository extends JpaRepository<ObjetivoUsuario, Long> {
+
+    @EntityGraph(attributePaths = "ofertaAcademica.universidad")
+    Optional<ObjetivoUsuario> findFirstByUsuarioIdAndActivoTrueOrderByIdAsc(Long usuarioId);
 
     List<ObjetivoUsuario> findByUsuarioIdAndActivoTrue(Long usuarioId);
 

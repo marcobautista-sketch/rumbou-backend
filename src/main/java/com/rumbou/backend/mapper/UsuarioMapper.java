@@ -18,10 +18,11 @@ public final class UsuarioMapper {
                 usuario.getApellidos(), usuario.getTelefono(), usuario.getRole());
     }
 
-    public static GamificacionResponse toGamificacionResponse(Usuario usuario, List<UsuarioLogro> logros) {
+    public static GamificacionResponse toGamificacionResponse(Usuario usuario, List<UsuarioLogro> logros,
+                                                             int xpSemanal) {
         return new GamificacionResponse(
                 usuario.getXpTotal(),
-                usuario.getXpSemanal(),
+                xpSemanal,
                 usuario.getCurrentStreak(),
                 usuario.getLongestStreak(),
                 usuario.getLastActivityDate(),
