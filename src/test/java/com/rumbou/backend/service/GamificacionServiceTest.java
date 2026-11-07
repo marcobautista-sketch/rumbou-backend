@@ -12,6 +12,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -24,7 +25,8 @@ import static org.mockito.Mockito.when;
 
 class GamificacionServiceTest {
 
-    private final GamificacionServiceImpl gamificacionService = new GamificacionServiceImpl(null, null, null, null);
+    private final GamificacionServiceImpl gamificacionService = new GamificacionServiceImpl(
+            null, null, null, null, Clock.systemUTC());
 
     static Stream<Arguments> casosDeRacha() {
         LocalDate hoy = LocalDate.of(2026, 9, 13);
@@ -51,7 +53,7 @@ class GamificacionServiceTest {
         UsuarioRepository usuarioRepository = mock(UsuarioRepository.class);
         LogroRepository logroRepository = mock(LogroRepository.class);
         GamificacionServiceImpl servicio = new GamificacionServiceImpl(
-                usuarioRepository, logroRepository, mock(UsuarioLogroRepository.class), null);
+                usuarioRepository, logroRepository, mock(UsuarioLogroRepository.class), null, Clock.systemUTC());
         Usuario ana = new Usuario("ana@rumbou.com", "hash", "Ana", Role.USER);
         when(usuarioRepository.findById(1L)).thenReturn(Optional.of(ana));
 
