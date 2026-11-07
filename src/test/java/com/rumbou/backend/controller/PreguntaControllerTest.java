@@ -4,9 +4,7 @@ import com.rumbou.backend.dto.request.AprobarLoteRequest;
 import com.rumbou.backend.dto.request.CreatePreguntaRequest;
 import com.rumbou.backend.dto.response.PreguntaAdminResponse;
 import com.rumbou.backend.dto.response.PreguntaResponse;
-import com.rumbou.backend.dto.response.TutorIaResponse;
 import com.rumbou.backend.entity.Dificultad;
-import com.rumbou.backend.entity.OrigenPregunta;
 import com.rumbou.backend.entity.Role;
 import com.rumbou.backend.entity.Usuario;
 import com.rumbou.backend.security.JwtService;
@@ -69,7 +67,6 @@ class PreguntaControllerTest {
                 3,
                 "2 + 2 = 4",
                 Dificultad.FACIL,
-                OrigenPregunta.SEMILLA,
                 true
         );
     }
@@ -102,43 +99,32 @@ class PreguntaControllerTest {
 
     @Test
     void unUsuarioAutenticadoPuedeListarPreguntas() throws Exception {
-        given(preguntaService.buscar(any(), any(), any(), any(), any(), any()))
+        given(preguntaService.buscar(any(), any(), any(), any(), any()))
                 .willReturn(org.springframework.data.domain.Page.empty());
 
         mockMvc.perform(get("/api/v1/preguntas?aprobada=false").with(user(usuarioConRol(Role.USER))))
                 .andExpect(status().isOk());
 
-        verify(preguntaService).buscar(any(), any(), any(), any(), any(), any());
+        verify(preguntaService).buscar(any(), any(), any(), any(), any());
     }
 
     @Test
     void elTextoDeBusquedaLlegaAlServicio() throws Exception {
-        given(preguntaService.buscar(any(), any(), any(), any(), any(), any()))
+        given(preguntaService.buscar(any(), any(), any(), any(), any()))
                 .willReturn(org.springframework.data.domain.Page.empty());
 
         mockMvc.perform(get("/api/v1/preguntas?texto=triangulo").with(user(usuarioConRol(Role.USER))))
                 .andExpect(status().isOk());
 
-        verify(preguntaService).buscar(any(), any(), any(), any(),
+        verify(preguntaService).buscar(any(), any(), any(),
                 org.mockito.ArgumentMatchers.eq("triangulo"), any());
-    }
-
-    @Test
-    void unUsuarioAutenticadoPuedePedirleAlTutorIaUnaExplicacion() throws Exception {
-        given(preguntaService.pedirExplicacionTutorIa(any(), any()))
-                .willReturn(new TutorIaResponse(1L, "Porque 2 + 2 = 4"));
-
-        mockMvc.perform(post("/api/v1/preguntas/1/tutor-ia")
-                        .with(user(usuarioConRol(Role.USER)))
-                        .with(csrf()))
-                .andExpect(status().isOk());
     }
 
     @Test
     void unAdminPuedeAprobarUnaPregunta() throws Exception {
         given(preguntaService.aprobar(1L)).willReturn(
                 new PreguntaAdminResponse(1L, 1L, "Algebra", "¿Cuanto es 2 + 2?",
-                        List.of("1", "2", "3", "4", "5"), 3, "2 + 2 = 4", Dificultad.FACIL, OrigenPregunta.SEMILLA, true, null, null));
+                        List.of("1", "2", "3", "4", "5"), 3, "2 + 2 = 4", Dificultad.FACIL, true, null, null));
 
         mockMvc.perform(patch("/api/v1/preguntas/1/aprobar")
                         .with(user(usuarioConRol(Role.ADMIN)))
@@ -158,9 +144,9 @@ class PreguntaControllerTest {
     void unAdminPuedeAprobarPreguntasEnLote() throws Exception {
         given(preguntaService.aprobarLote(any())).willReturn(List.of(
                 new PreguntaAdminResponse(1L, 1L, "Algebra", "¿Cuanto es 2 + 2?",
-                        List.of("1", "2", "3", "4", "5"), 3, "2 + 2 = 4", Dificultad.FACIL, OrigenPregunta.SEMILLA, true, null, null),
+                        List.of("1", "2", "3", "4", "5"), 3, "2 + 2 = 4", Dificultad.FACIL, true, null, null),
                 new PreguntaAdminResponse(2L, 1L, "Algebra", "¿Cuanto es 3 + 3?",
-                        List.of("1", "2", "3", "4", "6"), 4, "3 + 3 = 6", Dificultad.FACIL, OrigenPregunta.SEMILLA, true, null, null)));
+                        List.of("1", "2", "3", "4", "6"), 4, "3 + 3 = 6", Dificultad.FACIL, true, null, null)));
 
         mockMvc.perform(patch("/api/v1/preguntas/aprobar-lote")
                         .with(user(usuarioConRol(Role.ADMIN)))
@@ -205,7 +191,7 @@ class PreguntaControllerTest {
     void unAdminPuedeCrearUnaPreguntaValida() throws Exception {
         given(preguntaService.crear(any())).willReturn(
                 new PreguntaAdminResponse(1L, 1L, "Algebra", "¿Cuanto es 2 + 2?",
-                        List.of("1", "2", "3", "4", "5"), 3, "2 + 2 = 4", Dificultad.FACIL, OrigenPregunta.SEMILLA, true, null, null));
+                        List.of("1", "2", "3", "4", "5"), 3, "2 + 2 = 4", Dificultad.FACIL, true, null, null));
 
         mockMvc.perform(post("/api/v1/preguntas")
                         .with(csrf())
@@ -219,7 +205,7 @@ class PreguntaControllerTest {
     void rechazaUnaPreguntaConMenosDeCincoAlternativas() throws Exception {
         CreatePreguntaRequest invalido = new CreatePreguntaRequest(
                 1L, "¿Cuanto es 2 + 2?", List.of("1", "2", "3"), 0,
-                "explicacion", Dificultad.FACIL, OrigenPregunta.SEMILLA, true);
+                "explicacion", Dificultad.FACIL, true);
 
         mockMvc.perform(post("/api/v1/preguntas")
                         .with(csrf())
@@ -233,7 +219,7 @@ class PreguntaControllerTest {
     void rechazaUnaClaveCorrectaFueraDeRango() throws Exception {
         CreatePreguntaRequest invalido = new CreatePreguntaRequest(
                 1L, "¿Cuanto es 2 + 2?", List.of("1", "2", "3", "4", "5"), 9,
-                "explicacion", Dificultad.FACIL, OrigenPregunta.SEMILLA, true);
+                "explicacion", Dificultad.FACIL, true);
 
         mockMvc.perform(post("/api/v1/preguntas")
                         .with(csrf())
@@ -246,7 +232,7 @@ class PreguntaControllerTest {
     void unRevisorPuedeAprobarUnaPregunta() throws Exception {
         given(preguntaService.aprobar(1L)).willReturn(
                 new PreguntaAdminResponse(1L, 1L, "Algebra", "¿Cuanto es 2 + 2?",
-                        List.of("1", "2", "3", "4", "5"), 3, "2 + 2 = 4", Dificultad.FACIL, OrigenPregunta.IA_APROBADA, true, null, null));
+                        List.of("1", "2", "3", "4", "5"), 3, "2 + 2 = 4", Dificultad.FACIL, true, null, null));
 
         mockMvc.perform(patch("/api/v1/preguntas/1/aprobar")
                         .with(user(usuarioConRol(Role.REVIEWER)))

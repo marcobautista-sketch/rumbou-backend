@@ -1,7 +1,6 @@
 package com.rumbou.backend.dto.request;
 
 import com.rumbou.backend.entity.Dificultad;
-import com.rumbou.backend.entity.OrigenPregunta;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -25,7 +24,6 @@ public record CreatePreguntaRequest(
 
         @NotNull Dificultad dificultad,
 
-        @NotNull OrigenPregunta origen,
 
         boolean aprobada
 ) {

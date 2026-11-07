@@ -31,7 +31,6 @@ public final class PreguntaMapper {
                 pregunta.getClaveCorrecta(),
                 pregunta.getExplicacion(),
                 pregunta.getDificultad(),
-                pregunta.getOrigen(),
                 pregunta.isAprobada(),
                 PresentacionMapper.problema(pregunta),
                 PresentacionMapper.pasos(pregunta));

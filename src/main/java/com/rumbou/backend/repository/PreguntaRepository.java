@@ -1,7 +1,6 @@
 package com.rumbou.backend.repository;
 
 import com.rumbou.backend.entity.Dificultad;
-import com.rumbou.backend.entity.OrigenPregunta;
 import com.rumbou.backend.entity.Pregunta;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -32,13 +31,11 @@ public interface PreguntaRepository extends JpaRepository<Pregunta, Long> {
             SELECT p FROM Pregunta p
             WHERE (:temaId IS NULL OR p.tema.id = :temaId)
             AND (:dificultad IS NULL OR p.dificultad = :dificultad)
-            AND (:origen IS NULL OR p.origen = :origen)
             AND (:aprobada IS NULL OR p.aprobada = :aprobada)
             AND (:texto IS NULL OR LOWER(p.enunciado) LIKE LOWER(CONCAT('%', CAST(:texto AS string), '%')))
             """)
     Page<Pregunta> buscar(@Param("temaId") Long temaId,
                            @Param("dificultad") Dificultad dificultad,
-                           @Param("origen") OrigenPregunta origen,
                            @Param("aprobada") Boolean aprobada,
                            @Param("texto") String texto,
                            Pageable pageable);
