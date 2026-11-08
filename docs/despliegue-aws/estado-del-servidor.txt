@@ -1,5 +1,5 @@
 === Fecha (UTC) ===
-Fri Sep 25 20:08:30 UTC 2026
+Sun Nov  8 17:37:19 UTC 2026
 
 === Instancia EC2 (metadatos) ===
 instance-id: i-0734adf41b14d743a
@@ -15,45 +15,48 @@ openjdk version "21.0.12.1" 2026-08-18 LTS
 === Servicio de la API (systemd) ===
 ● rumbou.service - RumboU backend
      Loaded: loaded (/etc/systemd/system/rumbou.service; enabled; preset: disabled)
-     Active: active (running) since Fri 2026-09-25 19:33:07 UTC; 35min ago
-   Main PID: 5710 (java)
-      Tasks: 46 (limit: 2210)
-     Memory: 363.6M
+     Active: active (running) since Sun 2026-11-08 17:33:48 UTC; 3min 31s ago
+     Main PID: 1633 (java)
+     Tasks: 44 (limit: 2209)
+     Memory: 544.8M
 
-=== nginx (proxy en el puerto 80) ===
+=== nginx (proxy con HTTPS) ===
 active
+certificado: Jan 26 23:28:37 2027 GMT
 
 === Variables de entorno configuradas (solo nombres, sin valores) ===
 ADMIN_EMAIL
 ADMIN_PASSWORD
-GEMINI_API_KEY
+APP_RESET_PASSWORD_URL
+CORS_ALLOWED_ORIGINS
 JWT_SECRET
 MAIL_HOST
 MAIL_PASSWORD
 MAIL_PORT
 MAIL_USERNAME
 MP_ACCESS_TOKEN
+MP_BACK_URL
 MP_TEST_PAYER_EMAIL
 PORT
 SHOW_SQL
 SPRING_DATASOURCE_PASSWORD
 SPRING_DATASOURCE_URL
 SPRING_DATASOURCE_USERNAME
+YOUTUBE_API_KEY
 
 === Conexion a RDS ===
 SPRING_DATASOURCE_URL=host: rumbou-db.csktznxjk88x.us-east-1.rds.amazonaws.com
- PostgreSQL 16.15 on x86_64-pc-linux-gnu, compiled by x86_64-pc-linux-gnu-gcc (GCC) 12.4.0, 64-bit
+PostgreSQL 16.15 on x86_64-pc-linux-gnu
  preguntas | ofertas | carreras | usuarios 
 -----------+---------+----------+----------
-       792 |      70 |       51 |       13
+       792 |      70 |       51 |       29
 (1 row)
 
-=== Health por la IP publica ===
-{"status":"ok","servicio":"backend","timestamp":"2026-09-25T20:08:30.850404966Z"}
+=== Health por la direccion publica (HTTPS) ===
+{"status":"ok","servicio":"backend","timestamp":"2026-11-08T17:37:19.897400469Z"}
 
-=== Ultimos correos enviados por SMTP (log) ===
-Correo 'Recupera tu contrasena' enviado a postulante1790364818183@rumbou.com
-Correo 'Bienvenido a RumboU' enviado a postulante1790364832869@rumbou.com
-Correo 'Recupera tu contrasena' enviado a postulante1790364832869@rumbou.com
-Correo 'Bienvenido a RumboU' enviado a postulante1790366879675@rumbou.com
-Correo 'Recupera tu contrasena' enviado a postulante1790366879675@rumbou.com
+=== Ultimos correos enviados por SMTP (log, destinatarios ocultos) ===
+Correo 'Bienvenido a RumboU' enviado a po***@rumbou.com
+Correo 'Recupera tu contrasena' enviado a po***@rumbou.com
+Correo 'Bienvenido a RumboU' enviado a re***@rumbou.com
+Correo 'Bienvenido a RumboU' enviado a po***@rumbou.com
