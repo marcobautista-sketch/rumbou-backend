@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "RumboU API",
-    "description": "Coleccion de endpoints de RumboU (CS2031 UTEC). Cubre autenticacion, usuarios, catalogo academico, simulacros, progreso, preguntas y suscripciones. Se puede correr completa, en orden, con \"Run collection\".\n\nComo usarla:\n1. baseUrl apunta a la API local (http://localhost:8080). Para levantarla: docker compose up -d y luego ./mvnw spring-boot:run \"-Dspring-boot.run.profiles=seed\" (README, apéndice A). Para usar el despliegue en AWS, cambia baseUrl por el valor de baseUrlAws.\n2. \"Registrar usuario\" crea una cuenta nueva en cada corrida (genera el email solo) y guarda el token; \"Login\" reutiliza ese mismo email. No hay que copiar tokens a mano.\n3. Los requests marcados (ADMIN) necesitan rol ADMIN. Ejecuta \"Login como administrador\": usa la cuenta de evaluacion del curso (evaluador@rumbou.app, ya cargada en las variables adminEmail y adminPassword; en local la crea el profile seed) y desde ahi todos los requests corren como ADMIN. Sin ese login, los requests ADMIN responden 403 y sus tests lo aceptan como resultado valido.\n4. Los requests marcados (plan PRO) responden 403 con el plan gratuito; el ADMIN pasa todos los limites del plan.\n5. Cada request guarda en variables los ids que necesitan los siguientes (usuarioId, areaId, temaId, simulacroId, preguntaId, ofertaAcademicaId, objetivoId).\n6. \"Crear suscripcion PRO\" depende de credenciales externas (MP_ACCESS_TOKEN) en el servidor; sin ellas responde 502.\n7. La carpeta \"Cambiar de rol\" permite pasar a USER, REVIEWER o ADMIN con un solo request; ver la seccion 2 de GUIA-DE-USO.md.",
+    "description": "Coleccion de endpoints de RumboU (CS2031 UTEC). Cubre autenticacion, usuarios, catalogo academico, simulacros, progreso, preguntas, desafio diario, plan de estudio, liga semanal y suscripciones. Se puede correr completa, en orden, con \"Run collection\".\n\nComo usarla:\n1. baseUrl apunta a la API local (http://localhost:8080). Para levantarla: docker compose up -d y luego ./mvnw spring-boot:run \"-Dspring-boot.run.profiles=seed\" (README, apéndice A). Para usar el despliegue en AWS, cambia baseUrl por el valor de baseUrlAws.\n2. \"Registrar usuario\" crea una cuenta nueva en cada corrida (genera el email solo) y guarda el token; \"Login\" reutiliza ese mismo email. No hay que copiar tokens a mano.\n3. Los requests marcados (ADMIN) necesitan rol ADMIN. Ejecuta \"Login como administrador\": usa la cuenta de evaluacion del curso (evaluador@rumbou.app, ya cargada en las variables adminEmail y adminPassword; en local la crea el profile seed) y desde ahi todos los requests corren como ADMIN. Sin ese login, los requests ADMIN responden 403 y sus tests lo aceptan como resultado valido.\n4. Los requests marcados (plan PRO) responden 403 con el plan gratuito; el ADMIN pasa todos los limites del plan.\n5. Cada request guarda en variables los ids que necesitan los siguientes (usuarioId, areaId, temaId, simulacroId, preguntaId, ofertaAcademicaId, objetivoId).\n6. \"Crear suscripcion PRO\" depende de credenciales externas (MP_ACCESS_TOKEN) en el servidor; sin ellas responde 502.\n7. La carpeta \"Cambiar de rol\" permite pasar a USER, REVIEWER o ADMIN con un solo request; ver la seccion 2 de GUIA-DE-USO.md.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -143,6 +143,10 @@
     },
     {
       "key": "perfilTelefono",
+      "value": ""
+    },
+    {
+      "key": "aliasLiga",
       "value": ""
     }
   ],
@@ -3274,6 +3278,210 @@
               "body": "{\n  \"temaId\": 1,\n  \"tema\": \"Razonamiento Matemático\",\n  \"consulta\": \"Razonamiento Matemático\",\n  \"libros\": [\n    {\n      \"titulo\": \"Sobre la naturaleza del razonamiento matemático. Consideraciones sobre los fundamentos de la Matemática\",\n      \"autores\": [\n        \"Th Skolem\"\n      ],\n      \"anio\": \"1952\",\n      \"portadaUrl\": null,\n      \"url\": \"http://books.google.com/books?id=39mMAQAACAAJ&dq=intitle:Razonamiento+Matem%C3%A1tico&hl=&as_pt=BOOKS&source=gbs_api\"\n    },\n    {\n      \"titulo\": \"Razonamiento matemático\",\n      \"autores\": [\n        \"Manuel Coveñas Naquiche\"\n      ],\n      \"anio\": \"1991\",\n      \"portadaUrl\": null,\n      \"url\": \"http://books.google.com/books?id=OkTAxgEACAAJ&dq=intitle:Razonamiento+Matem%C3%A1tico&hl=&as_pt=BOOKS&source=gbs_api\"\n    },\n    {\n      \"titulo\": \"Razonamiento matemático\",\n      \"autores\": [\n        \"José G. Rodríguez Ahumada\"\n      ],\n      \"anio\": \"1997\",\n      \"portadaUrl\": \"https://books.google.com/books/content?id=qiYRAAAACAAJ&printsec=frontcover&img=1&zoom=1&source=gbs_api\",\n      \"url\": \"http://books.google.com/books?id=qiYRAAAACAAJ&dq=intitle:Razonamiento+Matem%C3%A1tico&hl=&as_pt=BOOKS&source=gbs_api\"\n    }\n  ]\n}"
             }
           ]
+        }
+      ]
+    },
+    {
+      "name": "Liga semanal",
+      "description": "Compara la actividad de la semana entre postulantes de la misma universidad. Participar es voluntario y usa un alias: nunca se muestran nombres ni correos.",
+      "item": [
+        {
+          "name": "Ver la liga semanal",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/ranking?page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ranking"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Tabla paginada (size maximo 50) de quienes se unieron con un alias, sumaron XP esta semana y tienen la misma universidad en su meta principal (la activa mas antigua). La semana empieza el lunes, hora de Lima. Sin meta, universidad es null y la tabla llega vacia."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 con la tabla de la semana', () => pm.response.to.have.status(200));",
+                  "pm.test('Trae la pagina de entradas', () => pm.expect(pm.response.json()).to.have.property('entradas'));"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Ejemplo 200",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/ranking?page=0&size=10",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "ranking"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0"
+                    },
+                    {
+                      "key": "size",
+                      "value": "10"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"universidad\": \"UNI\",\n  \"semanaInicio\": \"2026-11-02\",\n  \"participa\": true,\n  \"alias\": \"Postulante 482913\",\n  \"miPosicion\": 2,\n  \"miXpSemanal\": 100,\n  \"entradas\": {\n    \"content\": [\n      {\n        \"posicion\": 1,\n        \"alias\": \"Lucero7\",\n        \"xpSemanal\": 200,\n        \"esUsuarioActual\": false\n      },\n      {\n        \"posicion\": 2,\n        \"alias\": \"Postulante 482913\",\n        \"xpSemanal\": 100,\n        \"esUsuarioActual\": true\n      }\n    ],\n    \"totalElements\": 2,\n    \"totalPages\": 1,\n    \"number\": 0,\n    \"size\": 10\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Unirse a la liga con un alias (USER)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"alias\": \"{{aliasLiga}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/ranking/participacion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ranking",
+                "participacion"
+              ]
+            },
+            "description": "El alias va de 3 a 20 caracteres: letras, numeros, espacios, puntos o guiones. 409 si otra persona ya lo usa. Solo participan postulantes: ADMIN y REVIEWER reciben 403. Al correr la coleccion completa la sesion ya es ADMIN, por eso el test acepta 200 o 403."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('aliasLiga', 'Postulante ' + Date.now().toString().slice(-6));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 como postulante; 403 como ADMIN o REVIEWER', () => pm.expect(pm.response.code).to.be.oneOf([200, 403]));"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Ejemplo 200",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/ranking/participacion",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "ranking",
+                    "participacion"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"universidad\": \"UNI\",\n  \"semanaInicio\": \"2026-11-02\",\n  \"participa\": true,\n  \"alias\": \"Postulante 482913\",\n  \"miPosicion\": 2,\n  \"miXpSemanal\": 100,\n  \"entradas\": {\n    \"content\": [\n      {\n        \"posicion\": 1,\n        \"alias\": \"Lucero7\",\n        \"xpSemanal\": 200,\n        \"esUsuarioActual\": false\n      },\n      {\n        \"posicion\": 2,\n        \"alias\": \"Postulante 482913\",\n        \"xpSemanal\": 100,\n        \"esUsuarioActual\": true\n      }\n    ],\n    \"totalElements\": 2,\n    \"totalPages\": 1,\n    \"number\": 0,\n    \"size\": 10\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Salir de la liga",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/ranking/participacion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ranking",
+                "participacion"
+              ]
+            },
+            "description": "Quita el alias: la persona deja de aparecer en la tabla. Se puede repetir sin error."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('204 sin cuerpo', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "response": []
         }
       ]
     },

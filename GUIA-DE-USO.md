@@ -22,7 +22,7 @@ Esta guía explica cómo probar RumboU de punta a punta con la colección [`post
 | API local (la que usa la colección) | `http://localhost:8080`. Se levanta con `docker compose up -d` y luego `./mvnw spring-boot:run` o el botón *Run* del IDE sobre `BackendApplication` (README, apéndice A). Al arrancar se cargan los datos y se crea la cuenta de evaluación con rol `ADMIN` |
 | Health check (sin token) | `GET /api/v1/health` → `{"status":"ok", ...}` |
 | Correos en local | `http://localhost:8025` (Mailpit, incluido en el `docker-compose`): ahí llegan los correos de bienvenida, recuperación de contraseña y pago |
-| API desplegada (AWS) | `http://184.194.122.22`, en la variable `baseUrlAws` |
+| API desplegada (AWS) | `https://184-194-122-22.sslip.io`, en la variable `baseUrlAws` |
 
 **Importar la colección:** en Postman, *File → Import* y arrastrar `postman_collection.json`. Si ya existía una versión anterior, elegir **Replace**. No hace falta crear un *environment*: todo vive en las variables de la colección.
 
@@ -51,7 +51,7 @@ La colección hace esto sola: los requests de registro, login y refresh guardan 
 |---|---|---|
 | `USER` | Al registrarse (siempre) | Simulacros, progreso, ver preguntas, suscribirse |
 | `REVIEWER` | Lo asigna un administrador (`PATCH /usuarios/{id}/rol`) | Todo lo de `USER`, más ver las preguntas sin aprobar y aprobarlas (una por una o en lote). No crea, edita ni borra preguntas, ni administra usuarios |
-| `ADMIN` | Solo lo asigna otro administrador (`PATCH /usuarios/{id}/rol`) o las variables `ADMIN_EMAIL`/`ADMIN_PASSWORD` al arrancar el servidor | Todo lo anterior, más crear/editar/aprobar/borrar preguntas y administrar usuarios. **Además pasa todos los límites del plan** (puede usar el tutor de IA y los paneles PRO sin suscripción) |
+| `ADMIN` | Solo lo asigna otro administrador (`PATCH /usuarios/{id}/rol`) o las variables `ADMIN_EMAIL`/`ADMIN_PASSWORD` al arrancar el servidor | Todo lo anterior, más crear/editar/aprobar/borrar preguntas y administrar usuarios. **Además pasa todos los límites del plan** (puede usar los simulacros ilimitados y los paneles PRO sin suscripción) |
 
 El rol vive en la base de datos **y dentro del token**. Por eso, si a un usuario se le cambia el rol, tiene que volver a iniciar sesión para que su token nuevo lo refleje.
 
@@ -98,7 +98,7 @@ Se ven en la colección → pestaña **Variables**. Las que empiezan con id las 
 | Variable | Valor por defecto | Quién la llena |
 |---|---|---|
 | `baseUrl` | `http://localhost:8080` | Cambiar por el valor de `baseUrlAws` para probar el despliegue |
-| `baseUrlAws` | `http://184.194.122.22` | — |
+| `baseUrlAws` | `https://184-194-122-22.sslip.io` | — |
 | `email` | `postulante@rumbou.com` | Registrar usuario (genera uno nuevo por corrida) |
 | `accessToken`, `refreshToken` | vacío | Registrar, Login, Refrescar, Login como administrador |
 | `adminEmail`, `adminPassword` | cuenta de evaluación | Editar solo para usar otro administrador |
@@ -112,6 +112,7 @@ Se ven en la colección → pestaña **Variables**. Las que empiezan con id las 
 | `preguntaRevisionId` | vacío | Aprobar pregunta (REVIEWER o ADMIN): se toma sola del banco |
 | `simulacroId`, `preguntaId`, `respuestaUsuarioId` | vacío | Iniciar simulacro (y Crear pregunta, para las operaciones de administración) |
 | `suscripcionId` | vacío | Crear suscripción PRO |
+| `aliasLiga` | vacío | Unirse a la liga (genera uno nuevo por corrida) |
 | `resetToken` | vacío | Pegar a mano el token recibido por correo |
 
 ---
@@ -141,7 +142,7 @@ Los códigos entre paréntesis son los que aceptan los tests de la colección. T
 | Mi perfil | — | `200` `{id, email, nombre, apellidos, telefono, role}`. Nunca incluye la contraseña |
 | Editar mi perfil | `PUT /usuarios/me` con `{nombre, apellidos, telefono}` | `200` con el perfil actualizado. `400` si el celular no tiene 9 dígitos o no empieza con 9 |
 | Cambiar mi contraseña | `PATCH /usuarios/me/contrasena` con `{contrasenaActual, contrasenaNueva}` | `204`. `400` si la contraseña actual no coincide o la nueva no cumple la política |
-| Mi gamificación | `GET /usuarios/me/gamificacion` | `200` `{xpTotal, xpSemanal, rachaActual, rachaMaxima, ultimaActividad, logros[]}`; cada logro trae `{id, nombre, descripcion, fechaDesbloqueo}`. Se actualiza al finalizar cada simulacro |
+| Mi gamificación | `GET /usuarios/me/gamificacion` | `200` `{xpTotal, xpSemanal, rachaActual, rachaMaxima, ultimaActividad, logros[]}`; cada logro trae `{id, nombre, descripcion, fechaDesbloqueo}`. Se actualiza al finalizar cada simulacro; `xpSemanal` vuelve a 0 cada lunes, hora de Lima |
 | Buscar usuario por email (ADMIN) | `?email=` | `200` con el usuario (`403` como USER, `404` si no existe) |
 | Cambiar rol (ADMIN) | `{"role": "ADMIN"}`, `"REVIEWER"` o `"USER"` sobre `/usuarios/{usuarioId}/rol` | `200` con el usuario actualizado. `400` si un admin intenta quitarse su propio rol, `403` como USER |
 
@@ -177,18 +178,16 @@ Al iniciar, cada pregunta llega como `{respuestaUsuarioId, preguntaId, enunciado
 ### Preguntas
 | Request | Envía | Devuelve |
 |---|---|---|
-| Listar preguntas | `?temaId=&dificultad=&origen=&aprobada=&page=&size=` (todos opcionales; `size` máximo 100) | `200` página de preguntas aprobadas. Solo `ADMIN` o `REVIEWER` pueden pedir `aprobada=false` |
+| Listar preguntas | `?temaId=&dificultad=&aprobada=&texto=&page=&size=` (todos opcionales; `size` máximo 100) | `200` página de preguntas aprobadas. Solo `ADMIN` o `REVIEWER` pueden pedir `aprobada=false` |
 | Obtener pregunta por id | — | `200` `{id, temaId, tema, enunciado, alternativas, dificultad}` sin clave ni explicación |
-| Pregunta completa (ADMIN o REVIEWER) | `GET /preguntas/{preguntaId}/completa` | `200` con la clave, la explicación, el origen y si está aprobada, para editarla o revisarla. `403` como USER |
-| Tutor de IA (PRO) | `/preguntas/{preguntaId}/tutor-ia`, opcionalmente con `{alternativaMarcada}` para que explique primero la trampa de esa opción | `200` `{preguntaId, explicacion}` generada por Gemini; descuenta 1 de las 30 consultas diarias. `403` con plan gratuito o al superar el tope; `502` si el servidor no tiene `GEMINI_API_KEY` (no descuenta cupo) |
-| Revisar la solución en papel (PRO) | `/preguntas/{preguntaId}/revisar-solucion` como `multipart/form-data` con la foto en la parte `imagen` (JPG, PNG, WEBP o HEIC, hasta 5 MB) | `200` `{preguntaId, veredicto, retroalimentacion}`: Gemini lee el procedimiento escrito a mano y dice si es `CORRECTA`, `PARCIAL`, `INCORRECTA` o `ILEGIBLE`, y en qué paso está el error. Usa el mismo cupo que el tutor. `400` sin imagen o con otro formato; `413` si pesa más de 5 MB |
-| Crear pregunta (ADMIN) | `{temaId, enunciado, alternativas[5], claveCorrecta (0-4), explicacion, dificultad, origen, aprobada}` | `201` con la pregunta completa (con clave y explicación). Guarda `preguntaId`: los requests siguientes actúan sobre **esta** pregunta de prueba, no sobre el banco |
+| Pregunta completa (ADMIN o REVIEWER) | `GET /preguntas/{preguntaId}/completa` | `200` con la clave, la explicación y si está aprobada, para editarla o revisarla. `403` como USER |
+| Crear pregunta (ADMIN) | `{temaId, enunciado, alternativas[5], claveCorrecta (0-4), explicacion, dificultad, aprobada}` | `201` con la pregunta completa (con clave y explicación). Guarda `preguntaId`: los requests siguientes actúan sobre **esta** pregunta de prueba, no sobre el banco |
 | Actualizar pregunta (ADMIN) | mismo cuerpo, reemplaza todos los campos | `200` |
 | Aprobar pregunta (ADMIN o REVIEWER) | `PATCH /preguntas/{id}/aprobar` | `200` con `aprobada: true` |
 | Aprobar preguntas en lote (ADMIN o REVIEWER) | `{"ids": [...]}` | `200` lista de aprobadas. Si un id no existe, no se aprueba ninguna (`404`) |
 | Eliminar pregunta (ADMIN) | — | `204`. `409` si la pregunta ya salió en algún simulacro: en ese caso se desaprueba con `PUT` |
 
-Valores posibles: `dificultad` = `FACIL`, `MEDIA`, `DIFICIL`; `origen` = `SEMILLA` (creada a mano o cargada por el seed), `IA_APROBADA` (generada con IA y aprobada por una persona).
+Valores posibles de `dificultad`: `FACIL`, `MEDIA`, `DIFICIL`.
 
 ### Desafío diario
 | Request | Envía | Devuelve |
@@ -197,6 +196,13 @@ Valores posibles: `dificultad` = `FACIL`, `MEDIA`, `DIFICIL`; `origen` = `SEMILL
 | Responder el desafío | `POST /desafios/hoy/respuesta` con `{alternativaMarcada}` (0 a 4) | `200` con la corrección: +50 XP si acierta, +10 si falla; el quinto desafío de la semana suma un bono de 100 XP. Mantiene la racha. `409` si ya respondió hoy |
 | Videos para repasar un tema | `GET /temas/{temaId}/videos` | `200` `{temaId, tema, videos[], busquedaUrl}`: hasta 3 clases de YouTube en español (`{videoId, titulo, canal, miniaturaUrl, url}`) para el plan de estudio. Se guardan un día por tema para cuidar la cuota gratuita. Sin `YOUTUBE_API_KEY` o con YouTube caído responde `200` con `videos` vacío y solo el enlace de búsqueda. `404` si el tema no existe |
 | Libros para repasar un tema | `GET /temas/{temaId}/libros` | `200` `{temaId, tema, consulta, libros[]}`: hasta 3 libros en español de Google Books (`{titulo, autores[], anio, portadaUrl, url}`). `consulta` son los términos de búsqueda afinados del tema; si `libros` llega vacío (Google Books caído o sin clave), la web y el app buscan esa consulta en Open Library. `404` si el tema no existe |
+
+### Liga semanal
+| Request | Envía | Devuelve |
+|---|---|---|
+| Ver la liga semanal | `GET /ranking?page=&size=` (`size` máximo 50) | `200` `{universidad, semanaInicio, participa, alias, miPosicion, miXpSemanal, entradas}`; `entradas` es una página de `{posicion, alias, xpSemanal, esUsuarioActual}`. Compara a quienes se unieron con un alias, sumaron XP esta semana y tienen la misma universidad en su meta principal (la activa más antigua). Sin meta, `universidad` es `null` y la tabla llega vacía |
+| Unirse a la liga (USER) | `PUT /ranking/participacion` con `{alias}`: de 3 a 20 letras, números, espacios, puntos o guiones | `200` con la liga. `400` si el alias no cumple el formato, `409` si otra persona ya lo usa y `403` como ADMIN o REVIEWER: las cuentas del equipo no compiten |
+| Salir de la liga | `DELETE /ranking/participacion` | `204`. Se puede repetir sin error |
 
 ### Suscripciones
 | Request | Envía | Devuelve |
@@ -226,9 +232,8 @@ Valores posibles: `dificultad` = `FACIL`, `MEDIA`, `DIFICIL`; `origen` = `SEMILL
 | Simulacros por tema | 3 por semana | Ilimitados | Ilimitados |
 | Simulacros completos | 1 al mes (el diagnóstico cuenta aquí) | Ilimitados | Ilimitados |
 | Carreras objetivo activas | 1 | 3 | Sin tope |
-| Tutor de IA | No | 30 consultas al día | 30 al día |
 | Dominio por tema e historial de PSP | No | Sí | Sí |
-| Explicación estática de preguntas falladas, racha, XP y logros | Sí | Sí | Sí |
+| Explicación de cada pregunta, racha, XP, logros y liga semanal | Sí | Sí | Sí |
 
 Al superar un límite la API responde `403` con el mensaje del límite (por ejemplo *"Limite alcanzado: 1 simulacro completo al mes"*). El control está centralizado en un solo servicio (`PlanService`); los contadores de uso se guardan por usuario y por día.
 
@@ -266,7 +271,9 @@ Las preguntas **en blanco no suman ni restan**.
 
 ### Gamificación
 
-- Cada simulacro finalizado da **100 XP** (total y semanal).
+- Cada simulacro finalizado da **100 XP** (total y semanal). El desafío diario da 50 si se acierta y 10 si se falla, más un bono de 100 al quinto de la semana.
+- El **XP semanal** vuelve a 0 cada lunes, hora de Lima. Se calcula al leerlo, así que no depende de que el servidor esté encendido a medianoche.
+- **Liga semanal:** es voluntaria y usa un alias. Solo muestra el alias y el XP de la semana, nunca nombres ni correos.
 - **Racha:** si la última actividad fue ayer, sube 1; si fue hoy, no cambia; si fue antes de ayer, vuelve a 1. Se guarda también la racha más larga.
 - **Logros:** Primer simulacro; Racha de 7 días; Racha de 30 días; 1 000 XP; 5 000 XP. Se evalúan al finalizar cada simulacro y no se repiten.
 
@@ -390,6 +397,6 @@ Todas las respuestas de error tienen la misma forma:
 | `403` | Sin el rol necesario (`ADMIN`, o `REVIEWER` para aprobar preguntas), recurso de otra persona o límite del plan alcanzado | Entrar con una cuenta con ese rol o esperar el reinicio del contador |
 | `404` | El recurso no existe (simulacro, pregunta, oferta, usuario, ruta) | Revisar el id |
 | `405` / `415` | Método HTTP equivocado para esa ruta, o cuerpo que no es `application/json` | Revisar el verbo y el header `Content-Type` |
-| `409` | Duplicado o recurso en uso: correo ya registrado, objetivo ya activo, pregunta que ya salió en un simulacro | — |
-| `502` | Un servicio externo falló o no está configurado (Gemini, Mercado Pago) | No es un error del cliente ni del código; falta la credencial en el servidor |
+| `409` | Duplicado o recurso en uso: correo ya registrado, objetivo ya activo, alias de la liga ya usado, pregunta que ya salió en un simulacro | — |
+| `502` | Un servicio externo falló o no está configurado (Mercado Pago) | No es un error del cliente ni del código; falta la credencial en el servidor |
 | `500` | Error no controlado | No debería ocurrir; reportarlo con el `path` y la hora |
