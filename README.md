@@ -1,6 +1,6 @@
 # RumboU — Plataforma de preparación para el examen de admisión (UNI y UNMSM)
 
-- **Curso:** CS 2031 Desarrollo Basado en Plataforma — UTEC, 2026-2 (Proyecto 1, Semana 7)
+- **Curso:** CS 2031 Desarrollo Basado en Plataforma — UTEC, 2026-2 (Proyecto 1, Semana 7, y Proyecto 2, Semana 14)
 - **Integrantes:** Marco Emilio Bautista Ortega, Fabiana Gomez, Juan Carlos Alexander Vergara Montalván y Zoe Camila Garrido Cantoni
 - **API en producción (AWS):** https://184-194-122-22.sslip.io ([health](https://184-194-122-22.sslip.io/api/v1/health))
 - **Web y app móvil:** [`rumbou-frontend`](https://github.com/marcobautista-sketch/rumbou-frontend), publicada en https://rumbou-frontend.vercel.app
@@ -171,7 +171,18 @@ Los eventos desacoplan los módulos: el simulacro no conoce la gamificación ni 
 - **Flujo:** `main` protegida, una rama por funcionalidad y merge solo por pull request con el CI en verde.
 - **GitHub Actions:** [`ci.yml`](.github/workflows/ci.yml) ejecuta `mvnw verify` en cada push y PR: 361 pruebas unitarias, de controller, de repositorio con Testcontainers y de humo.
 - **Issues:** milestone "Entrega Semana 7", labels por módulo, tipo y proceso, y responsables asignados.
-- **Reparto:** Marco (autenticación, examen, preguntas), Juan Carlos (catálogo, progreso), Zoe (suscripción, gamificación, correo) y Fabiana (contenido, revisión de rúbrica).
+- **Reparto:** Marco (autenticación, examen, preguntas, liga, despliegue), Juan Carlos (catálogo, progreso), Zoe (suscripción, gamificación, correo) y Fabiana (contenido, banco de preguntas, revisión de rúbrica). El detalle está en la tabla de participación.
+
+### Participación y coevaluación de los integrantes
+
+| Integrante | Principales aportes | Participación |
+| --- | --- | --- |
+| Marco Emilio Bautista Ortega | Backend: autenticación con JWT y refresh tokens, motor de simulacros y calificación, banco de preguntas, liga semanal, despliegue en AWS (EC2, RDS, HTTPS) y su evidencia. Web y móvil: la mayor parte de las pantallas, el Cuaderno de errores con cámara y micrófono, los temas por universidad, la liga semanal, la publicación en Vercel y en EAS. Coordinación del equipo y documentación. | 100 % |
+| Fabiana Marcela Gomez Chavez | Backend: banco de preguntas (CRUD, filtros paginados, búsqueda por texto, aprobación individual y en lote), construcción y carga del banco de 792 preguntas, revisión del proyecto contra la rúbrica, rol REVIEWER e interfaces de servicio. Web: componentes base (Card, Badge, Modal, Skeleton, Pagination, Breadcrumbs, Table), layout con Navbar y Sidebar, modo oscuro, banco de preguntas y revisión, formularios con React Hook Form y Zod, historial paginado. Móvil: rendir simulacros, historial paginado, pestañas e inicio. Despliegue del móvil con EAS y HTTPS de la API. | 100 % |
+| Juan Carlos Alexander Vergara Montalván | Backend: catálogo académico (universidades, áreas, carreras, ofertas, esquemas de calificación y temas) y su carga desde CSV, módulo de progreso (objetivos, PSP, IP, semáforo, dominio por tema e historial), `ProgresoListener` y manejo de parámetros inválidos. Web: inicio con racha y meta, mis objetivos, logros, catálogo de carreras con búsqueda, filtros y detalle. | 100 % |
+| Zoe Camila Garrido Cantoni | Backend: suscripción PRO con `PlanService` y límites por plan, webhook de Mercado Pago idempotente, activación y vencimiento diario de suscripciones, gamificación (racha, XP, logros y su catálogo) y correos HTML con Thymeleaf y sus listeners. | 100 % |
+
+Coevaluación del equipo: cada integrante cumplió el 100 % de las responsabilidades que asumió.
 
 ## 9. Conclusión
 
@@ -231,7 +242,7 @@ Rutas bajo `/api/v1`. 🔒 requiere token; 🛡️ `ADMIN` o `REVIEWER`; 👑 so
 | Preguntas | 🔒 `GET /preguntas`, `GET /preguntas/{id}` · 🛡️ `GET /preguntas/{id}/completa`, `PATCH /preguntas/{id}/aprobar`, `PATCH /preguntas/aprobar-lote` · 👑 `POST`, `PUT`, `DELETE /preguntas` |
 | Suscripciones | 🔒 `POST /suscripciones`, `GET /suscripciones/me` · `POST /webhooks/mercadopago` (público, firmado) |
 
-La colección de Postman trae los 53 requests con descripción, tests y una respuesta de ejemplo real; apunta a la API local (la de AWS está en `baseUrlAws`) e incluye la cuenta de evaluación `evaluador@rumbou.app` (`ADMIN`). Cada request se explica en la [guía de uso](GUIA-DE-USO.md).
+La colección de Postman trae los 57 requests con descripción, tests y una respuesta de ejemplo real; apunta a la API local (la de AWS está en `baseUrlAws`) e incluye la cuenta de evaluación `evaluador@rumbou.app` (`ADMIN`). Cada request se explica en la [guía de uso](GUIA-DE-USO.md).
 
 ### D. Licencia
 
