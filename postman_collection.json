@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "RumboU API",
-    "description": "Coleccion de endpoints de RumboU (CS2031 UTEC). Cubre autenticacion, usuarios, catalogo academico, simulacros, progreso, preguntas, desafio diario, plan de estudio, liga semanal y suscripciones. Se puede correr completa, en orden, con \"Run collection\".\n\nComo usarla:\n1. baseUrl apunta a la API local (http://localhost:8080). Para levantarla: docker compose up -d y luego ./mvnw spring-boot:run \"-Dspring-boot.run.profiles=seed\" (README, apéndice A). Para usar el despliegue en AWS, cambia baseUrl por el valor de baseUrlAws.\n2. \"Registrar usuario\" crea una cuenta nueva en cada corrida (genera el email solo) y guarda el token; \"Login\" reutiliza ese mismo email. No hay que copiar tokens a mano.\n3. Los requests marcados (ADMIN) necesitan rol ADMIN. Ejecuta \"Login como administrador\": usa la cuenta de evaluacion del curso (evaluador@rumbou.app, ya cargada en las variables adminEmail y adminPassword; en local la crea el profile seed) y desde ahi todos los requests corren como ADMIN. Sin ese login, los requests ADMIN responden 403 y sus tests lo aceptan como resultado valido.\n4. Los requests marcados (plan PRO) responden 403 con el plan gratuito; el ADMIN pasa todos los limites del plan.\n5. Cada request guarda en variables los ids que necesitan los siguientes (usuarioId, areaId, temaId, simulacroId, preguntaId, ofertaAcademicaId, objetivoId).\n6. \"Crear suscripcion PRO\" depende de credenciales externas (MP_ACCESS_TOKEN) en el servidor; sin ellas responde 502.\n7. La carpeta \"Cambiar de rol\" permite pasar a USER, REVIEWER o ADMIN con un solo request; ver la seccion 2 de GUIA-DE-USO.md.",
+    "description": "Coleccion de endpoints de RumboU (CS2031 UTEC). Cubre autenticacion, usuarios, catalogo academico, simulacros, progreso, preguntas, desafio diario, plan de estudio, liga semanal y suscripciones. Se puede correr completa, en orden, con \"Run collection\".\n\nComo usarla:\n1. baseUrl apunta a la API local (http://localhost:8080). Para levantarla: docker compose up -d y luego ./mvnw spring-boot:run \"-Dspring-boot.run.profiles=seed\" (README, apéndice A). Para usar el despliegue en AWS, cambia baseUrl por el valor de baseUrlAws.\n2. \"Registrar usuario\" crea una cuenta nueva en cada corrida (genera el email solo) y guarda el token; \"Login\" reutiliza ese mismo email. No hay que copiar tokens a mano.\n3. Los requests marcados (ADMIN) necesitan rol ADMIN. Ejecuta \"Login como administrador\": usa la cuenta de evaluacion del curso (evaluador@rumbou.app, ya cargada en las variables adminEmail y adminPassword; en local la crea el profile seed) y desde ahi todos los requests corren como ADMIN. Sin ese login, los requests ADMIN responden 403 y sus tests lo aceptan como resultado valido.\n4. Los requests marcados (plan PRO) responden 403 con el plan gratuito; el ADMIN pasa todos los limites del plan.\n5. Cada request guarda en variables los ids que necesitan los siguientes (usuarioId, areaId, temaId, simulacroId, preguntaId, ofertaAcademicaId, objetivoId).\n6. \"Crear suscripcion PRO\" depende de credenciales externas (MP_ACCESS_TOKEN) en el servidor; sin ellas responde 502.\n7. La carpeta \"Cambiar de rol\" permite pasar a USER, REVIEWER o ADMIN con un solo request; ver la seccion 2 de GUIA-DE-USO.md.\n8. La carpeta \"Limpieza\" devuelve el rol USER a las cuentas que creo la corrida, para no dejar administradores de prueba en la base.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -147,6 +147,10 @@
     },
     {
       "key": "aliasLiga",
+      "value": ""
+    },
+    {
+      "key": "revisorId",
       "value": ""
     }
   ],
@@ -4225,6 +4229,184 @@
               "body": "{\n  \"id\": 1,\n  \"email\": \"evaluador@rumbou.app\",\n  \"nombre\": \"Administrador\",\n  \"role\": \"ADMIN\"\n}"
             }
           ]
+        }
+      ]
+    },
+    {
+      "name": "Limpieza",
+      "description": "Devuelve el rol USER a las cuentas que creo esta corrida (el postulante promovido a ADMIN y el revisor). Corre al final, con la sesion de administrador.",
+      "item": [
+        {
+          "name": "Buscar al postulante de esta corrida (ADMIN)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/usuarios?email={{email}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "usuarios"
+              ],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "{{email}}"
+                }
+              ]
+            },
+            "description": "Busca por correo la cuenta que creo esta corrida y guarda su id en usuarioId. Es la cuenta que \"Cambiar rol (ADMIN)\" promovio a ADMIN."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const code = pm.response.code;",
+                  "if (code === 200) pm.collectionVariables.set('usuarioId', pm.response.json().id);",
+                  "pm.test('200 (guarda usuarioId); 403 si la sesion no es ADMIN; 404 si no existe', () => pm.expect([200, 403, 404]).to.include(code));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Devolver al postulante el rol USER (ADMIN)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"USER\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/usuarios/{{usuarioId}}/rol",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "usuarios",
+                "{{usuarioId}}",
+                "rol"
+              ]
+            },
+            "description": "Deja la cuenta de prueba sin permisos de administracion al terminar la corrida, para no acumular administradores en la base. La API no permite que un administrador se quite su propio rol, asi que la cuenta de evaluacion nunca se ve afectada."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200; 403 si la sesion no es ADMIN; 404 si no hubo cuenta', () => pm.expect([200, 403, 404]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Buscar al revisor de esta corrida (ADMIN)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/usuarios?email={{revisorEmail}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "usuarios"
+              ],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "{{revisorEmail}}"
+                }
+              ]
+            },
+            "description": "Busca por correo la cuenta que creo esta corrida y guarda su id en revisorId. Responde 404 si en esta corrida no se creo un revisor."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const code = pm.response.code;",
+                  "if (code === 200) pm.collectionVariables.set('revisorId', pm.response.json().id);",
+                  "pm.test('200 (guarda revisorId); 403 si la sesion no es ADMIN; 404 si no existe', () => pm.expect([200, 403, 404]).to.include(code));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Devolver al revisor el rol USER (ADMIN)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"USER\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/usuarios/{{revisorId}}/rol",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "usuarios",
+                "{{revisorId}}",
+                "rol"
+              ]
+            },
+            "description": "Deja la cuenta de prueba sin permisos de administracion al terminar la corrida, para no acumular administradores en la base. Responde 404 si no hubo revisor en esta corrida."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200; 403 si la sesion no es ADMIN; 404 si no hubo cuenta', () => pm.expect([200, 403, 404]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "response": []
         }
       ]
     }

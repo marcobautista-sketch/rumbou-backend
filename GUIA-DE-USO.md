@@ -83,7 +83,7 @@ La cuenta de evaluación es:
 
 Las cuentas de prueba que crea la colección usan la contraseña `Password123`. Toda contraseña debe tener entre 8 y 72 caracteres, con al menos una mayúscula, una minúscula y un número.
 
-**Al correr la colección completa**, el flujo principal registra un postulante nuevo (`USER`), inicia sesión como administrador en "Login como administrador" y, en "Cambiar rol (ADMIN)", promueve a `ADMIN` al postulante de esa corrida para mostrar la gestión de roles. Desde ese punto la corrida sigue como `ADMIN`, por eso los requests de administración y PRO responden `200`. Para ver las respuestas de otro rol, basta con ejecutar uno de los requests de **Cambiar de rol** y repetir el request que interese.
+**Al correr la colección completa**, el flujo principal registra un postulante nuevo (`USER`), inicia sesión como administrador en "Login como administrador" y, en "Cambiar rol (ADMIN)", promueve a `ADMIN` al postulante de esa corrida para mostrar la gestión de roles. Desde ese punto la corrida sigue como `ADMIN`, por eso los requests de administración y PRO responden `200`. Al final, la carpeta **Limpieza** devuelve el rol `USER` al postulante y al revisor de esa corrida, para no dejar cuentas con permisos en la base. Para ver las respuestas de otro rol, basta con ejecutar uno de los requests de **Cambiar de rol** y repetir el request que interese.
 
 ### Recuperar la contraseña
 
@@ -110,6 +110,7 @@ Se ven en la colección → pestaña **Variables**. Las que empiezan con id las 
 | `objetivoIdAlterno` | vacío | Crear un segundo objetivo (PRO o ADMIN); Desactivar objetivo lo desactiva también, para que cada corrida deje la cuenta como estaba |
 | `postulanteEmail`, `revisorEmail` | vacío | Entrar como postulante / Entrar como revisor (carpeta Cambiar de rol) |
 | `preguntaRevisionId` | vacío | Aprobar pregunta (REVIEWER o ADMIN): se toma sola del banco |
+| `revisorId` | vacío | Limpieza: Buscar al revisor de esta corrida |
 | `simulacroId`, `preguntaId`, `respuestaUsuarioId` | vacío | Iniciar simulacro (y Crear pregunta, para las operaciones de administración) |
 | `suscripcionId` | vacío | Crear suscripción PRO |
 | `aliasLiga` | vacío | Unirse a la liga (genera uno nuevo por corrida) |
@@ -220,6 +221,14 @@ Valores posibles de `dificultad`: `FACIL`, `MEDIA`, `DIFICIL`.
 | Ver mi rol actual | `GET /usuarios/me` | `200` con el `role` de la sesión |
 | Aprobar pregunta (REVIEWER o ADMIN) | `PATCH /preguntas/{id}/aprobar` sobre una pregunta del banco | `200` como `REVIEWER` o `ADMIN`; `403` como `USER` |
 | Buscar usuario por email (solo ADMIN) | `GET /usuarios?email=` | `200` como `ADMIN`; `403` como `REVIEWER` o `USER` |
+
+### Limpieza
+| Request | Envía | Devuelve |
+|---|---|---|
+| Buscar al postulante de esta corrida (ADMIN) | `GET /usuarios?email={{email}}` | `200`; guarda `usuarioId` |
+| Devolver al postulante el rol USER (ADMIN) | `{"role": "USER"}` sobre `/usuarios/{usuarioId}/rol` | `200`. La cuenta creada en la corrida queda sin permisos de administración |
+| Buscar al revisor de esta corrida (ADMIN) | `GET /usuarios?email={{revisorEmail}}` | `200`; guarda `revisorId`. `404` si en esta corrida no se creó un revisor |
+| Devolver al revisor el rol USER (ADMIN) | `{"role": "USER"}` sobre `/usuarios/{revisorId}/rol` | `200`; `404` si no hubo revisor |
 
 ---
 
